@@ -2,107 +2,73 @@
 
 ## Project Goal
 
-Recreate the classic Windows 9x game **Memory Blocks** as a browser-based
-HTML/CSS/TypeScript application. This is a greenfield project - the game
-logic and UI are not yet implemented.
+Maintain and extend a browser-based HTML/CSS/TypeScript remake of the
+Windows 9x game **Memory Blocks**.
 
-## Tech Stack & Architecture
+## Current Implementation Snapshot
 
-- **Language**: TypeScript (strict mode, ES2020 target)
-- **Runtime**: Browser (DOM + DOM.Iterable APIs)
-- **Build**: TypeScript compiler (`tsc`) compiles `src/` → `dist/`
-- **Module System**: ESNext modules with Node resolution
-- **Source Structure**: All game code in `src/`, entry point is `src/index.ts`
+- Playable boards with three difficulties (5x6, 5x8, 5x10)
+- Dynamic emoji deck generation by selected difficulty
+- Timer, attempt counter, restart flow, and win message
+- Browser entry via `index.html` + compiled `dist/index.js`
+- GitHub Pages deployment workflow in `.github/workflows/pages.yml`
+
+## Tech Stack
+
+- TypeScript (`strict: true`, ES2020, DOM libs)
+- ES modules with Node-style resolution
+- No framework; direct DOM manipulation
 
 ## Critical Workflows
 
-### Before ANY commit or run
+Run these before any commit/push:
 
-Run these validations in order (all must pass):
+```bash
+npm run validate
+```
+
+Validation order is fixed:
 
 ```bash
 markdownlint .
-npx eslint .
-npx tsc --noEmit
+eslint .
+tsc --noEmit
 ```
 
-### Development
+Development/build commands:
 
 ```bash
-npx tsx src/index.ts          # Run TypeScript directly
-npx tsc                        # Compile to dist/
+npm run dev
+npm run build
 ```
 
-### File watching (when implemented)
+## Architecture Map
 
-Use `tsc --watch` for continuous compilation during development.
+- `src/index.ts`: app bootstrap, loop wiring, restart behavior
+- `src/game.ts`: canonical game state and selection/match logic
+- `src/board.ts`: tile markup rendering and click delegation
+- `src/ui.ts`: HUD and status message updates
+- `src/icons.ts`: runtime icon deck generation
+- `src/utils.ts`: shared helper utilities
 
-## Project Conventions
+## Conventions
 
-1. **TypeScript-first**: No JavaScript files; use `.ts` extension
-2. **Strict typing**: All code must satisfy `strict: true` compiler mode
-3. **DOM-focused**: Target browser environment, not Node.js
-4. **No frameworks**: Pure TypeScript, HTML, CSS - no React/Vue/Angular
+1. Keep game logic in `src/` TypeScript modules.
+2. Preserve strict typing; avoid `any`.
+3. Use relative asset paths so project Pages URL `/mb/` works.
+4. Keep UX scope minimal unless explicitly requested.
+5. Run `npm run validate` after edits.
+6. Use the reusable AI skills in `.github/skills/` whenever they apply.
+7. For very complex tasks, start in Plan mode first, then implement plan using Agent mode.
 
-- **Markdown validation**: All `.md` files must pass `markdownlint`
-  (MD022 rule enforced)
+## Deployment Notes
 
-## File Structure
-
-```text
-src/          # All TypeScript source code (entry: index.ts)
-dist/         # Compiled output (gitignored)
-.github/      # GitHub configuration & AI agent skills
-.vscode/      # Workspace settings (TS server, markdown formatter)
-```
-
-## Configuration Notes
-
-- **tsconfig.json**: Excludes `.md` and `.github` from compilation
-- **TypeScript**: Uses workspace version (`node_modules/typescript/lib`)
-- **VS Code**: Markdown files use `markdownlint` formatter,
-  auto-format on save
-- **Ignore patterns**: `.eslintignore` excludes `.md`, `node_modules`,
-  `dist`, `.github`
-
-## Memory Blocks Game Requirements
-
-**What to implement:**
-
-- Puzzle game with colored blocks on a grid
-- Block matching/elimination mechanics (specifics TBD - research
-  Windows 9x version)
-- Score tracking and win/lose conditions
-- Retro Windows 9x aesthetic (gray dialogs, system fonts,
-  beveled edges)
-
-**Research needed:**
-
-- Original game rules and mechanics (block patterns, matching logic)
-- Visual style guide from Windows 9x UI
-- Animation timing and effects
-
-## Getting Started (for AI agents)
-
-1. Research the original Memory Blocks game to understand mechanics
-2. Design the game architecture (game state, board, rendering)
-3. Create HTML structure for game board and UI
-4. Implement game logic in TypeScript modules
-5. Style with CSS to match Windows 9x aesthetic
-6. Test in browser and validate with linters before committing
-
-## Key Files to Create
-
-- `src/game.ts` - Core game logic and state management
-- `src/board.ts` - Board rendering and block management  
-- `src/ui.ts` - UI elements (score, buttons, dialogs)
-- `index.html` - Main HTML entry point
-- `styles.css` - Windows 9x-inspired styling
+- Site target: `https://satyrlord.github.io/mb/`
+- Workflow builds with `npm ci`, validates, compiles, then publishes
+  `index.html`, `styles.css`, and `dist/` assets.
 
 ## Anti-patterns to Avoid
 
-- Don't add build frameworks (webpack, vite) without discussion -
-  keep it simple
-- Don't use `any` type - leverage TypeScript's type system
-- Don't create files outside `src/` for game code
-- Don't skip the validation steps defined above
+- Do not add React/Vue/build frameworks without explicit request.
+- Do not hard-code absolute root asset paths (breaks `/mb/` deployment).
+- Do not skip validation or modify unrelated files during focused changes.

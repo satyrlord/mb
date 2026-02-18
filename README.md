@@ -3,51 +3,60 @@
 Browser-based recreation of the classic Windows 9x game **Memory Blocks**
 using HTML, CSS, and TypeScript.
 
+## Current Status
+
+- Playable memory boards with multiple difficulty levels
+ (5x6, 5x8 [default], 5x10)
+- Dynamic emoji-based icon pairs generated at runtime
+- Timer, attempts counter, restart button, and win state
+- GitHub Pages workflow for deployment to `/mb/`
+
 ## Stack
 
 - TypeScript (strict mode)
 - Browser DOM APIs (no framework)
-- `tsc` for compile output to `dist/`
+- `tsc` compile output to `dist/`
 
 ## Quick Start
 
 ```bash
 npm install
+npm run build
 ```
 
-Run the project entry file directly:
+Open `index.html` in a browser after build.
+
+## Development Commands
 
 ```bash
-npx tsx src/index.ts
-```
-
-Compile TypeScript:
-
-```bash
-npx tsc
+npm run dev
+npm run build
+npm run lint
+npm run typecheck
+npm run validate
 ```
 
 ## Validation
 
-Run these before each run/compile/commit:
+`npm run validate` runs the required checks in order:
 
 ```bash
 markdownlint .
-npx eslint .
-npx tsc --noEmit
+eslint .
+tsc --noEmit
 ```
 
 ## Project Layout
 
 ```text
-src/          TypeScript source (entry: src/index.ts)
-dist/         Compiled output
-.github/      Project and AI-agent instructions
+src/                       TypeScript source
+src/index.ts               App bootstrap and game loop wiring
+src/game.ts                Game state and matching rules
+src/board.ts               Board rendering and tile input handling
+src/ui.ts                  HUD and status messaging updates
+src/icons.ts               Dynamic emoji deck generation
+src/utils.ts               Shared helpers (shuffle, time formatting)
+index.html                 Browser entry point
+styles.css                 Game styling
+.github/workflows/pages.yml  GitHub Pages build/deploy workflow
 ```
-
-## Roadmap
-
-- Add `src/game.ts` for game state, rules, score, and win/lose conditions
-- Add `src/board.ts` for grid rendering and block interactions
-- Add `src/ui.ts` for score display, controls, and status messaging
-- Add `index.html` and `styles.css` for browser UI and Windows 9x styling

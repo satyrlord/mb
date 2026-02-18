@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Memory Blocks</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-live="polite">
+      <section id="menuFrame" class="menu" aria-label="Main menu">
+        <h1 class="title">Memory Blocks</h1>
+        <h2 class="menu-title">Select Difficulty</h2>
+        <div id="difficultyMenu" class="menu-buttons">
+          <button class="btn menu-btn" data-difficulty="easy" type="button">Easy (5x6)</button>
+          <button class="btn menu-btn" data-difficulty="normal" type="button">Normal (5x8)</button>
+          <button class="btn menu-btn" data-difficulty="hard" type="button">Hard (5x10)</button>
+        </div>
+      </section>
+
+      <section id="gameFrame" hidden>
+        <header class="hud">
+          <h1 class="title">Memory Blocks</h1>
+          <div class="stats">
+            <p class="stat">Time: <span id="timeValue">00:00</span></p>
+            <p class="stat">Attempts: <span id="attemptsValue">0</span></p>
+          </div>
+          <div class="hud-actions">
+            <button id="menuButton" class="btn btn-secondary" type="button">Main Menu</button>
+            <button id="restartButton" class="btn" type="button">Restart</button>
+          </div>
+        </header>
+
+        <section
+          id="statusMessage"
+          class="status"
+          role="status"
+          aria-atomic="true"
+        >
+          Match all pairs to win.
+        </section>
+
+        <section
+          id="board"
+          class="board"
+          aria-label="Memory board"
+        ></section>
+      </section>
+    </main>
+
+    <script type="module" src="./dist/index.js"></script>
+  </body>
+</html>
