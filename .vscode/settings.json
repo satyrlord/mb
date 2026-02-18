@@ -1,0 +1,18 @@
+{
+  "[markdown]": {
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+    "editor.formatOnSave": true
+  },
+  "files.associations": {
+    "*.md": "markdown"
+  },
+  "search.exclude": {
+    "**/*.md": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.checkJs": false,
+  "[typescript]": {
+    "editor.formatOnSave": false
+  }
+}
