@@ -41,9 +41,10 @@ This project stores global runtime-tunable values in `config/`.
 
 ### Animation speed
 
-- `animation.defaultSpeed`: startup animation speed multiplier (applied at boot;
-  no in-Settings slider — change via this config key).
+- `animation.defaultSpeed`: default animation speed multiplier (applied at boot
+  and used as the initial Settings slider position when no stored preference exists).
 - `animation.minSpeed`, `animation.maxSpeed`: allowed speed bounds.
+  The Settings slider clamps to these limits.
 - `animation.tileFlipDurationMs`: tile flip transition duration.
 
 ### Plasma visual tuning
@@ -107,7 +108,8 @@ shadow configuration defined in code.
 
 ### List keys (comma-separated)
 
-- `winFx.colors`: main burst particle colors.
+- `winFx.colors`: main burst particle colors. If the color list is invalid or
+  empty, particles fall back to a default white (`#ffffff`).
 - `winFx.textOptions`: rotating win text options.
 - `winFx.rainColors`: confetti rain colors.
 

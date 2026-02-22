@@ -12,7 +12,7 @@ at least **25 icons** per pack.
 4. **Industry** (`industry`)
 5. **World Flags** (`world-flags`)
 6. **Science & Tech** (`science-tech`)
-7. **Music Performance** (`music-performance`)
+7. **Arts & Crafts** (`music-performance`)
 8. **Religious Symbols** (`religious-symbols`)
 
 ## Space & Astronomy

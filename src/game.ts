@@ -13,7 +13,24 @@ export interface GameState {
   rows: number;
   columns: number;
   tiles: Tile[];
-  totalPairs: number;
+  /**
+   * Number of unique matchable icon groups (distinct pairIds) in the game.
+   *
+   * With a tile multiplier greater than 1 each icon may have 4+ copies,
+   * producing multiple matchable pairs per group.  This field counts the
+   * number of **distinct icons**, not the total number of matchable pairs.
+   * The win condition uses {@link getRemainingUnmatchedPairCount} instead.
+   */
+  totalMatchableGroups: number;
+  /**
+   * Cached count of remaining matchable pairs on the board.
+   *
+   * Initialized in {@link createGame} and decremented by 1 on every match
+   * in {@link selectTile}, giving O(1) win-condition checks.
+   * {@link getRemainingUnmatchedPairCount} returns this cached value.
+   * {@link prepareNearWinState} and {@link resetGame} reset it as needed.
+   */
+  remainingPairCount: number;
   firstSelection: number | null;
   secondSelection: number | null;
   attempts: number;
@@ -83,11 +100,32 @@ export const createGame = (options: CreateGameOptions): GameState => {
     throw new Error("Matchable tile count must be even.");
   }
 
+  // Compute initial remaining matchable pair count by counting tiles per pairId.
+  const tileCounts = new Map<number, number>();
+
+  for (const tile of tiles) {
+    if (tile.status === "blocked") {
+      continue;
+    }
+
+    tileCounts.set(tile.pairId, (tileCounts.get(tile.pairId) ?? 0) + 1);
+  }
+
+  let initialRemainingPairs = 0;
+
+  for (const count of tileCounts.values()) {
+    // Use Math.floor(count / 2) to compute matchable pairs from tile count.
+    // This accounts for orphaned tiles in odd-count groups (e.g., 3 copies of an icon
+    // produce only 1 matchable pair, with 1 tile left unmatched).
+    initialRemainingPairs += Math.floor(count / 2);
+  }
+
   return {
     rows: options.rows,
     columns: options.columns,
     tiles,
-    totalPairs: matchableTileCount / 2,
+    totalMatchableGroups: pairIdsByIcon.size,
+    remainingPairCount: initialRemainingPairs,
     firstSelection: null,
     secondSelection: null,
     attempts: 0,
@@ -167,11 +205,22 @@ export const selectTile = (state: GameState, index: number): SelectionResult => 
     firstTile.status = "matched";
     tile.status = "matched";
     state.matches += 1;
+    // State invariant: remainingPairCount should never be zero when matching a new tile pair.
+    // If remainingPairCount is already zero, a match has occurred when no pairs remained.
+    // This suggests either: (1) selectTile() was called when no pairs existed, (2) the same
+    // tile pair was matched twice (duplicate match), or (3) state was corrupted externally.
+    // Fail fast to catch the bug during development before invalid state propagates.
+    if (state.remainingPairCount === 0) {
+      throw new Error(
+        "[MEMORYBLOX] State corruption detected: Attempted to match a tile pair when remainingPairCount is already zero. Possible causes: duplicate match, corrupted state, or selectTile called after win condition.",
+      );
+    }
+    state.remainingPairCount = Math.max(0, state.remainingPairCount - 1);
     state.firstSelection = null;
     state.secondSelection = null;
     state.isBoardLocked = false;
 
-    const won = state.matches === state.totalPairs;
+    const won = state.remainingPairCount === 0;
 
     if (won) {
       state.isWon = true;
@@ -263,42 +312,47 @@ export const findFirstUnmatchedPairIndices = (
   return null;
 };
 
+/**
+ * Returns the cached count of remaining matchable pairs.
+ *
+ * This value is initialized in {@link createGame} and decremented on each
+ * successful match in {@link selectTile}, giving O(1) performance.
+ */
 export const getRemainingUnmatchedPairCount = (state: GameState): number => {
-  const pendingPairIds = new Set<number>();
-
-  for (const tile of state.tiles) {
-    if (tile.status === "matched" || tile.status === "blocked") {
-      continue;
-    }
-
-    pendingPairIds.add(tile.pairId);
-  }
-
-  return pendingPairIds.size;
+  return state.remainingPairCount;
 };
 
 export const prepareNearWinState = (
   state: GameState,
 ): NearWinPreparationResult => {
-  const remainingPairIds = new Set<number>();
+  // Build a map from pairId → ordered list of tile IDs.
+  //
+  // With tile multipliers > 1 a single pairId can map to 3+ tile IDs
+  // (e.g. triple-copy icons), which is why the value type is `number[]`
+  // rather than a fixed-length pair tuple.
+  // Blocked tiles are excluded — they are inert and cannot be matched.
+  const tilesByPairId = new Map<number, number[]>();
 
-  for (let index = state.tiles.length - 1; index >= 0; index -= 1) {
-    const tile = state.tiles[index];
-
-    if (tile === undefined || tile.status === "blocked") {
+  for (const tile of state.tiles) {
+    if (tile.status === "blocked") {
       continue;
     }
 
-    remainingPairIds.add(tile.pairId);
+    const entries = tilesByPairId.get(tile.pairId);
 
-    if (remainingPairIds.size === 1) {
+    if (entries === undefined) {
+      tilesByPairId.set(tile.pairId, [tile.id]);
       continue;
     }
 
-    remainingPairIds.delete(tile.pairId);
+    entries.push(tile.id);
   }
 
-  const [remainingPairId] = remainingPairIds;
+  // Pick the last pairId as the one pair left visible for the player to match.
+  // Any extra copies of that pairId beyond the first two are orphan tiles that
+  // will be pre-marked as matched (see tile-status loop below).
+  const pairIds = Array.from(tilesByPairId.keys());
+  const remainingPairId = pairIds.length > 0 ? pairIds[pairIds.length - 1] : undefined;
 
   if (remainingPairId === undefined) {
     return {
@@ -307,29 +361,33 @@ export const prepareNearWinState = (
     };
   }
 
-  const matchedPairs = new Map<number, [number, number]>();
-  const remainingPairTiles: number[] = [];
+  const matchedPairs: [number, number][] = [];
+  const remainingPairTiles = tilesByPairId.get(remainingPairId) ?? [];
+  const remainingPair = remainingPairTiles.length >= 2
+    ? [remainingPairTiles[0], remainingPairTiles[1]] as [number, number]
+    : null;
 
-  for (const tile of state.tiles) {
-    if (tile.status === "blocked") {
-      continue;
+  for (const [pairId, tileIds] of tilesByPairId.entries()) {
+    for (let index = 0; index < tileIds.length; index += 1) {
+      const tileId = tileIds[index];
+      const tile = state.tiles[tileId];
+
+      if (tile === undefined || tile.status === "blocked") {
+        continue;
+      }
+
+      // For the remaining pair: keep the first two tiles hidden so the player must match them.
+      // Any additional copies beyond index 1 are orphan tiles from a multi-copy deck —
+      // pre-mark them as matched so they do not block the win condition.
+      const keepHidden = pairId === remainingPairId && remainingPair !== null && index < 2;
+      tile.status = keepHidden ? "hidden" : "matched";
     }
 
-    if (tile.pairId === remainingPairId) {
-      tile.status = "hidden";
-      remainingPairTiles.push(tile.id);
-      continue;
+    const startIndex = pairId === remainingPairId && remainingPair !== null ? 2 : 0;
+
+    for (let index = startIndex; index + 1 < tileIds.length; index += 2) {
+      matchedPairs.push([tileIds[index], tileIds[index + 1]]);
     }
-
-    tile.status = "matched";
-    const existingPair = matchedPairs.get(tile.pairId);
-
-    if (existingPair === undefined) {
-      matchedPairs.set(tile.pairId, [tile.id, tile.id]);
-      continue;
-    }
-
-    matchedPairs.set(tile.pairId, [existingPair[0], tile.id]);
   }
 
   state.firstSelection = null;
@@ -337,21 +395,15 @@ export const prepareNearWinState = (
   state.isBoardLocked = false;
   state.isWon = false;
   state.endedAt = null;
-  state.matches = Math.max(0, state.totalPairs - 1);
+  state.matches = matchedPairs.length;
+  state.remainingPairCount = remainingPair !== null ? 1 : 0;
 
   if (state.startedAt === null) {
     state.startedAt = performance.now();
   }
 
-  const remainingPair =
-    remainingPairTiles.length === 2
-      ? [remainingPairTiles[0], remainingPairTiles[1]] as [number, number]
-      : null;
-
   return {
     remainingPair,
-    matchedPairs: Array.from(matchedPairs.values()).filter(
-      ([firstIndex, secondIndex]) => firstIndex !== secondIndex,
-    ),
+    matchedPairs,
   };
 };

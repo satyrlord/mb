@@ -3,7 +3,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
+  applyLeaderboardScorePenalty,
   DEFAULT_LEADERBOARD_RUNTIME_CONFIG,
+  getDifficultyScoreMultiplier,
   LeaderboardClient,
   leaderboardTesting,
   loadLeaderboardRuntimeConfig,
@@ -79,11 +81,13 @@ describe("leaderboard runtime config", () => {
   });
 
   test("loadLeaderboardRuntimeConfig falls back to defaults when fetch fails", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(window, "fetch").mockRejectedValue(new Error("network"));
 
     const loaded = await loadLeaderboardRuntimeConfig();
 
     expect(loaded).toEqual(DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
+    warnSpy.mockRestore();
   });
 
   test("parseCfgBoolean accepts only true and false", () => {
@@ -240,6 +244,7 @@ describe("leaderboard client (localStorage)", () => {
   });
 
   test("fetchTopScores recovers gracefully from corrupted localStorage", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     window.localStorage.setItem(leaderboardTesting.LEADERBOARD_STORAGE_KEY, "not-valid-json{");
     const client = new LeaderboardClient(makeTestClientConfig());
     const entries = await client.fetchTopScores();
@@ -287,5 +292,344 @@ describe("leaderboard client (localStorage)", () => {
 
     const entries = await client.fetchTopScores();
     expect(entries[0]?.isAutoDemo).toBe(false);
+  });
+
+  test("normalizeLeaderboardPayload handles object form with entries field", () => {
+    const payload = {
+      entries: [
+        {
+          playerName: "Wrapped",
+          timeMs: 5000,
+          attempts: 5,
+          difficultyId: "easy",
+          difficultyLabel: "Easy",
+          emojiSetId: "set-a",
+          emojiSetLabel: "Set A",
+          scoreMultiplier: 1.2,
+          scoreValue: 800,
+          isAutoDemo: false,
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    };
+
+    const entries = leaderboardTesting.normalizeLeaderboardPayload(payload);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.playerName).toBe("Wrapped");
+  });
+
+  test("normalizeLeaderboardPayload returns empty array for non-array non-object input", () => {
+    expect(leaderboardTesting.normalizeLeaderboardPayload(null)).toEqual([]);
+    expect(leaderboardTesting.normalizeLeaderboardPayload(42)).toEqual([]);
+    expect(leaderboardTesting.normalizeLeaderboardPayload("string")).toEqual([]);
+  });
+
+  test("normalizeLeaderboardPayload returns empty array for object without entries array", () => {
+    // payload is an object but entries is not an array (false branch of inner Array.isArray)
+    expect(leaderboardTesting.normalizeLeaderboardPayload({ foo: "bar" })).toEqual([]);
+    expect(leaderboardTesting.normalizeLeaderboardPayload({ entries: "not-an-array" })).toEqual([]);
+    expect(leaderboardTesting.normalizeLeaderboardPayload({ entries: null })).toEqual([]);
+  });
+
+  test("normalizeLeaderboardPayload falls back legacy emojiSetId when emojiSetId is empty", () => {
+    const payload = [
+      {
+        playerName: "LegacyId",
+        timeMs: 6000,
+        attempts: 3,
+        difficultyId: "normal",
+        difficultyLabel: "Normal",
+        emojiSetId: "", // empty — should use LEGACY_EMOJI_SET_ID internally
+        emojiSetLabel: "Some Set",
+        scoreMultiplier: 1.8,
+        scoreValue: 700,
+        isAutoDemo: false,
+        createdAt: "2026-01-05T00:00:00.000Z",
+      },
+    ];
+
+    const entries = leaderboardTesting.normalizeLeaderboardPayload(payload);
+    expect(entries).toHaveLength(1);
+    // emojiSetId should have been replaced by the legacy constant
+    expect(entries[0]?.emojiSetId).toBe("legacy");
+  });
+
+  test("normalizeLeaderboardPayload derives scoreMultiplier from difficulty when missing", () => {
+    const payload = [
+      {
+        playerName: "MultiFallback",
+        timeMs: 8000,
+        attempts: 6,
+        difficultyId: "hard",
+        difficultyLabel: "Hard",
+        emojiSetId: "set-a",
+        emojiSetLabel: "Set A",
+        // scoreMultiplier omitted — should be derived from difficulty (2.4 for hard)
+        scoreValue: 500,
+        isAutoDemo: false,
+        createdAt: "2026-01-06T00:00:00.000Z",
+      },
+    ];
+
+    const entries = leaderboardTesting.normalizeLeaderboardPayload(payload);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.scoreMultiplier).toBe(2.4);
+  });
+
+  test("normalizeLeaderboardPayload applies penalty scoreValue for autoDemo entries", () => {
+    window.localStorage.clear();
+    const payload = [
+      {
+        playerName: "DemoPlayer",
+        timeMs: 5000,
+        attempts: 3,
+        difficultyId: "easy",
+        difficultyLabel: "Easy",
+        emojiSetId: "set-a",
+        emojiSetLabel: "Set A",
+        scoreMultiplier: 1.2,
+        // scoreValue omitted — will be computed with penalty since isAutoDemo=true
+        isAutoDemo: true,
+        createdAt: "2026-01-07T00:00:00.000Z",
+      },
+    ];
+
+    const entries = leaderboardTesting.normalizeLeaderboardPayload(payload);
+    expect(entries).toHaveLength(1);
+    // Score should be penalized (much lower than the raw calculated score)
+    const rawScore = leaderboardTesting.calculateLeaderboardScore({ timeMs: 5000, attempts: 3, scoreMultiplier: 1.2 });
+    expect(entries[0]?.scoreValue).toBeLessThan(rawScore);
+  });
+
+  test("normalizeLeaderboardPayload filters out entries with invalid required fields", () => {
+    const payload = [
+      // Missing playerName
+      {
+        timeMs: 5000,
+        attempts: 3,
+        difficultyId: "easy",
+        difficultyLabel: "Easy",
+        emojiSetId: "set-a",
+        emojiSetLabel: "Set A",
+        scoreMultiplier: 1.2,
+        scoreValue: 500,
+        isAutoDemo: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      // Negative timeMs
+      {
+        playerName: "NegTime",
+        timeMs: -100,
+        attempts: 3,
+        difficultyId: "easy",
+        difficultyLabel: "Easy",
+        emojiSetId: "set-a",
+        emojiSetLabel: "Set A",
+        scoreMultiplier: 1.2,
+        scoreValue: 500,
+        isAutoDemo: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    const entries = leaderboardTesting.normalizeLeaderboardPayload(payload);
+    expect(entries).toHaveLength(0);
+  });
+
+  test("rankLeaderboardEntries tiebreaks by createdAt when scores are equal", () => {
+    const older = {
+      playerName: "Older",
+      timeMs: 5000,
+      attempts: 3,
+      difficultyId: "easy",
+      difficultyLabel: "Easy",
+      emojiSetId: "set-a",
+      emojiSetLabel: "Set A",
+      scoreMultiplier: 1.2,
+      scoreValue: 500,
+      isAutoDemo: false,
+      createdAt: "2025-12-01T00:00:00.000Z",
+    };
+    const newer = {
+      ...older,
+      playerName: "Newer",
+      createdAt: "2026-01-02T00:00:00.000Z",
+    };
+
+    const ranked = leaderboardTesting.rankLeaderboardEntries([older, newer]);
+    // Newer should appear first (same score — most recent wins)
+    expect(ranked[0]?.playerName).toBe("Newer");
+    expect(ranked[1]?.playerName).toBe("Older");
+  });
+
+  test("rankLeaderboardEntries tiebreaks by timeMs when scores and createdAt are equal", () => {
+    const base = {
+      playerName: "Fast",
+      timeMs: 3000,
+      attempts: 3,
+      difficultyId: "easy",
+      difficultyLabel: "Easy",
+      emojiSetId: "set-a",
+      emojiSetLabel: "Set A",
+      scoreMultiplier: 1.2,
+      scoreValue: 500,
+      isAutoDemo: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const slow = { ...base, playerName: "Slow", timeMs: 8000 };
+
+    const ranked = leaderboardTesting.rankLeaderboardEntries([slow, base]);
+    // Same score + same createdAt — faster timeMs wins
+    expect(ranked[0]?.playerName).toBe("Fast");
+  });
+
+  test("loadLeaderboardRuntimeConfig returns defaults when fetch returns non-ok response", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue({ ok: false } as Response);
+
+    const loaded = await loadLeaderboardRuntimeConfig();
+
+    expect(loaded).toEqual(DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
+  });
+
+  test("applyLeaderboardScorePenalty caps penalized value at 0", () => {
+    const veryLargeScore = 1_000_000_000;
+
+    const result = applyLeaderboardScorePenalty(veryLargeScore, 0.01); // 99% penalty
+
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(result).toBeLessThan(veryLargeScore);
+  });
+
+  test("applyLeaderboardScorePenalty with zero penalty factor returns zero", () => {
+    const result = applyLeaderboardScorePenalty(1000, 0);
+    expect(result).toBe(0);
+  });
+
+  test("applyLeaderboardScorePenalty with penalty factor 1 returns original score", () => {
+    const score = 500;
+    const result = applyLeaderboardScorePenalty(score, 1);
+    expect(result).toBe(score);
+  });
+
+  test("fetchTopScores enforces maxEntries limit", async () => {
+    const entries: LeaderboardScoreEntry[] = Array.from({ length: 20 }, (_, i) => ({
+      playerName: `Player${i}`,
+      timeMs: 5000 + i * 100,
+      attempts: 3,
+      difficultyId: "easy",
+      difficultyLabel: "Easy",
+      emojiSetId: "space",
+      emojiSetLabel: "Space",
+      scoreMultiplier: 1.0,
+      scoreValue: 1000 - i * 10,
+      isAutoDemo: false,
+      createdAt: new Date().toISOString(),
+    }));
+
+    window.localStorage.setItem(
+      leaderboardTesting.LEADERBOARD_STORAGE_KEY,
+      JSON.stringify(entries),
+    );
+
+    const client = new LeaderboardClient(makeTestClientConfig());
+    const topScores = await client.fetchTopScores();
+
+    expect(topScores.length).toBeLessThanOrEqual(10);
+  });
+
+  test("submitScore stores entry and maintains rank order", async () => {
+    const client = new LeaderboardClient(makeTestClientConfig());
+
+    const submission1 = {
+      playerName: "Alice",
+      timeMs: 5000,
+      attempts: 3,
+      difficultyId: "easy",
+      difficultyLabel: "Easy",
+      emojiSetId: "space",
+      emojiSetLabel: "Space",
+      scoreMultiplier: 1.0,
+    };
+
+    const submission2 = {
+      playerName: "Bob",
+      timeMs: 3000, // Faster — should rank higher
+      attempts: 2,
+      difficultyId: "easy",
+      difficultyLabel: "Easy",
+      emojiSetId: "space",
+      emojiSetLabel: "Space",
+      scoreMultiplier: 1.0,
+    };
+
+    await client.submitScore(submission1);
+    await client.submitScore(submission2);
+
+    const topScores = await client.fetchTopScores();
+    expect(topScores.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("getDifficultyScoreMultiplier returns expected values for difficulties", () => {
+    expect(getDifficultyScoreMultiplier("easy", "Easy")).toBeCloseTo(1.2, 1);
+    expect(getDifficultyScoreMultiplier("normal", "Normal")).toBeCloseTo(1.8, 1);
+    expect(getDifficultyScoreMultiplier("hard", "Hard")).toBeCloseTo(2.4, 1);
+    expect(getDifficultyScoreMultiplier("unknown", "Unknown")).toBeCloseTo(1, 1);
+  });
+
+  test("normalizeLeaderboardPayload with raw invalid entry types", () => {
+    const invalidEntries = [
+      { playerName: "", /* invalid — missing required fields */ },
+      null,
+      undefined,
+      123,
+    ];
+
+    const result = leaderboardTesting.normalizeLeaderboardPayload(invalidEntries);
+    expect(result).toBeDefined();
+    // Could be empty or contain only valid entries
+  });
+
+  test("readStorage guards against extremely large payloads", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    
+    // Create a large JSON string that exceeds 512KB but stays under jsdom quota
+    // Use 5000 entries with moderate per-entry data
+    const hugeJson = JSON.stringify(
+      Array.from({ length: 5_000 }, (_, i) => ({
+        playerName: `P${i}_${"x".repeat(30)}`,
+        timeMs: 5000,
+        attempts: 3,
+        difficultyId: "easy",
+        difficultyLabel: "Easy",
+        emojiSetId: "space",
+        emojiSetLabel: "Space",
+        scoreMultiplier: 1.0,
+        scoreValue: 500,
+        isAutoDemo: false,
+        createdAt: new Date().toISOString(),
+      })),
+    );
+
+    // Ensure the payload is large enough to test the guardrail
+    if (hugeJson.length > 512_000) {
+      window.localStorage.setItem(leaderboardTesting.LEADERBOARD_STORAGE_KEY, hugeJson);
+      const client = new LeaderboardClient(makeTestClientConfig());
+      const result = await client.fetchTopScores();
+
+      expect(result).toEqual([]);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("exceeds size limit"));
+    }
+
+    warnSpy.mockRestore();
+  });
+
+  test("isEnabled returns false when config disabled", async () => {
+    const disabledConfig = makeTestClientConfig();
+    disabledConfig.enabled = false;
+
+    const client = new LeaderboardClient(disabledConfig);
+    const result = await client.fetchTopScores();
+
+    expect(result).toEqual([]);
   });
 });

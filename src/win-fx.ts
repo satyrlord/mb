@@ -143,12 +143,10 @@ export class WinFxController {
     this.appWindowElement.classList.add("win-fx-active");
 
     for (let index = 0; index < tileButtons.length; index += tileStep) {
-      if (index >= tileButtons.length) {
-        break;
-      }
-
       const button = tileButtons[index];
 
+      // Guard against potential undefined access if Array.from() somehow includes a sparse index
+      // or if the DOM changes between query execution and this loop iteration.
       if (button === undefined) {
         continue;
       }
@@ -227,6 +225,22 @@ export class WinFxController {
     }, this.scaleDuration(winFx.durationMs));
   }
 
+  /**
+   * Picks a random color from `palette`, falling back to a safe default white when the
+   * palette is empty or when random selection yields an undefined value.
+   */
+  private static readonly FALLBACK_COLOR = "#ffffff" as const;
+
+  private static pickRandomColor(palette: readonly string[]): string {
+    if (palette.length === 0) {
+      return WinFxController.FALLBACK_COLOR;
+    }
+    // Use nullish coalescing to guard against undefined elements in sparse arrays.
+    // This ensures we always return a valid color string, falling back to FALLBACK_COLOR
+    // if the randomly selected index returns undefined.
+    return palette[Math.floor(Math.random() * palette.length)] ?? WinFxController.FALLBACK_COLOR;
+  }
+
   private pickShapeClass(): "circle" | "square" | "diamond" | "star" {
     const shapeClassIndex = Math.floor(Math.random() * WinFxController.SHAPE_CLASS_OPTIONS.length);
     return WinFxController.SHAPE_CLASS_OPTIONS[shapeClassIndex]
@@ -280,10 +294,7 @@ export class WinFxController {
       winFx.colors.length > 0
         ? winFx.colors
         : DEFAULT_WIN_FX_RUNTIME_CONFIG.options.colors;
-    const color =
-      colors.length > 0
-        ? colors[Math.floor(Math.random() * colors.length)]
-        : "#ffffff";
+    const color = WinFxController.pickRandomColor(colors);
 
     element.style.setProperty("--piece-hue", hue.toString());
     element.style.setProperty("--piece-color", color);
@@ -324,7 +335,7 @@ export class WinFxController {
     const dy = `${Math.floor((appHeight + 220 + Math.floor(Math.random() * 120)) * fallSpeedScale)}px`;
     const rotation = `${Math.floor((Math.random() - 0.5) * 1440 * spinScale)}deg`;
     const rainColors = this.runtimeConfig.rainColors;
-    const color = rainColors[Math.floor(Math.random() * rainColors.length)];
+    const color = WinFxController.pickRandomColor(rainColors);
     const winFx = this.runtimeConfig.options;
     const confettiRainDelayMs = this.scaleDuration(winFx.confettiRainDelayMs);
     const confettiRainSpreadMs = this.scaleDuration(winFx.confettiRainSpreadMs);
