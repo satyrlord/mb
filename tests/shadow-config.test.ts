@@ -92,11 +92,13 @@ describe("shadowConfigTesting", () => {
   });
 
   test("loadShadowConfig falls back when fetch fails", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(window, "fetch").mockRejectedValue(new Error("network"));
 
     const loaded = await loadShadowConfig();
 
     expect(loaded).toEqual(DEFAULT_SHADOW_CONFIG);
+    warnSpy.mockRestore();
   });
 
   test("loadShadowConfig falls back when response is not ok", async () => {
@@ -105,5 +107,90 @@ describe("shadowConfigTesting", () => {
     const loaded = await loadShadowConfig();
 
     expect(loaded).toEqual(DEFAULT_SHADOW_CONFIG);
+  });
+
+  test("loadShadowConfig warns and falls back when requested preset is missing but balanced exists", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "activePreset=nonexistent",
+        "preset.balanced.leftOffsetPx=2",
+        "preset.balanced.leftOpacity=0.6",
+      ].join("\n")),
+    );
+
+    const loaded = await loadShadowConfig();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("nonexistent"));
+    expect(loaded.leftOffsetPx).toBe(2);
+    expect(loaded.leftOpacity).toBe(0.6);
+    warnSpy.mockRestore();
+  });
+
+  test("loadShadowConfig warns and returns defaults when both requested and fallback preset are missing", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "activePreset=nonexistent",
+        "preset.other.leftOffsetPx=5",
+      ].join("\n")),
+    );
+
+    const loaded = await loadShadowConfig();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("also missing"));
+    expect(loaded).toEqual(DEFAULT_SHADOW_CONFIG);
+    warnSpy.mockRestore();
+  });
+
+  test("loadShadowConfig warns and returns defaults when no activePreset and balanced preset is missing", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "preset.other.leftOffsetPx=5",
+      ].join("\n")),
+    );
+
+    const loaded = await loadShadowConfig();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("fallback preset"));
+    expect(loaded).toEqual(DEFAULT_SHADOW_CONFIG);
+    warnSpy.mockRestore();
+  });
+
+  test("parseShadowConfig ignores preset key with too few parts", () => {
+    // "preset.only" splits into only 2 parts — should be skipped
+    const cfg = "preset.only=5";
+    const parsed = shadowConfigTesting.parseShadowConfig(cfg);
+    expect(parsed.presets.size).toBe(0);
+  });
+
+  test("parseShadowConfig ignores non-preset non-activePreset keys", () => {
+    // A key that doesn't start with "preset." triggers the early return in applyPresetEntry
+    const cfg = "shadowDepth=10";
+    const parsed = shadowConfigTesting.parseShadowConfig(cfg);
+    expect(parsed.presets.size).toBe(0);
+    expect(parsed.activePreset).toBeNull();
+  });
+
+  test("parseShadowConfig ignores preset key with empty preset name", () => {
+    // "preset..key" splits into ["preset", "", "key"] — presetName.length === 0 should be skipped
+    const cfg = "preset..leftOpacity=0.5";
+    const parsed = shadowConfigTesting.parseShadowConfig(cfg);
+    expect(parsed.presets.size).toBe(0);
+  });
+
+  test("loadShadowConfig uses balanced fallback when no activePreset is set", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "preset.balanced.leftOffsetPx=3",
+        "preset.balanced.leftBlurPx=4",
+      ].join("\n")),
+    );
+
+    const loaded = await loadShadowConfig();
+
+    expect(loaded.leftOffsetPx).toBe(3);
+    expect(loaded.leftBlurPx).toBe(4);
   });
 });

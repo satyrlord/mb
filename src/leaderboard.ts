@@ -1,5 +1,5 @@
 import { RUNTIME_CONFIG_PATHS } from "./runtime-config.js";
-import { parseCfgBoolean, parseCfgInteger, parseCfgLines, parseCfgNumber } from "./cfg.js";
+import { parseCfgBoolean, parseCfgInteger, parseCfgLines, parseCfgNumber, loadCfgFile } from "./cfg.js";
 
 export interface LeaderboardScoringConfig {
   scorePenaltyFactor: number;
@@ -75,21 +75,6 @@ export const DEFAULT_LEADERBOARD_RUNTIME_CONFIG: LeaderboardRuntimeConfig = {
     debugWinModeReductionFactor: LEADERBOARD_DEBUG_WIN_MODE_REDUCTION_FACTOR,
     debugTilesModeReductionFactor: LEADERBOARD_DEBUG_TILES_MODE_REDUCTION_FACTOR,
   },
-};
-
-const readCfgFile = async (path: string): Promise<Map<string, string> | null> => {
-  try {
-    const response = await window.fetch(path, { cache: "no-cache" });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const content = await response.text();
-    return parseCfgLines(content);
-  } catch {
-    return null;
-  }
 };
 
 export const getDifficultyScoreMultiplier = (
@@ -303,13 +288,8 @@ const rankLeaderboardEntries = (entries: readonly LeaderboardScoreEntry[]): Lead
   });
 };
 
-
-
-
-
-
 export const loadLeaderboardRuntimeConfig = async (): Promise<LeaderboardRuntimeConfig> => {
-  const entries = await readCfgFile(RUNTIME_CONFIG_PATHS.leaderboard);
+  const entries = await loadCfgFile(RUNTIME_CONFIG_PATHS.leaderboard);
 
   if (entries === null) {
     return DEFAULT_LEADERBOARD_RUNTIME_CONFIG;
@@ -405,8 +385,17 @@ export class LeaderboardClient {
         return [];
       }
 
+      // Guard against excessively large payloads (e.g. tampered localStorage).
+      const MAX_LEADERBOARD_STORAGE_BYTES = 512_000;
+
+      if (raw.length > MAX_LEADERBOARD_STORAGE_BYTES) {
+        console.warn("[MEMORYBLOX] Leaderboard storage exceeds size limit — ignoring.");
+        return [];
+      }
+
       return normalizeLeaderboardPayload(JSON.parse(raw) as unknown, this.config.scoring);
-    } catch {
+    } catch (error) {
+      console.warn("[MEMORYBLOX] Failed to read leaderboard from localStorage:", error);
       return [];
     }
   }
@@ -414,8 +403,9 @@ export class LeaderboardClient {
   private writeStorage(entries: readonly LeaderboardScoreEntry[]): void {
     try {
       window.localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(entries));
-    } catch {
-      // Storage unavailable (e.g. private browsing quota exceeded) — silently ignore.
+    } catch (error) {
+      const errorType = error instanceof DOMException ? "Storage quota exceeded" : "Write error";
+      console.warn(`[MEMORYBLOX] Failed to write leaderboard to localStorage (${errorType}):`, error);
     }
   }
 

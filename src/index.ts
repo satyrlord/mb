@@ -1,9 +1,6 @@
 import { BoardView } from "./board.js";
 import { setFlagEmojiCdnBaseUrl } from "./flag-emoji.js";
 import {
-  BLOCKED_TILE_TOKEN,
-} from "./game.js";
-import {
   createGameplayEngine,
   type GameplayEngine,
 } from "./gameplay.js";
@@ -38,11 +35,13 @@ import {
 } from "./leaderboard.js";
 import { normalizeScoreFlagsForPlayerSelection } from "./session-score.js";
 import { UiView } from "./ui.js";
-import { clamp, formatElapsedTime, shuffle } from "./utils.js";
+import { clamp, enableHorizontalWheelScroll, enableSliderWheelScroll, formatElapsedTime } from "./utils.js";
 import { WinFxController } from "./win-fx.js";
 
 const WINDOW_SCALE_STORAGE_KEY = "memoryblox-window-scale";
 const EMOJI_PACK_STORAGE_KEY = "memoryblox-emoji-pack";
+const TILE_MULTIPLIER_STORAGE_KEY = "memoryblox-tile-multiplier";
+const ANIMATION_SPEED_STORAGE_KEY = "memoryblox-animation-speed";
 const PLAYER_NAME_STORAGE_KEY = "memoryblox-player-name";
 interface AppRuntimeState {
   ui: UiRuntimeConfig;
@@ -80,9 +79,9 @@ const DEBUG_TILES_DIFFICULTY: DifficultyConfig = {
 
 interface TileLayout {
   tileCount: number;
-  hasBlockedTile: boolean;
-  matchableTileCount: number;
-  pairCount: number;
+  multiSetCount: number;
+  pairSetCount: number;
+  multiSetCopies: number;
 }
 
 interface ActiveGameSession {
@@ -90,6 +89,7 @@ interface ActiveGameSession {
   difficulty: DifficultyConfig;
   emojiSetId: EmojiPackId;
   emojiSetLabel: string;
+  tileMultiplier: number;
   gameplay: GameplayEngine;
   scoreCategory: "standard" | "debug";
   isAutoDemoScore: boolean;
@@ -141,6 +141,7 @@ const appWindowElement = requireElement<HTMLElement>("#appWindow");
 const timeValueElement = requireElement<HTMLElement>("#timeValue");
 const attemptsValueElement = requireElement<HTMLElement>("#attemptsValue");
 const statusMessageElement = requireElement<HTMLElement>("#statusMessage");
+const plasmaWarningElement = requireElement<HTMLElement>("#plasmaWarning");
 const topbarMenuLabel = requireElement<HTMLElement>("#topbarMenuLabel");
 const topbarActionsElement = requireElement<HTMLElement>(".topbar-actions");
 const menuBottomRepo = requireElement<HTMLElement>("#menuBottomRepo");
@@ -166,6 +167,8 @@ const leaderboardFrame = requireElement<HTMLElement>("#leaderboardFrame");
 const settingsFrame = requireElement<HTMLElement>("#settingsFrame");
 const settingsPackListElement = requireElement<HTMLElement>("#settingsPackList");
 const settingsApplyButton = requireElement<HTMLButtonElement>("#settingsApplyButton");
+const settingsTileMultiplierInput = requireElement<HTMLInputElement>("#settingsTileMultiplier");
+const settingsAnimationSpeedInput = requireElement<HTMLInputElement>("#settingsAnimationSpeed");
 const gameFrame = requireElement<HTMLElement>("#gameFrame");
 const debugTilesFrame = requireElement<HTMLElement>("#debugTilesFrame");
 const debugTilesBoardElement = requireElement<HTMLElement>("#debugTilesBoard");
@@ -203,7 +206,10 @@ let winSequenceTimeoutId: number | null = null;
 let winSequenceGeneration = 0;
 let selectedEmojiPackId: EmojiPackId = DEFAULT_EMOJI_PACK_ID;
 let pendingEmojiPackId: EmojiPackId = DEFAULT_EMOJI_PACK_ID;
+let selectedTileMultiplier = 1;
+let pendingTileMultiplier = 1;
 let selectedAnimationSpeed = runtimeState.ui.animationSpeed.defaultSpeed;
+let pendingAnimationSpeed = runtimeState.ui.animationSpeed.defaultSpeed;
 let windowResizeState: WindowResizeState | null = null;
 let windowResizeDragState: WindowResizeDragState | null = null;
 let shadowConfig: ShadowConfig = DEFAULT_SHADOW_CONFIG;
@@ -234,6 +240,16 @@ const getCurrentAnimationSpeed = (): number => {
 
 const scaleByAnimationSpeed = (durationMs: number): number => {
   return Math.max(1, Math.round(durationMs / getCurrentAnimationSpeed()));
+};
+
+const clampAnimationSpeed = (speed: number): number => {
+  const { minSpeed, maxSpeed } = runtimeState.ui.animationSpeed;
+  return clamp(speed, minSpeed, maxSpeed);
+};
+
+const clampTileMultiplier = (value: number): number => {
+  const rounded = Math.round(value);
+  return clamp(rounded, 1, 3);
 };
 
 const getGameplayTiming = (): UiRuntimeConfig["gameplayTiming"] => {
@@ -326,6 +342,7 @@ const computeLeaderboardScoreResult = (
   sessionMode: ActiveGameSession["mode"],
   scoreCategory: "standard" | "debug",
   isAutoDemoScore: boolean,
+  tileMultiplier: number,
   timeMs: number,
   attempts: number,
 ): LeaderboardScoreComputationResult => {
@@ -334,13 +351,15 @@ const computeLeaderboardScoreResult = (
   const hasPenalty = scoreCategory === "debug" || isAutoDemoScore;
   const scoringConfig = leaderboardRuntimeConfig.scoring;
   const baseScoreMultiplier = difficulty.scoreMultiplier > 0 ? difficulty.scoreMultiplier : 1;
+  const tilePenaltyFactor = 1 / Math.max(1, tileMultiplier);
+  const adjustedScoreMultiplier = baseScoreMultiplier * tilePenaltyFactor;
   const scoreMultiplier = hasPenalty
-    ? Number((baseScoreMultiplier * scoringConfig.scorePenaltyFactor).toFixed(2))
-    : baseScoreMultiplier;
+    ? Number((adjustedScoreMultiplier * scoringConfig.scorePenaltyFactor).toFixed(2))
+    : adjustedScoreMultiplier;
   const baseScoreValue = calculateLeaderboardScore({
     timeMs,
     attempts,
-    scoreMultiplier: baseScoreMultiplier,
+    scoreMultiplier: adjustedScoreMultiplier,
   }, scoringConfig);
   let scoreValue = hasPenalty
     ? applyLeaderboardScorePenalty(baseScoreValue, scoringConfig.scorePenaltyFactor)
@@ -372,6 +391,7 @@ const submitWinToLeaderboard = async (
   emojiSetLabel: string,
   scoreCategory: "standard" | "debug",
   isAutoDemoScore: boolean,
+  tileMultiplier: number,
   timeMs: number,
   attempts: number,
 ): Promise<void> => {
@@ -383,6 +403,7 @@ const submitWinToLeaderboard = async (
       sessionMode,
       scoreCategory,
       isAutoDemoScore,
+      tileMultiplier,
       timeMs,
       attempts,
     );
@@ -580,23 +601,27 @@ const updateResizeDrag = (event: PointerEvent): void => {
   applyWindowScale(nextScale, false);
 };
 
-const enableHorizontalWheelScroll = (element: HTMLElement): void => {
-  element.addEventListener("wheel", (event) => {
-    if (element.scrollWidth <= element.clientWidth) {
+const setPlasmaWarningVisible = (isVisible: boolean): void => {
+  plasmaWarningElement.hidden = !isVisible;
+};
+
+const checkPlasmaTextureAvailability = async (): Promise<void> => {
+  const plasmaUrl = new URL("./textures/plasma.png", window.location.href).toString();
+
+  try {
+    const response = await window.fetch(plasmaUrl, { cache: "no-cache" });
+
+    if (!response.ok) {
+      setPlasmaWarningVisible(true);
       return;
     }
+  } catch (error) {
+    console.warn("[MEMORYBLOX] Plasma texture check failed:", error);
+    setPlasmaWarningVisible(true);
+    return;
+  }
 
-    const dominantDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX)
-      ? event.deltaY
-      : event.deltaX;
-
-    if (dominantDelta === 0) {
-      return;
-    }
-
-    element.scrollLeft += dominantDelta;
-    event.preventDefault();
-  }, { passive: false });
+  setPlasmaWarningVisible(false);
 };
 
 const isEmojiPackId = (value: string): value is EmojiPackId => {
@@ -615,6 +640,46 @@ const readStoredEmojiPackId = (): EmojiPackId | null => {
 
 const writeStoredEmojiPackId = (packId: EmojiPackId): void => {
   window.localStorage.setItem(EMOJI_PACK_STORAGE_KEY, packId);
+};
+
+const readStoredTileMultiplier = (): number | null => {
+  const value = window.localStorage.getItem(TILE_MULTIPLIER_STORAGE_KEY);
+
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return clampTileMultiplier(parsed);
+};
+
+const writeStoredTileMultiplier = (multiplier: number): void => {
+  window.localStorage.setItem(TILE_MULTIPLIER_STORAGE_KEY, multiplier.toString());
+};
+
+const readStoredAnimationSpeed = (): number | null => {
+  const value = window.localStorage.getItem(ANIMATION_SPEED_STORAGE_KEY);
+
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return clampAnimationSpeed(parsed);
+};
+
+const writeStoredAnimationSpeed = (speed: number): void => {
+  window.localStorage.setItem(ANIMATION_SPEED_STORAGE_KEY, speed.toString());
 };
 
 const getEmojiPackLabel = (packId: EmojiPackId): string => {
@@ -639,6 +704,16 @@ const setPendingEmojiPack = (packId: EmojiPackId): void => {
   renderEmojiPackSelection();
 };
 
+const setPendingTileMultiplier = (multiplier: number): void => {
+  pendingTileMultiplier = clampTileMultiplier(multiplier);
+  settingsTileMultiplierInput.value = pendingTileMultiplier.toString();
+};
+
+const setPendingAnimationSpeed = (speed: number): void => {
+  pendingAnimationSpeed = clampAnimationSpeed(speed);
+  settingsAnimationSpeedInput.value = pendingAnimationSpeed.toString();
+};
+
 const applyPendingEmojiPack = (): boolean => {
   if (pendingEmojiPackId === selectedEmojiPackId) {
     return false;
@@ -647,6 +722,26 @@ const applyPendingEmojiPack = (): boolean => {
   selectedEmojiPackId = pendingEmojiPackId;
   writeStoredEmojiPackId(selectedEmojiPackId);
   renderEmojiPackSelection();
+  return true;
+};
+
+const applyPendingTileMultiplier = (): boolean => {
+  if (pendingTileMultiplier === selectedTileMultiplier) {
+    return false;
+  }
+
+  selectedTileMultiplier = pendingTileMultiplier;
+  writeStoredTileMultiplier(selectedTileMultiplier);
+  return true;
+};
+
+const applyPendingAnimationSpeed = (): boolean => {
+  if (pendingAnimationSpeed === selectedAnimationSpeed) {
+    return false;
+  }
+
+  applySelectedAnimationSpeed(pendingAnimationSpeed);
+  writeStoredAnimationSpeed(pendingAnimationSpeed);
   return true;
 };
 
@@ -681,6 +776,22 @@ const initializeEmojiPackSettings = (): void => {
 
   settingsPackListElement.replaceChildren(...buttons);
   renderEmojiPackSelection();
+};
+
+const initializeTileMultiplierSettings = (): void => {
+  const storedMultiplier = readStoredTileMultiplier();
+  selectedTileMultiplier = clampTileMultiplier(storedMultiplier ?? 1);
+  pendingTileMultiplier = selectedTileMultiplier;
+  settingsTileMultiplierInput.value = selectedTileMultiplier.toString();
+};
+
+const initializeAnimationSpeedSettings = (): void => {
+  const storedSpeed = readStoredAnimationSpeed();
+  pendingAnimationSpeed = clampAnimationSpeed(
+    storedSpeed ?? runtimeState.ui.animationSpeed.defaultSpeed,
+  );
+  applySelectedAnimationSpeed(pendingAnimationSpeed);
+  settingsAnimationSpeedInput.value = pendingAnimationSpeed.toString();
 };
 
 const readStoredPlayerName = (): string | null => {
@@ -1002,11 +1113,15 @@ const refreshLeaderboard = async (): Promise<void> => {
   renderLeaderboard();
 };
 
-const showLeaderboardFrame = (): void => {
+const resetActiveEffects = (): void => {
   winFxController.clear();
   cancelAutoDemo();
   clearMismatchResolveTimeout();
   clearWinSequence();
+};
+
+const showLeaderboardFrame = (): void => {
+  resetActiveEffects();
   stopHudTimer();
   closeDebugMenu();
 
@@ -1022,7 +1137,9 @@ const showLeaderboardFrame = (): void => {
   leaderboardBackButton.hidden = false;
   setDifficultySelection("");
   session = { mode: "menu" };
-  void refreshLeaderboard();
+  void refreshLeaderboard().catch(() => {
+    // Silently ignore — leaderboard display is best-effort.
+  });
   uiView.setStatus("Showing local high scores.");
 };
 
@@ -1036,17 +1153,28 @@ const isDebugTilesSession = (
   return value.mode === "debug-tiles";
 };
 
+const resolveTileMultiplierForTileCount = (tileCount: number): number => {
+  if (tileCount < 2) {
+    return 1;
+  }
+
+  const maxMultiplier = Math.max(1, Math.floor(tileCount / 2));
+  return clampTileMultiplier(Math.min(selectedTileMultiplier, maxMultiplier));
+};
+
 const computeTileLayout = (difficulty: DifficultyConfig): TileLayout => {
   const tileCount = difficulty.rows * difficulty.columns;
-  const blocked = tileCount % 2 !== 0;
-  const matchableTileCount = blocked ? tileCount - 1 : tileCount;
-  const pairCount = matchableTileCount / 2;
+  const effectiveMultiplier = resolveTileMultiplierForTileCount(tileCount);
+  const multiSetCopies = effectiveMultiplier * 2;
+  const multiSetCount = Math.floor(tileCount / multiSetCopies);
+  const remainderTiles = tileCount - (multiSetCount * multiSetCopies);
+  const pairSetCount = Math.floor(remainderTiles / 2);
 
   return {
     tileCount,
-    hasBlockedTile: blocked,
-    matchableTileCount,
-    pairCount,
+    multiSetCount,
+    pairSetCount,
+    multiSetCopies,
   };
 };
 
@@ -1067,14 +1195,18 @@ const getDefaultDifficulty = (): DifficultyConfig => {
 };
 
 const createDeckForDifficulty = (difficulty: DifficultyConfig): string[] => {
-  const { hasBlockedTile: blocked, pairCount } = computeTileLayout(difficulty);
-  const deck = generateEmojiDeck(pairCount, selectedEmojiPackId);
+  const {
+    multiSetCount,
+    pairSetCount,
+    multiSetCopies,
+  } = computeTileLayout(difficulty);
+  const totalSetCount = multiSetCount + pairSetCount;
+  const copiesPerIcon = [
+    ...Array.from({ length: multiSetCount }, () => multiSetCopies),
+    ...Array.from({ length: pairSetCount }, () => 2),
+  ];
 
-  if (!blocked) {
-    return deck;
-  }
-
-  return shuffle([...deck, BLOCKED_TILE_TOKEN]);
+  return generateEmojiDeck(totalSetCount, selectedEmojiPackId, copiesPerIcon);
 };
 
 const setDifficultySelection = (selectedId: string): void => {
@@ -1114,10 +1246,7 @@ const startHudTimer = (): void => {
 };
 
 const showMenuFrame = (): void => {
-  winFxController.clear();
-  cancelAutoDemo();
-  clearMismatchResolveTimeout();
-  clearWinSequence();
+  resetActiveEffects();
   stopHudTimer();
   closeDebugMenu();
 
@@ -1191,6 +1320,8 @@ const showSettingsFrame = (): void => {
   session = { mode: "menu" };
   pendingEmojiPackId = selectedEmojiPackId;
   renderEmojiPackSelection();
+  setPendingTileMultiplier(selectedTileMultiplier);
+  setPendingAnimationSpeed(selectedAnimationSpeed);
 };
 
 const openDebugMenu = (): void => {
@@ -1213,11 +1344,7 @@ const toggleDebugMenu = (): void => {
 };
 
 const getDifficultyStatusMessage = (difficulty: DifficultyConfig): string => {
-  const suffix = computeTileLayout(difficulty).hasBlockedTile
-    ? " One tile is blocked."
-    : "";
-
-  return `Difficulty: ${difficulty.label}. Find all matching pairs.${suffix}`;
+  return `Difficulty: ${difficulty.label}. Find all matching pairs.`;
 };
 
 const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
@@ -1232,6 +1359,7 @@ const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
     difficulty,
     emojiSetId: selectedEmojiPackId,
     emojiSetLabel: getEmojiPackLabel(selectedEmojiPackId),
+    tileMultiplier: selectedTileMultiplier,
     scoreCategory: "standard",
     isAutoDemoScore: false,
     gameplay: createGameplayEngine({
@@ -1258,6 +1386,7 @@ const startDebugTilesMode = (): void => {
     difficulty: DEBUG_TILES_DIFFICULTY,
     emojiSetId: selectedEmojiPackId,
     emojiSetLabel: getEmojiPackLabel(selectedEmojiPackId),
+    tileMultiplier: selectedTileMultiplier,
     scoreCategory: "debug",
     isAutoDemoScore: false,
     gameplay: createGameplayEngine({
@@ -1425,6 +1554,7 @@ const handleTileSelect = (
           session.mode,
           session.scoreCategory,
           isAutoDemoWin,
+          session.tileMultiplier,
           elapsedTimeMs,
           attempts,
         );
@@ -1438,6 +1568,7 @@ const handleTileSelect = (
           session.emojiSetLabel,
           session.scoreCategory,
           isAutoDemoWin,
+          session.tileMultiplier,
           elapsedTimeMs,
           attempts,
         );
@@ -1795,8 +1926,33 @@ settingsPackListElement.addEventListener("click", (event) => {
   uiView.setStatus("Pack selected. Click Apply changes to confirm.");
 });
 
+settingsTileMultiplierInput.addEventListener("input", () => {
+  const multiplier = Number.parseInt(settingsTileMultiplierInput.value, 10);
+
+  if (!Number.isFinite(multiplier)) {
+    return;
+  }
+
+  setPendingTileMultiplier(multiplier);
+  uiView.setStatus("Tile multiplier selected. Click Apply changes to confirm.");
+});
+
+settingsAnimationSpeedInput.addEventListener("input", () => {
+  const speed = Number.parseFloat(settingsAnimationSpeedInput.value);
+
+  if (!Number.isFinite(speed)) {
+    return;
+  }
+
+  setPendingAnimationSpeed(speed);
+  uiView.setStatus("Animation speed selected. Click Apply changes to confirm.");
+});
+
 settingsApplyButton.addEventListener("click", () => {
-  const didApplyChanges = applyPendingEmojiPack();
+  const didApplyPack = applyPendingEmojiPack();
+  const didApplyTileMultiplier = applyPendingTileMultiplier();
+  const didApplySpeed = applyPendingAnimationSpeed();
+  const didApplyChanges = didApplyPack || didApplyTileMultiplier || didApplySpeed;
   showMenuFrame();
   uiView.setStatus(
     didApplyChanges
@@ -1827,6 +1983,11 @@ document.addEventListener("keydown", (event) => {
     return;
   }
 
+  if (!settingsFrame.hidden) {
+    showMenuFrame();
+    return;
+  }
+
   closeDebugMenu();
 });
 
@@ -1843,14 +2004,18 @@ window.addEventListener("resize", () => {
 });
 
 enableHorizontalWheelScroll(topbarActionsElement);
+enableSliderWheelScroll(settingsTileMultiplierInput);
+enableSliderWheelScroll(settingsAnimationSpeedInput);
 
 const bootstrap = async (): Promise<void> => {
   validateUniquePackIcons();
   validateMinPackIconCount();
   await loadRuntimeConfig();
+  void checkPlasmaTextureAvailability();
   enforceEmojiPackParity();
   initializeEmojiPackSettings();
-  applySelectedAnimationSpeed(runtimeState.ui.animationSpeed.defaultSpeed);
+  initializeTileMultiplierSettings();
+  initializeAnimationSpeedSettings();
   await initializeDropShadow();
   showMenuFrame();
   render();

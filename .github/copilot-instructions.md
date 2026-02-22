@@ -27,6 +27,13 @@ Run these before any commit/push:
 npm run validate
 ```
 
+Quality gate (run before any commit/push):
+
+```bash
+npm run test
+npm run test:coverage
+```
+
 Validation order is fixed:
 
 ```bash

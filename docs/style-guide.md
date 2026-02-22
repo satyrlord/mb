@@ -12,7 +12,9 @@ This guide defines visual and styling rules for the game UI.
 
 - In resize-ready mode, the app window uses a fixed aspect ratio of `16:10`.
 - Base window size is anchored at a minimum of `1024x640`.
-- Runtime scale defaults to `1.0` and targets a clamp range of `0.72..1.5`.
+- Runtime scale defaults to `1.0` and targets a clamp range of `0.72..2`.
+- The upper bound (`maxScale`) is capped so that at maximum scale the
+  computed app width does not exceed `appMaxWidthPx` (`979px` by default).
 - On very small viewports, effective minimum scale can drop below `0.72`
   because viewport-bound clamping takes precedence.
 - Scaling is also clamped by viewport bounds with `16px` padding on

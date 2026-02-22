@@ -6,14 +6,18 @@ using HTML, CSS, and TypeScript.
 ## Current Status
 
 - Playable memory boards with multiple difficulty levels
- (5x6, 5x8 [default], 5x10)
-- Dynamic emoji-based icon pairs generated at runtime
+ (5×6, 5×8 [default], 5×10)
+- Dynamic emoji-based icon decks generated at runtime
+- Tile multiplier setting (1× / 2× / 3×) for multi-copy icon groups
+- Animation speed setting (1× / 2× / 3×)
 - Timer, attempts counter, restart button, and win state
 - Top-bar Debug menu with Demo, Win (near-win board), and Tiles
  (2-tile styling screen)
-- Settings page with switchable themed emoji packs
+- Settings page with switchable themed emoji packs, tile
+ multiplier, and animation speed sliders
 - Global leaderboard support with username prompt on win
 - Debug-assisted wins are recorded as `Debug` scores
+- Plasma texture background with fallback warning when unavailable
 - GitHub Pages workflow for deployment to `/mb/`
 
 ## Stack
@@ -40,6 +44,8 @@ npm run build
 npm run lint
 npm run typecheck
 npm run validate
+npm run test
+npm run test:coverage
 ```
 
 ⚠️ Development server warning: `npm run dev`, `npm run dev:full`, and
@@ -125,13 +131,23 @@ tsc --noEmit
 src/                       TypeScript source
 src/index.ts               App bootstrap and game loop wiring
 src/game.ts                Game state and matching rules
+src/gameplay.ts            GameplayEngine facade over game state
 src/board.ts               Board rendering and tile input handling
 src/ui.ts                  HUD and status messaging updates
 src/icons.ts               Dynamic emoji deck generation
 src/utils.ts               Shared helpers (shuffle, time formatting)
+src/presentation.ts        Presentation layer helpers
+src/session-score.ts       Session score flag normalization
+src/leaderboard.ts         Leaderboard scoring, storage, and runtime config
+src/runtime-config.ts      UI/win-fx runtime config loading
+src/shadow-config.ts       Shadow preset loading
+src/win-fx.ts              Win celebration particle effects
+src/flag-emoji.ts          Flag emoji CDN URL and country name helpers
+src/cfg.ts                 Shared cfg-file parsing utilities
 config/                    Global runtime configuration files
 index.html                 Browser entry point
 styles.css                 Game styling
+styles.winfx.css           Win animation styling (isolated)
 .github/workflows/pages.yml  GitHub Pages build/deploy workflow
 ```
 

@@ -27,6 +27,7 @@
   --color-bar-border: rgba(255, 255, 255, 0.18);
   --color-title: #f8fafc;
   --color-status: #f8fafc;
+  --color-warning: #fbbf24;
   --color-stat-bg: rgba(255, 255, 255, 0.12);
   --color-stat-border: rgba(255, 255, 255, 0.3);
   --color-stat-text: #f8fafc;
@@ -379,6 +380,12 @@ body {
   margin-left: 4px;
 }
 
+.bottombar-warning {
+  color: var(--color-warning);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
 .bottom-repo[hidden] + .bottombar-status:not([hidden]) {
   flex: 1;
   text-align: center;
@@ -396,6 +403,24 @@ body {
 }
 
 .bottombar-status:not([hidden]) + .bottombar-stats::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 24px;
+  background: var(--color-divider);
+}
+
+.bottombar-status:not([hidden]) + .bottombar-warning:not([hidden]) + .bottombar-stats,
+.bottombar-warning:not([hidden]) + .bottombar-stats {
+  padding-left: 16px;
+  position: relative;
+}
+
+.bottombar-status:not([hidden]) + .bottombar-warning:not([hidden]) + .bottombar-stats::before,
+.bottombar-warning:not([hidden]) + .bottombar-stats::before {
   content: "";
   position: absolute;
   left: 0;
@@ -523,6 +548,12 @@ body {
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
+}
+
+#menuFrame,
+#leaderboardFrame,
+#settingsFrame {
+  overflow-y: auto;
 }
 
 #gameFrame,
@@ -831,6 +862,42 @@ body {
   font-size: var(--font-size-control);
   font-weight: var(--font-weight-ui-strong);
   letter-spacing: 0.03em;
+}
+
+.settings-divider {
+  display: block;
+  width: min(560px, 86%);
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.settings-slider-row {
+  width: min(280px, 43%);
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.settings-slider-wrap {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+}
+
+.settings-slider {
+  width: 100%;
+  cursor: pointer;
+  accent-color: var(--color-menu-item-hover, #a0a8b8);
+}
+
+.settings-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-menu-item);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  padding: 0 2px;
 }
 
 /* ── Plasma Surface: shared containment host for all plasma surface targets ── */

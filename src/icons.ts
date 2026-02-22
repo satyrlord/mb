@@ -418,6 +418,9 @@ export const validateMinPackIconCount = (
 
 export const DEFAULT_EMOJI_PACK_ID: EmojiPackId = "space-astronomy";
 
+/** Minimum number of copies generated per icon; standard pairs require exactly 2 tiles. */
+export const MIN_COPIES_PER_ICON = 2;
+
 export const getEmojiPacks = (): Array<{ id: EmojiPackId; name: string; previewIcon: string }> => {
   return EMOJI_PACKS.map((pack) => ({ id: pack.id, name: pack.name, previewIcon: pack.previewIcon }));
 };
@@ -441,37 +444,72 @@ const getPackById = (packId: EmojiPackId): EmojiPackDefinition => {
 };
 
 /**
- * Generates a shuffled emoji deck of `pairCount * 2` tiles by picking
- * `pairCount` unique icons from the specified pack and duplicating each.
+ * Generates a shuffled emoji deck by picking `uniqueIconCount` unique icons from the
+ * specified pack and duplicating each according to `copiesPerIcon`.
  *
- * @param pairCount - Number of matched pairs to include. Must not exceed the
+ * @param uniqueIconCount - Number of unique icons to include. Must not exceed the
  *   pack's icon count (minimum `MIN_ICONS_PER_PACK` = 25 icons per pack).
  * @param packId - The emoji pack to draw icons from.
+ * @param copiesPerIcon - Number of tiles to create per icon. Accepts either:
+ *   - A single `number` applied uniformly to all icons (default: `2` for standard pairs).
+ *   - A `readonly number[]` with one entry per icon, allowing a mixed deck where
+ *     some icons appear as pairs (2 copies) and others as larger sets (3+ copies).
+ *     The array length must equal `uniqueIconCount`.
+ *
+ *   Values below {@link MIN_COPIES_PER_ICON} (2) are clamped up to that minimum
+ *   so every icon always produces at least one matchable pair. Fractional values
+ *   are rounded to the nearest integer before clamping.
  */
 export const generateEmojiDeck = (
-  pairCount: number,
+  uniqueIconCount: number,
   packId: EmojiPackId = DEFAULT_EMOJI_PACK_ID,
+  copiesPerIcon: number | readonly number[] = MIN_COPIES_PER_ICON,
 ): string[] => {
   const pack = getPackById(packId);
+  let normalizedCopies: number | number[];
 
-  if (pairCount > pack.icons.length) {
+  if (typeof copiesPerIcon === "number") {
+    normalizedCopies = Math.max(MIN_COPIES_PER_ICON, Math.round(copiesPerIcon));
+  } else {
+    normalizedCopies = copiesPerIcon.map((count) => Math.max(MIN_COPIES_PER_ICON, Math.round(count)));
+  }
+
+  if (uniqueIconCount <= 0) {
+    return [];
+  }
+
+  if (Array.isArray(normalizedCopies) && normalizedCopies.length !== uniqueIconCount) {
+    throw new Error(
+      `[MEMORYBLOX] Expected ${uniqueIconCount} copy counts but received ${normalizedCopies.length}. Ensure the copiesPerIcon array length matches uniqueIconCount.`,
+    );
+  }
+
+  if (uniqueIconCount > pack.icons.length) {
+    const requestedTiles = Array.isArray(normalizedCopies)
+      ? normalizedCopies.reduce((sum, count) => sum + count, 0)
+      : uniqueIconCount * normalizedCopies;
     console.error(
       "[MEMORYBLOX] Emoji deck generation failed due to insufficient icons.",
       {
         packId,
         packName: pack.name,
         availableIcons: pack.icons.length,
-        requestedPairs: pairCount,
-        requestedTiles: pairCount * 2,
+        requestedSets: uniqueIconCount,
+        requestedTiles,
       },
     );
     throw new Error(
-      `Not enough unique icons in the '${pack.name}' pack. Requested ${pairCount} pairs (${pairCount * 2} tiles) but only ${pack.icons.length} icons available.`,
+      `Not enough unique icons in the '${pack.name}' pack. Requested ${uniqueIconCount} sets (${requestedTiles} tiles) but only ${pack.icons.length} icons available.`,
     );
   }
 
-  const chosenIcons = shuffle([...pack.icons]).slice(0, pairCount);
-  const pairs = chosenIcons.flatMap((icon) => [icon, icon]);
+  const chosenIcons = shuffle([...pack.icons]).slice(0, uniqueIconCount);
+  const tiles = chosenIcons.flatMap((icon, index) => {
+    const copyCount = Array.isArray(normalizedCopies)
+      ? (normalizedCopies[index] ?? MIN_COPIES_PER_ICON)
+      : normalizedCopies;
+    return Array.from({ length: copyCount }, () => icon);
+  });
 
-  return shuffle(pairs);
+  return shuffle(tiles);
 };

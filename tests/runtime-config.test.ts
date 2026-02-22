@@ -208,11 +208,13 @@ describe("runtime config loaders", () => {
   });
 
   test("loadUiRuntimeConfig falls back to defaults when fetch fails", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(window, "fetch").mockRejectedValue(new Error("network"));
 
     const loaded = await loadUiRuntimeConfig();
 
     expect(loaded).toEqual(DEFAULT_UI_RUNTIME_CONFIG);
+    warnSpy.mockRestore();
   });
 
   test("loadUiRuntimeConfig clamps ui.tileGlobalOpacity into 0..1", async () => {
@@ -235,6 +237,47 @@ describe("runtime config loaders", () => {
     expect(loaded.tileGlobalOpacity).toBe(0.4);
     expect(loaded.tileFrontOpacity).toBe(0.4);
     expect(loaded.tileBackOpacity).toBe(0.4);
+  });
+
+  test("loadUiRuntimeConfig clamps defaultScale to maxScale when maxScale is not configured", async () => {
+    // Verify that defaultScale is clamped to maxScale when no maxScale is provided
+    // in the config and defaultScale exceeds the default maxScale.
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse("window.defaultScale=3.5"),
+    );
+
+    const loaded = await loadUiRuntimeConfig();
+
+    expect(loaded.windowResizeLimits.maxScale).toBe(DEFAULT_UI_RUNTIME_CONFIG.windowResizeLimits.maxScale);
+    expect(loaded.windowResizeLimits.defaultScale).toBe(
+      DEFAULT_UI_RUNTIME_CONFIG.windowResizeLimits.maxScale,
+    );
+  });
+
+  test("loadUiRuntimeConfig clamps defaultScale to configured maxScale when defaultScale exceeds it", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "window.defaultScale=2.5",
+        "window.maxScale=1.5",
+      ].join("\n")),
+    );
+
+    const loaded = await loadUiRuntimeConfig();
+
+    expect(loaded.windowResizeLimits.maxScale).toBe(1.5);
+    expect(loaded.windowResizeLimits.defaultScale).toBe(1.5);
+  });
+
+  test("loadUiRuntimeConfig clamps defaultScale to minScale when set below it", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse("window.defaultScale=0.1"),
+    );
+
+    const loaded = await loadUiRuntimeConfig();
+
+    expect(loaded.windowResizeLimits.defaultScale).toBe(
+      DEFAULT_UI_RUNTIME_CONFIG.windowResizeLimits.minScale,
+    );
   });
 
   test("loadUiRuntimeConfig clamps per-face opacity keys into 0..1", async () => {
@@ -303,5 +346,40 @@ describe("runtime config loaders", () => {
     const loaded = await loadWinFxRuntimeConfig();
 
     expect(loaded).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG);
+  });
+
+  test("loadWinFxRuntimeConfig uses default colors/textOptions/rainColors when config values are empty", async () => {
+    // Provide a config with all numeric values but omit colors/textOptions/rainColors
+    // so the parser gets empty lists and falls back to the defaults.
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "winFx.durationMs=999",
+        "winFx.colors=",      // empty — triggers false branch: colors.length === 0
+        "winFx.textOptions=", // empty — triggers false branch: textOptions.length === 0
+        "winFx.rainColors=",  // empty — triggers false branch: rainColors.length === 0
+      ].join("\n")),
+    );
+
+    const loaded = await loadWinFxRuntimeConfig();
+
+    expect(loaded.options.colors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.options.colors);
+    expect(loaded.textOptions).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.textOptions);
+    expect(loaded.rainColors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.rainColors);
+    expect(loaded.options.durationMs).toBe(999);
+  });
+
+  test("loadWinFxRuntimeConfig uses default colors/textOptions/rainColors when keys are absent", async () => {
+    // Omit colors/textOptions/rainColors keys entirely so entries.get() returns undefined
+    // triggering the ?? "" false branch (Map.get returns undefined for missing keys)
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse("winFx.durationMs=500"),
+    );
+
+    const loaded = await loadWinFxRuntimeConfig();
+
+    expect(loaded.options.colors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.options.colors);
+    expect(loaded.textOptions).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.textOptions);
+    expect(loaded.rainColors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.rainColors);
+    expect(loaded.options.durationMs).toBe(500);
   });
 });

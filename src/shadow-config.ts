@@ -141,45 +141,54 @@ export const loadShadowConfig = async (): Promise<ShadowConfig> => {
       return DEFAULT_SHADOW_CONFIG;
     }
 
-    const content = await response.text();
-    const parsed = parseShadowConfig(content);
+    try {
+      const content = await response.text();
+      const parsed = parseShadowConfig(content);
 
-    const requestedPreset = parsed.activePreset ?? FALLBACK_SHADOW_PRESET;
-    const requestedPresetConfig = parsed.presets.get(requestedPreset);
-    const fallbackPresetConfig = parsed.presets.get(FALLBACK_SHADOW_PRESET);
+      const requestedPreset = parsed.activePreset ?? FALLBACK_SHADOW_PRESET;
+      const requestedPresetConfig = parsed.presets.get(requestedPreset);
+      const fallbackPresetConfig = parsed.presets.get(FALLBACK_SHADOW_PRESET);
 
-    const shouldAttemptFallback =
-      parsed.activePreset === null || requestedPresetConfig === undefined;
+      const shouldAttemptFallback =
+        parsed.activePreset === null || requestedPresetConfig === undefined;
 
-    const isRequestedMissing =
-      parsed.activePreset !== null && requestedPresetConfig === undefined;
-    const isFallbackMissing =
-      shouldAttemptFallback && fallbackPresetConfig === undefined;
+      const isRequestedMissing =
+        parsed.activePreset !== null && requestedPresetConfig === undefined;
+      const isFallbackMissing =
+        shouldAttemptFallback && fallbackPresetConfig === undefined;
 
-    if (isRequestedMissing && isFallbackMissing) {
-      console.warn(
-        `[MEMORYBLOX] Shadow preset '${requestedPreset}' not found and fallback preset '${FALLBACK_SHADOW_PRESET}' is also missing; using built-in defaults.`,
-      );
-    } else if (isRequestedMissing) {
-      console.warn(
-        `[MEMORYBLOX] Shadow preset '${requestedPreset}' not found; falling back to '${FALLBACK_SHADOW_PRESET}'.`,
-      );
-    } else if (isFallbackMissing) {
-      console.warn(
-        `[MEMORYBLOX] Shadow fallback preset '${FALLBACK_SHADOW_PRESET}' is missing; using built-in defaults.`,
-      );
-    }
+      if (isRequestedMissing && isFallbackMissing) {
+        console.warn(
+          `[MEMORYBLOX] Shadow preset '${requestedPreset}' not found and fallback preset '${FALLBACK_SHADOW_PRESET}' is also missing; using built-in defaults.`,
+        );
+      } else if (isRequestedMissing) {
+        console.warn(
+          `[MEMORYBLOX] Shadow preset '${requestedPreset}' not found; falling back to '${FALLBACK_SHADOW_PRESET}'.`,
+        );
+      } else if (isFallbackMissing) {
+        console.warn(
+          `[MEMORYBLOX] Shadow fallback preset '${FALLBACK_SHADOW_PRESET}' is missing; using built-in defaults.`,
+        );
+      }
 
-    const presetConfig = requestedPresetConfig ?? fallbackPresetConfig;
+      const presetConfig = requestedPresetConfig ?? fallbackPresetConfig;
 
-    if (presetConfig === undefined) {
+      if (presetConfig === undefined) {
+        return DEFAULT_SHADOW_CONFIG;
+      }
+
+      // This nested try-catch pattern mirrors cfg.ts for consistency. Refactoring both to use a
+      // shared loadAndParseConfig helper is left as future work to reduce duplication.
+      return normalizeShadowConfig({
+        ...presetConfig,
+      });
+    } catch (parseError) {
+      console.warn(`[MEMORYBLOX] Failed to parse shadow config:`, parseError);
       return DEFAULT_SHADOW_CONFIG;
     }
-
-    return normalizeShadowConfig({
-      ...presetConfig,
-    });
-  } catch {
+  } catch (error) {
+    // Network or fetch-level errors
+    console.warn(`[MEMORYBLOX] Failed to fetch shadow config:`, error);
     return DEFAULT_SHADOW_CONFIG;
   }
 };

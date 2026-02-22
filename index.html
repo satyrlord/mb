@@ -66,6 +66,31 @@
         <h2 class="settings-title u-shadow-physical">Settings</h2>
         <p class="settings-subtitle u-shadow-physical">Emoji Pack</p>
         <div id="settingsPackList" class="settings-pack-list" role="radiogroup" aria-label="Emoji pack"></div>
+        <span class="settings-divider" role="separator" aria-hidden="true"></span>
+        <div class="settings-slider-row">
+          <p class="settings-subtitle u-shadow-physical">Tile Multiplier</p>
+          <div class="settings-slider-wrap">
+            <input id="settingsTileMultiplier" class="settings-slider" type="range" min="1" max="3" step="1" value="1" aria-label="Tile multiplier" />
+            <div class="settings-slider-ticks" aria-hidden="true">
+              <span>1&times;</span>
+              <span>2&times;</span>
+              <span>3&times;</span>
+            </div>
+          </div>
+        </div>
+        <span class="settings-divider" role="separator" aria-hidden="true"></span>
+        <div class="settings-slider-row">
+          <p class="settings-subtitle u-shadow-physical">Animation Speed</p>
+          <div class="settings-slider-wrap">
+            <input id="settingsAnimationSpeed" class="settings-slider" type="range" min="1" max="3" step="1" value="1" aria-label="Animation speed" />
+            <div class="settings-slider-ticks" aria-hidden="true">
+              <span>1&times;</span>
+              <span>2&times;</span>
+              <span>3&times;</span>
+            </div>
+          </div>
+        </div>
+        <span class="settings-divider" role="separator" aria-hidden="true"></span>
         <button id="settingsApplyButton" class="btn settings-apply-btn u-shadow-physical" type="button">Apply changes</button>
       </section>
 
@@ -135,6 +160,16 @@
           hidden
         >
           Match all pairs to win.
+        </p>
+
+        <p
+          id="plasmaWarning"
+          class="status bottombar-warning u-shadow-physical"
+          role="status"
+          aria-atomic="true"
+          hidden
+        >
+          Plasma background is unavailable — a solid color fallback is being used instead.
         </p>
 
         <div class="bottombar-stats">

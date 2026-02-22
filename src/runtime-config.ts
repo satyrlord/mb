@@ -1,5 +1,5 @@
 import { clamp } from "./utils.js";
-import { parseCfgInteger, parseCfgLines, parseCfgNumber } from "./cfg.js";
+import { parseCfgInteger, parseCfgLines, parseCfgNumber, loadCfgFile } from "./cfg.js";
 
 export interface WindowBaseSize {
   minWidthPx: number;
@@ -147,7 +147,8 @@ export const DEFAULT_UI_RUNTIME_CONFIG: UiRuntimeConfig = {
   windowResizeLimits: {
     defaultScale: 1,
     minScale: 0.72,
-    maxScale: 1.5,
+
+    maxScale: 2,
     viewportPaddingPx: 16,
   },
   animationSpeed: {
@@ -238,23 +239,8 @@ const parseEmojiPackParityMode = (value: string): "error" | "warn" | null => {
   return null;
 };
 
-const readCfgFile = async (path: string): Promise<Map<string, string> | null> => {
-  try {
-    const response = await window.fetch(path, { cache: "no-cache" });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const content = await response.text();
-    return parseCfgLines(content);
-  } catch {
-    return null;
-  }
-};
-
 export const loadUiRuntimeConfig = async (): Promise<UiRuntimeConfig> => {
-  const entries = await readCfgFile(RUNTIME_CONFIG_PATHS.ui);
+  const entries = await loadCfgFile(RUNTIME_CONFIG_PATHS.ui);
 
   if (entries === null) {
     return DEFAULT_UI_RUNTIME_CONFIG;
@@ -494,7 +480,7 @@ export const runtimeConfigTesting = {
 };
 
 export const loadWinFxRuntimeConfig = async (): Promise<WinFxRuntimeConfig> => {
-  const entries = await readCfgFile(RUNTIME_CONFIG_PATHS.winFx);
+  const entries = await loadCfgFile(RUNTIME_CONFIG_PATHS.winFx);
 
   if (entries === null) {
     return DEFAULT_WIN_FX_RUNTIME_CONFIG;
