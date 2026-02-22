@@ -154,7 +154,6 @@ const menuButton = requireElement<HTMLButtonElement>("#menuButton");
 const menuHighScoresButton = requireElement<HTMLButtonElement>("#menuHighScoresButton");
 const menuSettingsButton = requireElement<HTMLButtonElement>("#menuSettingsButton");
 const leaderboardStatusElement = requireElement<HTMLElement>("#leaderboardStatus");
-const leaderboardLoaderElement = requireElement<HTMLElement>("#leaderboardLoader");
 const leaderboardTableWrapElement = requireElement<HTMLElement>("#leaderboardTableWrap");
 const leaderboardListElement = requireElement<HTMLTableSectionElement>("#leaderboardList");
 const leaderboardBackButton = requireElement<HTMLButtonElement>("#leaderboardBackButton");
@@ -211,8 +210,6 @@ let shadowConfig: ShadowConfig = DEFAULT_SHADOW_CONFIG;
 let leaderboardRuntimeConfig: LeaderboardRuntimeConfig = DEFAULT_LEADERBOARD_RUNTIME_CONFIG;
 let leaderboardClient = new LeaderboardClient(DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
 let leaderboardEntries: LeaderboardScoreEntry[] = [];
-let isLeaderboardLoading = false;
-let leaderboardLastError: string | null = null;
 let lastSubmittedLeaderboardEntryKey: string | null = null;
 let pendingNamePromptResolve: ((name: string) => void) | null = null;
 let pendingNamePromptCleanup: (() => void) | null = null;
@@ -410,11 +407,11 @@ const submitWinToLeaderboard = async (
         leaderboardEntries,
         submittedScore,
       );
-      uiView.setStatus("You win! Score submitted to global leaderboard.");
+      uiView.setStatus("You win! Score saved to local high scores.");
       return;
     }
 
-    uiView.setStatus("You win! Saved locally, leaderboard unavailable.");
+    uiView.setStatus("You win! Score not saved (high scores disabled).");
   } catch {
     uiView.setStatus("You win! Leaderboard submit failed.");
   }
@@ -909,15 +906,7 @@ const resolveMostRecentLeaderboardEntryKey = (
 
 const getLeaderboardStatusText = (): string => {
   if (!isLeaderboardEnabled()) {
-    return "Global leaderboard is not configured.";
-  }
-
-  if (isLeaderboardLoading) {
-    return "Syncing leaderboard...";
-  }
-
-  if (leaderboardLastError !== null) {
-    return leaderboardLastError;
+    return "High scores are disabled.";
   }
 
   if (leaderboardEntries.length === 0) {
@@ -980,15 +969,9 @@ const createLeaderboardListRow = (
 
 const renderLeaderboard = (): void => {
   leaderboardStatusElement.textContent = getLeaderboardStatusText();
-  leaderboardLoaderElement.hidden = !isLeaderboardLoading;
 
   if (!isLeaderboardEnabled()) {
     leaderboardListElement.replaceChildren();
-    leaderboardTableWrapElement.hidden = true;
-    return;
-  }
-
-  if (isLeaderboardLoading) {
     leaderboardTableWrapElement.hidden = true;
     return;
   }
@@ -1015,23 +998,8 @@ const renderLeaderboard = (): void => {
 };
 
 const refreshLeaderboard = async (): Promise<void> => {
-  if (!isLeaderboardEnabled()) {
-    renderLeaderboard();
-    return;
-  }
-
-  isLeaderboardLoading = true;
-  leaderboardLastError = null;
+  leaderboardEntries = await leaderboardClient.fetchTopScores();
   renderLeaderboard();
-
-  try {
-    leaderboardEntries = await leaderboardClient.fetchTopScores();
-  } catch {
-    leaderboardLastError = "Unable to reach leaderboard service.";
-  } finally {
-    isLeaderboardLoading = false;
-    renderLeaderboard();
-  }
 };
 
 const showLeaderboardFrame = (): void => {
@@ -1054,14 +1022,8 @@ const showLeaderboardFrame = (): void => {
   leaderboardBackButton.hidden = false;
   setDifficultySelection("");
   session = { mode: "menu" };
-  renderLeaderboard();
-
-  if (isLeaderboardEnabled()) {
-    void refreshLeaderboard();
-    uiView.setStatus("Showing global high scores.");
-  } else {
-    uiView.setStatus("Global leaderboard is not configured.");
-  }
+  void refreshLeaderboard();
+  uiView.setStatus("Showing local high scores.");
 };
 
 const hasActiveGame = (value: AppSession): value is ActiveGameSession => {

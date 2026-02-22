@@ -93,7 +93,6 @@ check_key config/win-fx.cfg winFx.textOptions
 
 # leaderboard.cfg
 check_key config/leaderboard.cfg leaderboard.enabled
-check_key config/leaderboard.cfg leaderboard.endpointUrl
 check_key config/leaderboard.cfg leaderboard.maxEntries
 
 # ---------------------------------------------------------------------------

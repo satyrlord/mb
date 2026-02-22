@@ -13,11 +13,7 @@ export interface LeaderboardScoringConfig {
 
 export interface LeaderboardRuntimeConfig {
   enabled: boolean;
-  endpointUrl: string;
-  autoEndpointPort: number;
-  apiKey: string | null;
   maxEntries: number;
-  timeoutMs: number;
   scoring: LeaderboardScoringConfig;
 }
 
@@ -63,16 +59,13 @@ const LEADERBOARD_DEBUG_WIN_MODE_REDUCTION_FACTOR = 0.4;
 const LEADERBOARD_DEBUG_TILES_MODE_REDUCTION_FACTOR = 0.2;
 const LEGACY_EMOJI_SET_ID = "legacy";
 const LEGACY_EMOJI_SET_LABEL = "Legacy Set";
-const DEFAULT_HTTP_PORT = "80";
-const LOCAL_HOST_ALIASES = ["localhost", "127.0.0.1"] as const;
+
+/** localStorage key used to persist local high scores. */
+const LEADERBOARD_STORAGE_KEY = "memoryblox.leaderboard";
 
 export const DEFAULT_LEADERBOARD_RUNTIME_CONFIG: LeaderboardRuntimeConfig = {
-  enabled: false,
-  endpointUrl: "",
-  autoEndpointPort: 8787,
-  apiKey: null,
+  enabled: true,
   maxEntries: 100,
-  timeoutMs: 5000,
   scoring: {
     scorePenaltyFactor: LEADERBOARD_SCORE_PENALTY_FACTOR,
     attemptsPenaltyMs: LEADERBOARD_SCORE_ATTEMPTS_PENALTY_MS,
@@ -310,209 +303,10 @@ const rankLeaderboardEntries = (entries: readonly LeaderboardScoreEntry[]): Lead
   });
 };
 
-class LeaderboardTimeoutError extends Error {
-  public constructor(cause: unknown) {
-    super("Leaderboard request timed out.");
-    this.name = "LeaderboardTimeoutError";
-    Object.assign(this, { cause });
 
-    if (cause instanceof Error && typeof cause.stack === "string" && cause.stack.length > 0) {
-      this.stack = `${this.name}: ${this.message}\nCaused by: ${cause.stack}`;
-    }
-  }
-}
 
-const isAbortError = (error: unknown): boolean => {
-  return (error instanceof DOMException && error.name === "AbortError")
-    || (error instanceof Error && error.name === "AbortError");
-};
 
-/**
- * Runs an async callback with an abort timeout.
- *
- * Uses `AbortSignal.timeout` when available and falls back to a manual
- * `AbortController` timer for older runtimes (for example Safari < 15.4).
- *
- * @template T The resolved value type of the async callback.
- * @param callback Async operation to run with an abort signal.
- * @param timeoutMs Timeout duration in milliseconds.
- * @returns The callback result if it resolves before timeout.
- * @throws {LeaderboardTimeoutError} If the operation is aborted due to timeout.
- * @see {@link ../docs/runtime-config.md} — Browser Compatibility section for the
- *   minimum browser versions that support `AbortSignal.timeout` natively
- *   (Chrome 105+, Firefox 110+, Safari 15.4+).
- */
-// Augments AbortSignal's static interface to include the optional `timeout`
-// factory method so we can safely perform typed feature detection while
-// still treating the property as optional in environments that lack it.
-type AbortSignalConstructorWithTimeout = typeof AbortSignal & {
-  timeout?: (ms: number) => AbortSignal;
-};
 
-/**
- * Reference to `AbortSignal.timeout`, cached at module load time so the
- * feature-detection try/catch runs once regardless of how many `withTimeout`
- * calls are made. Holds `null` if the method is unavailable or throws on access.
- *
- * Two separate guards are needed for full cross-environment compatibility:
- *
- * 1. **Property-access guard** (IIFE try/catch): some non-standard environments
- *    use a throwing getter on `AbortSignal`, so even reading `.timeout` may throw.
- *    Catching here caches `null` once and avoids repeated property-access failures.
- *    Example: Safari < 15.4 shipped without `AbortSignal.timeout`; some polyfill
- *    implementations define the property with a throwing getter rather than leaving
- *    it absent.
- *
- * 2. **Invocation guard** (try/catch inside `withTimeout`): even when the property
- *    exists and is a function, calling it may throw in environments that partially
- *    implement the spec. Catching the invocation lets us fall back to the manual
- *    `AbortController` path on a per-call basis without propagating the error.
- *    Example: partial polyfills that expose the property but throw on call, or
- *    environments in a transitional spec-compliance state.
- *
- * Both guards are therefore necessary: the first protects detection, the second
- * protects use.
- */
-const NATIVE_ABORT_SIGNAL_TIMEOUT: ((ms: number) => AbortSignal) | null = (() => {
-  try {
-    const candidate = (AbortSignal as AbortSignalConstructorWithTimeout).timeout;
-    if (typeof candidate === "function") {
-      // .bind(AbortSignal) ensures AbortSignal remains the `this` receiver when
-      // the cached function reference is later called as a plain function in withTimeout.
-      return candidate.bind(AbortSignal);
-    }
-  } catch {
-    // AbortSignal.timeout property access threw — fall through to null.
-  }
-  return null;
-})();
-
-const withTimeout = async <T>(
-  callback: (signal: AbortSignal) => Promise<T>,
-  timeoutMs: number,
-): Promise<T> => {
-  const nativeTimeout = NATIVE_ABORT_SIGNAL_TIMEOUT;
-  if (nativeTimeout !== null) {
-    // Prefer the native AbortSignal.timeout when available, with a guarded
-    // invocation: even after the module-level detection confirms the property is
-    // a function, some environments may throw when it is actually called (partial
-    // spec implementation). Catching the invocation here lets us fall through to
-    // the manual AbortController fallback below on a per-call basis.
-    let signal: AbortSignal | null = null;
-    try {
-      signal = nativeTimeout(timeoutMs);
-    } catch {
-      // AbortSignal.timeout threw on invocation — fall through to manual fallback.
-    }
-
-    if (signal !== null) {
-      try {
-        return await callback(signal);
-      } catch (error) {
-        if (isAbortError(error)) {
-          throw new LeaderboardTimeoutError(error);
-        }
-
-        throw error;
-      }
-    }
-  }
-
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
-
-  try {
-    return await callback(controller.signal);
-  } catch (error) {
-    if (isAbortError(error)) {
-      throw new LeaderboardTimeoutError(error);
-    }
-
-    throw error;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
-};
-
-const createLeaderboardHeaders = (config: LeaderboardRuntimeConfig): HeadersInit => {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (config.apiKey !== null && config.apiKey.length > 0) {
-    headers["x-api-key"] = config.apiKey;
-  }
-
-  return headers;
-};
-
-const appendLimitQuery = (url: string, limit: number): string => {
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}limit=${encodeURIComponent(limit.toString())}`;
-};
-
-const isLocalHost = (hostname: string): boolean => {
-  const normalizedHostname = hostname.trim().toLowerCase();
-  return LOCAL_HOST_ALIASES.some((alias) => normalizedHostname === alias);
-};
-
-const getLeaderboardEndpointCandidates = (config: LeaderboardRuntimeConfig): string[] => {
-  const candidates = [config.endpointUrl];
-
-  try {
-    const parsed = new URL(config.endpointUrl);
-    const isHttp = parsed.protocol === "http:";
-    const isHttps = parsed.protocol === "https:";
-
-    if (!isHttp && !isHttps) {
-      return candidates;
-    }
-
-    const DEFAULT_HTTPS_PORT = "443";
-    const protocol = parsed.protocol;
-    const defaultPort = isHttps ? DEFAULT_HTTPS_PORT : DEFAULT_HTTP_PORT;
-    const port = parsed.port.length > 0 ? parsed.port : defaultPort;
-    const path = parsed.pathname.length > 0 ? parsed.pathname : "/leaderboard";
-    const baseSearch = parsed.search;
-    const hosts = [parsed.hostname, ...LOCAL_HOST_ALIASES];
-
-    for (const host of hosts) {
-      const candidate = `${protocol}//${host}:${port}${path}${baseSearch}`;
-
-      if (!candidates.includes(candidate)) {
-        candidates.push(candidate);
-      }
-    }
-  } catch {
-    // Keep original endpoint only when parsing fails.
-  }
-
-  return candidates;
-};
-
-const normalizeLeaderboardEndpointUrl = (
-  rawEndpointUrl: string,
-  autoEndpointPort = DEFAULT_LEADERBOARD_RUNTIME_CONFIG.autoEndpointPort,
-): string => {
-  const endpointUrl = rawEndpointUrl.trim();
-
-  if (endpointUrl.length === 0) {
-    return "";
-  }
-
-  if (endpointUrl.toLowerCase() !== "auto") {
-    return endpointUrl;
-  }
-
-  const hostname = window.location.hostname;
-  const protocol = isLocalHost(hostname)
-    ? "http:"
-    : window.location.protocol;
-
-  return `${protocol}//${hostname}:${autoEndpointPort}/leaderboard`;
-};
 
 export const loadLeaderboardRuntimeConfig = async (): Promise<LeaderboardRuntimeConfig> => {
   const entries = await readCfgFile(RUNTIME_CONFIG_PATHS.leaderboard);
@@ -521,34 +315,16 @@ export const loadLeaderboardRuntimeConfig = async (): Promise<LeaderboardRuntime
     return DEFAULT_LEADERBOARD_RUNTIME_CONFIG;
   }
 
-  const autoEndpointPort = Math.max(
-    1,
-    parseCfgInteger(entries.get("leaderboard.autoEndpointPort") ?? "")
-      ?? DEFAULT_LEADERBOARD_RUNTIME_CONFIG.autoEndpointPort,
-  );
-  const endpointUrl = normalizeLeaderboardEndpointUrl(
-    entries.get("leaderboard.endpointUrl") ?? "",
-    autoEndpointPort,
-  );
-  const apiKey = (entries.get("leaderboard.apiKey") ?? "").trim();
   const enabled = parseCfgBoolean(entries.get("leaderboard.enabled") ?? "")
     ?? DEFAULT_LEADERBOARD_RUNTIME_CONFIG.enabled;
   const defaultScoring = DEFAULT_LEADERBOARD_RUNTIME_CONFIG.scoring;
 
   return {
     enabled,
-    endpointUrl,
-    autoEndpointPort,
-    apiKey: apiKey.length > 0 ? apiKey : null,
     maxEntries: Math.max(
       1,
       parseCfgInteger(entries.get("leaderboard.maxEntries") ?? "")
         ?? DEFAULT_LEADERBOARD_RUNTIME_CONFIG.maxEntries,
-    ),
-    timeoutMs: Math.max(
-      250,
-      parseCfgInteger(entries.get("leaderboard.timeoutMs") ?? "")
-        ?? DEFAULT_LEADERBOARD_RUNTIME_CONFIG.timeoutMs,
     ),
     scoring: {
       scorePenaltyFactor: Math.max(
@@ -603,10 +379,12 @@ export const loadLeaderboardRuntimeConfig = async (): Promise<LeaderboardRuntime
 };
 
 /**
- * Client wrapper for leaderboard backend operations.
+ * Client wrapper for local leaderboard operations backed by `localStorage`.
  *
- * Handles endpoint normalization/fallback candidates, request timeouts,
- * API key headers, payload normalization, and ranked score retrieval.
+ * Scores are stored as a JSON array under `LEADERBOARD_STORAGE_KEY`.
+ * All reads and writes are synchronous (wrapped in Promise for API
+ * compatibility). No network requests are made; the leaderboard works
+ * fully offline and on static-file hosts such as GitHub Pages.
  */
 export class LeaderboardClient {
   private readonly config: LeaderboardRuntimeConfig;
@@ -616,7 +394,29 @@ export class LeaderboardClient {
   }
 
   public isEnabled(): boolean {
-    return this.config.enabled && this.config.endpointUrl.length > 0;
+    return this.config.enabled;
+  }
+
+  private readStorage(): LeaderboardScoreEntry[] {
+    try {
+      const raw = window.localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+
+      if (raw === null) {
+        return [];
+      }
+
+      return normalizeLeaderboardPayload(JSON.parse(raw) as unknown, this.config.scoring);
+    } catch {
+      return [];
+    }
+  }
+
+  private writeStorage(entries: readonly LeaderboardScoreEntry[]): void {
+    try {
+      window.localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(entries));
+    } catch {
+      // Storage unavailable (e.g. private browsing quota exceeded) — silently ignore.
+    }
   }
 
   public async fetchTopScores(): Promise<LeaderboardScoreEntry[]> {
@@ -624,38 +424,7 @@ export class LeaderboardClient {
       return [];
     }
 
-    const endpoints = getLeaderboardEndpointCandidates(this.config);
-    let lastError: Error | null = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        const response = await withTimeout(
-          (signal) => window.fetch(
-            appendLimitQuery(endpoint, this.config.maxEntries),
-            {
-              cache: "no-cache",
-              headers: createLeaderboardHeaders(this.config),
-              signal,
-            },
-          ),
-          this.config.timeoutMs,
-        );
-
-        if (!response.ok) {
-          throw new Error(`Leaderboard fetch failed with ${response.status}.`);
-        }
-
-        const payload = await response.json() as unknown;
-        return rankLeaderboardEntries(normalizeLeaderboardPayload(payload, this.config.scoring))
-          .slice(0, this.config.maxEntries);
-      } catch (error) {
-        lastError = error instanceof Error
-          ? error
-          : new Error("Leaderboard fetch failed.");
-      }
-    }
-
-    throw lastError ?? new Error("Leaderboard fetch failed.");
+    return rankLeaderboardEntries(this.readStorage()).slice(0, this.config.maxEntries);
   }
 
   public async submitScore(score: LeaderboardScoreSubmission): Promise<void> {
@@ -663,45 +432,23 @@ export class LeaderboardClient {
       return;
     }
 
-    const endpoints = getLeaderboardEndpointCandidates(this.config);
-    let lastError: Error | null = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        const response = await withTimeout(
-          (signal) => window.fetch(endpoint, {
-            method: "POST",
-            headers: createLeaderboardHeaders(this.config),
-            signal,
-            body: JSON.stringify({
-              playerName: score.playerName.trim(),
-              timeMs: Math.max(0, Math.round(score.timeMs)),
-              attempts: Math.max(0, Math.round(score.attempts)),
-              difficultyId: score.difficultyId,
-              difficultyLabel: score.difficultyLabel,
-              emojiSetId: score.emojiSetId,
-              emojiSetLabel: score.emojiSetLabel,
-              scoreMultiplier: Math.max(0, score.scoreMultiplier),
-              scoreValue: Math.max(0, Math.round(score.scoreValue)),
-              isAutoDemo: score.isAutoDemo === true,
-            }),
-          }),
-          this.config.timeoutMs,
-        );
-
-        if (!response.ok) {
-          throw new Error(`Leaderboard submit failed with ${response.status}.`);
-        }
-
-        return;
-      } catch (error) {
-        lastError = error instanceof Error
-          ? error
-          : new Error("Leaderboard submit failed.");
-      }
-    }
-
-    throw lastError ?? new Error("Leaderboard submit failed.");
+    const existing = this.readStorage();
+    const newEntry: LeaderboardScoreEntry = {
+      playerName: score.playerName.trim(),
+      timeMs: Math.max(0, Math.round(score.timeMs)),
+      attempts: Math.max(0, Math.round(score.attempts)),
+      difficultyId: score.difficultyId,
+      difficultyLabel: score.difficultyLabel,
+      emojiSetId: score.emojiSetId,
+      emojiSetLabel: score.emojiSetLabel,
+      scoreMultiplier: Math.max(0, score.scoreMultiplier),
+      scoreValue: Math.max(0, Math.round(score.scoreValue)),
+      isAutoDemo: score.isAutoDemo === true,
+      createdAt: new Date().toISOString(),
+    };
+    const merged = rankLeaderboardEntries([...existing, newEntry])
+      .slice(0, this.config.maxEntries);
+    this.writeStorage(merged);
   }
 }
 
@@ -709,12 +456,10 @@ export const leaderboardTesting = {
   parseCfgLines,
   parseCfgInteger,
   parseCfgBoolean,
-  isLocalHost,
   getDifficultyScoreMultiplier,
   applyLeaderboardScorePenalty,
   calculateLeaderboardScore,
-  normalizeLeaderboardEndpointUrl,
-  getLeaderboardEndpointCandidates,
   normalizeLeaderboardPayload,
   rankLeaderboardEntries,
+  LEADERBOARD_STORAGE_KEY,
 };
