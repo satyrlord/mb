@@ -1,18 +1,40 @@
 {
+  "name": "memoryblox",
+  "private": true,
+  "description": "Browser-based MEMORYBLOX remake built with TypeScript, HTML, and CSS.",
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "validate": "markdownlint . && npm run lint && npm run typecheck",
-    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "leaderboard:server": "node ./tools/leaderboard-server.mjs",
+    "serve:dev-root": "node ./tools/dev-server.mjs",
+    "dev": "concurrently -n TypeScript,WebServer,Leaderboard -c blue,green,magenta \"tsc --watch\" \"npm run serve:dev-root\" \"npm run leaderboard:server\"",
+    "dev:full": "npm run dev",
+    "serve": "concurrently -k -n WebServer,Leaderboard -c green,magenta \"npm run serve:dev-root\" \"npm run leaderboard:server\"",
     "build": "tsc"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.0.0",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.3.0",
+    "better-sqlite3": "^12.6.2",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.0.1",
     "globals": "^17.3.0",
+    "http-server": "^14.1.1",
+    "jsdom": "^26.1.0",
     "markdownlint-cli": "^0.47.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.0"
+    "typescript-eslint": "^8.56.0",
+    "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "minimatch": "^10.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

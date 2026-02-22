@@ -3,49 +3,151 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Memory Blocks</title>
+    <title>MEMORYBLOX</title>
     <link rel="stylesheet" href="./styles.css" />
+    <!-- Animation-heavy win effects are isolated for maintainability and clarity. -->
+    <link rel="stylesheet" href="./styles.winfx.css" />
   </head>
   <body>
-    <main class="app" aria-live="polite">
+    <main id="appShell" class="app-shell" aria-live="polite">
+      <div id="appWindow" class="app">
+      <header class="app-topbar" aria-label="Application top bar">
+        <p id="topbarMenuLabel" class="app-topbar-title u-shadow-physical">Select a difficulty</p>
+        <div class="topbar-actions">
+          <div id="debugMenuRoot" class="debug-menu-root">
+            <button id="debugMenuButton" class="btn btn-secondary u-shadow-physical" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="debugMenuPanel"><span class="btn-icon" aria-hidden="true"><svg class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h8"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path><path d="M6 8h12v7a6 6 0 0 1-12 0V8z"></path><path d="M3 13h3"></path><path d="M18 13h3"></path><path d="M7 4 5.5 2.5"></path><path d="M17 4l1.5-1.5"></path></svg></span>Debug</button>
+            <div id="debugMenuPanel" class="debug-menu-panel" role="menu" hidden>
+              <button id="debugDemoButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Demo</button>
+              <button id="debugWinButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Win</button>
+              <button id="debugTilesButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Tiles</button>
+            </div>
+          </div>
+          <button id="menuButton" class="btn btn-secondary u-shadow-physical" type="button"><span class="btn-icon" aria-hidden="true"><svg class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5 10.5V20h14v-9.5"></path></svg></span>Home</button>
+        </div>
+      </header>
+
       <section id="menuFrame" class="menu" aria-label="Main menu">
-        <h1 class="title">Memory Blocks</h1>
-        <h2 class="menu-title">Select Difficulty</h2>
-        <div id="difficultyMenu" class="menu-buttons">
-          <button class="btn menu-btn" data-difficulty="easy" type="button">Easy (5x6)</button>
-          <button class="btn menu-btn" data-difficulty="normal" type="button">Normal (5x8)</button>
-          <button class="btn menu-btn" data-difficulty="hard" type="button">Hard (5x10)</button>
+        <h2 class="menu-title u-shadow-physical" data-title="MEMORYBLOX">MEMORYBLOX</h2>
+        <span class="menu-divider menu-title-divider" role="separator" aria-hidden="true"></span>
+        <div id="difficultyMenu" class="menu-list">
+          <button class="btn menu-item u-shadow-physical" data-difficulty="easy" type="button">Easy</button>
+          <button class="btn menu-item u-shadow-physical" data-difficulty="normal" type="button">Normal</button>
+          <button class="btn menu-item u-shadow-physical" data-difficulty="hard" type="button">Hard</button>
+          <span class="menu-divider" role="separator" aria-hidden="true"></span>
+          <button id="menuHighScoresButton" class="btn menu-item u-shadow-physical" type="button">High Scores</button>
+          <button id="menuSettingsButton" class="btn menu-item u-shadow-physical" type="button">Settings</button>
         </div>
       </section>
 
-      <section id="gameFrame" hidden>
-        <header class="hud">
-          <h1 class="title">Memory Blocks</h1>
-          <div class="stats">
-            <p class="stat">Time: <span id="timeValue">00:00</span></p>
-            <p class="stat">Attempts: <span id="attemptsValue">0</span></p>
+      <section id="leaderboardFrame" class="menu" aria-label="High scores" hidden>
+        <section id="leaderboardPanel" class="leaderboard-panel" aria-label="Global leaderboard">
+          <h3 class="leaderboard-title u-shadow-physical">Global High Scores</h3>
+          <p id="leaderboardStatus" class="leaderboard-status u-shadow-physical">Loading leaderboard...</p>
+          <div id="leaderboardLoader" class="leaderboard-loader" aria-hidden="true" hidden>
+            <span class="leaderboard-loader-spinner"></span>
           </div>
-          <div class="hud-actions">
-            <button id="menuButton" class="btn btn-secondary" type="button">Main Menu</button>
-            <button id="restartButton" class="btn" type="button">Restart</button>
+          <div id="leaderboardTableWrap" class="leaderboard-table-wrap">
+            <table class="leaderboard-table" aria-label="Global leaderboard scores">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Player</th>
+                  <th scope="col">Score</th>
+                  <th scope="col">Difficulty</th>
+                  <th scope="col">Tileset</th>
+                  <th scope="col">Time (GMT)</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardList" class="leaderboard-list"></tbody>
+            </table>
           </div>
-        </header>
-
-        <section
-          id="statusMessage"
-          class="status"
-          role="status"
-          aria-atomic="true"
-        >
-          Match all pairs to win.
+          <button id="leaderboardBackButton" class="btn menu-item leaderboard-back-btn u-shadow-physical" type="button">Back</button>
         </section>
+      </section>
 
+      <section id="settingsFrame" class="settings" hidden>
+        <h2 class="settings-title u-shadow-physical">Settings</h2>
+        <p class="settings-subtitle u-shadow-physical">Emoji Pack</p>
+        <div id="settingsPackList" class="settings-pack-list" role="radiogroup" aria-label="Emoji pack"></div>
+        <button id="settingsApplyButton" class="btn settings-apply-btn u-shadow-physical" type="button">Apply changes</button>
+      </section>
+
+      <section id="gameFrame" hidden>
         <section
           id="board"
           class="board"
           aria-label="Memory board"
         ></section>
       </section>
+
+      <section id="debugTilesFrame" hidden>
+        <section
+          id="debugTilesBoard"
+          class="board board-debug-tiles"
+          aria-label="Debug tiles board"
+        ></section>
+      </section>
+
+      <section id="namePromptOverlay" class="name-prompt-overlay" aria-hidden="true" hidden>
+        <div class="name-prompt-toast" role="dialog" aria-modal="true" aria-labelledby="namePromptLabel">
+          <p id="namePromptLabel" class="name-prompt-label u-shadow-physical">Please enter your name</p>
+          <input
+            id="namePromptInput"
+            class="name-prompt-input"
+            type="text"
+            maxlength="20"
+            autocomplete="name"
+            spellcheck="false"
+            aria-label="Player name"
+          />
+          <button id="namePromptOkButton" class="btn name-prompt-ok-btn u-shadow-physical" type="button">OK</button>
+        </div>
+      </section>
+
+      <section id="winFxLayer" class="win-fx-layer" aria-hidden="true" hidden>
+        <div id="winFxParticles" class="win-fx-particles"></div>
+        <p id="winFxText" class="win-fx-text u-shadow-physical">YOU WIN!</p>
+      </section>
+
+      <footer class="app-bottombar" aria-label="Application bottom bar">
+        <a
+          id="menuBottomRepo"
+          class="bottom-repo u-shadow-physical"
+          href="https://github.com/satyrlord/mb"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg
+            class="github-icon u-shadow-physical"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.63 7.63 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+            ></path>
+          </svg>
+          <span>satyrlord/mb</span>
+        </a>
+
+        <p
+          id="statusMessage"
+          class="status bottombar-status u-shadow-physical"
+          role="status"
+          aria-atomic="true"
+          hidden
+        >
+          Match all pairs to win.
+        </p>
+
+        <div class="bottombar-stats">
+          <p class="stat u-shadow-physical">Time: <span id="timeValue">00:00</span></p>
+          <p class="stat u-shadow-physical">Attempts: <span id="attemptsValue">0</span></p>
+        </div>
+
+        <span class="resize-handle" aria-hidden="true"></span>
+      </footer>
+      </div>
     </main>
 
     <script type="module" src="./dist/index.js"></script>

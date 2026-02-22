@@ -22,3 +22,15 @@ export const formatElapsedTime = (elapsedMs: number): string => {
 
   return `${minutes}:${seconds}`;
 };
+
+/**
+ * Clamp a numeric value to the inclusive range between the given minimum and maximum.
+ *
+ * @param value The value to clamp.
+ * @param min The lower bound of the allowed range (inclusive).
+ * @param max The upper bound of the allowed range (inclusive).
+ * @returns The value constrained to the range `[min, max]`.
+ */
+export const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(max, Math.max(min, value));
+};

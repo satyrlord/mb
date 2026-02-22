@@ -14,5 +14,10 @@
   "typescript.checkJs": false,
   "[typescript]": {
     "editor.formatOnSave": false
-  }
+  },
+  "chat.editor.fontSize": 13,
+  "chat.fontFamily": "default",
+  "chat.fontSize": 14,
+  "chat.editor.fontFamily": "consolas",
+  "chat.agent.maxRequests": 50
 }

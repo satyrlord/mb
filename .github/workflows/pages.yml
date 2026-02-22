@@ -36,11 +36,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Validate runtime config files
+        run: bash tools/validate-config.sh
+
       - name: Prepare static site
         run: |
-          mkdir -p site/dist
+          mkdir -p site/dist site/config
           cp index.html site/index.html
           cp styles.css site/styles.css
+          cp styles.winfx.css site/styles.winfx.css
+          cp -r config/. site/config/
           cp -r dist/. site/dist/
 
       - name: Upload Pages artifact

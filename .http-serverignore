@@ -1,0 +1,3 @@
+config/leaderboard.db
+config/leaderboard.db-shm
+config/leaderboard.db-wal

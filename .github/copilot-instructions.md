@@ -1,9 +1,9 @@
-# Memory Blocks - Project Instructions for AI Agents
+# MEMORYBLOX - Project Instructions for AI Agents
 
 ## Project Goal
 
-Maintain and extend a browser-based HTML/CSS/TypeScript remake of the
-Windows 9x game **Memory Blocks**.
+The new **MEMORYBLOX** web game is a browser-based HTML/CSS/TypeScript remake
+of a classic Windows 9x game called 'Memory Blocks'
 
 ## Current Implementation Snapshot
 
@@ -60,6 +60,15 @@ npm run build
 5. Run `npm run validate` after edits.
 6. Use the reusable AI skills in `.github/skills/` whenever they apply.
 7. For very complex tasks, start in Plan mode first, then implement plan using Agent mode.
+8. Always start local preview/dev servers on port `8080` for consistency unless the user explicitly asks for another port.
+9. Store and update project documentation under `docs/`.
+10. Keep visual/style rules in `docs/style-guide.md`; do not mix non-style governance there.
+11. All game styling changes must strictly follow `docs/style-guide.md`.
+12. Store global variables and runtime-tunable global configuration in `config/`.
+13. Keep the total emoji pack count even to preserve the 2-column Settings
+  pack grid layout.
+14. When cleaning up or refactoring features, run and follow
+  `docs/dead-surface-audit.md` to remove dead/unnecessary code surfaces.
 
 ## Deployment Notes
 

@@ -1,0 +1,736 @@
+/*
+ * Win animation effects stylesheet.
+ *
+ * This file contains animation-heavy win-layer visuals and is imported
+ * separately from `styles.css` to keep core UI styling focused and maintainable.
+ */
+
+.win-fx-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.win-fx-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.08) 46%, transparent 72%),
+    linear-gradient(135deg, rgba(244, 114, 182, 0.24), rgba(56, 189, 248, 0.24));
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: win-fx-screen-flash calc(1335ms / var(--animation-speed, 1)) cubic-bezier(0.16, 0.84, 0.28, 1) forwards;
+}
+
+.win-fx-particles {
+  position: absolute;
+  inset: 0;
+}
+
+.win-fx-text {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  font-size: clamp(1.76rem, 8vw, 4.96rem);
+  font-weight: 400;
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: none;
+  white-space: pre-line;
+  line-height: 1.2;
+  text-align: center;
+  color: #fef08a;
+  text-shadow:
+    0 0 12px rgba(250, 204, 21, 0.75),
+    0 0 28px rgba(236, 72, 153, 0.6),
+    0 0 48px rgba(56, 189, 248, 0.5);
+  animation:
+    win-fx-title-float calc(4992ms / var(--animation-speed, 1)) cubic-bezier(0.22, 0.78, 0.24, 1) forwards,
+    win-fx-title-chroma-pulse calc(1480ms / var(--animation-speed, 1)) ease-in-out infinite;
+}
+
+.win-fx-piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--piece-size, 36px);
+  height: var(--piece-size, 36px);
+  margin-left: calc(var(--piece-size, 36px) * -0.5);
+  margin-top: calc(var(--piece-size, 36px) * -0.5);
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--piece-color, #ffffff) 70%, white 30%);
+  border-radius: 6px;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--piece-color, #ffffff) 74%, white 26%),
+    color-mix(in srgb, var(--piece-color, #ffffff) 62%, #1e293b 38%)
+  );
+  color: #f8fafc;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--piece-color, #ffffff) 70%, transparent 30%),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.3),
+    inset -1px -1px 0 rgba(15, 23, 42, 0.35);
+  transform: translate(var(--piece-x), var(--piece-y));
+  will-change: transform, filter, opacity;
+  animation:
+    win-fx-piece-blast calc(2606ms / var(--animation-speed, 1)) cubic-bezier(0.18, 0.76, 0.24, 1) forwards,
+    win-fx-piece-color-cycle calc(1161ms / var(--animation-speed, 1)) linear infinite;
+  animation-delay: var(--piece-delay, 0ms);
+}
+
+.win-fx-piece.win-fx-spark {
+  width: var(--piece-size, 10px);
+  height: var(--piece-size, 10px);
+  border-radius: 999px;
+  border: 0;
+  color: transparent;
+  animation:
+    win-fx-piece-blast calc(2091ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards,
+    win-fx-sparkle-twinkle calc(174ms / var(--animation-speed, 1)) ease-in-out infinite;
+}
+
+.win-fx-piece.win-fx-circle {
+  border-radius: 999px;
+}
+
+.win-fx-piece.win-fx-square {
+  border-radius: 4px;
+}
+
+.win-fx-piece.win-fx-diamond {
+  border-radius: 2px;
+  transform: translate(var(--piece-x), var(--piece-y)) rotate(45deg);
+}
+
+.win-fx-piece.win-fx-star {
+  clip-path: polygon(
+    50% 0%,
+    61% 36%,
+    98% 36%,
+    68% 57%,
+    79% 92%,
+    50% 70%,
+    21% 92%,
+    32% 57%,
+    2% 36%,
+    39% 36%
+  );
+}
+
+.win-fx-piece.win-fx-fall {
+  animation:
+    win-fx-confetti-fall var(--piece-fall-duration, 2990ms) cubic-bezier(0.18, 0.82, 0.24, 1) forwards,
+    win-fx-piece-color-cycle var(--piece-color-cycle-duration, 1066ms) linear infinite,
+    win-fx-sparkle-twinkle var(--piece-twinkle-duration, 312ms) ease-in-out infinite;
+  opacity: 0;
+}
+
+.app.win-fx-active .board {
+  animation: none;
+}
+
+.app.win-fx-active #gameFrame {
+  visibility: hidden;
+}
+
+.app.win-fx-active .win-fx-layer {
+  animation: win-fx-app-shake calc(1201ms / var(--animation-speed, 1)) cubic-bezier(0.24, 0.74, 0.24, 1) 1;
+}
+
+@keyframes win-fx-title-chroma-pulse {
+  0%,
+  100% {
+    text-shadow:
+      0 0 12px rgba(250, 204, 21, 0.72),
+      0 0 28px rgba(236, 72, 153, 0.56),
+      0 0 48px rgba(56, 189, 248, 0.46);
+  }
+
+  50% {
+    text-shadow:
+      0 0 16px rgba(250, 204, 21, 0.9),
+      0 0 36px rgba(236, 72, 153, 0.75),
+      0 0 64px rgba(56, 189, 248, 0.66);
+  }
+}
+
+@keyframes win-fx-title-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -42%) scale(0.7);
+    filter: saturate(1.4) brightness(1.24);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.16);
+  }
+
+  42% {
+    opacity: 1;
+    transform: translate(-50%, -52%) scale(1.03);
+  }
+
+  78% {
+    opacity: 1;
+    transform: translate(-50%, -54%) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -61%) scale(0.9);
+  }
+}
+
+@keyframes win-fx-piece-blast {
+  0% {
+    opacity: 0;
+    transform: translate(var(--piece-x), var(--piece-y)) scale(0.46) rotate(0deg);
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  56% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(var(--piece-x) + var(--piece-dx) + var(--piece-drift, 0px)),
+      calc(var(--piece-y) + var(--piece-dy) + var(--piece-gravity, 0px))
+    ) scale(var(--piece-scale-end, 0.3)) rotate(var(--piece-rot));
+    filter: blur(1.3px);
+  }
+}
+
+@keyframes win-fx-piece-color-cycle {
+  0% {
+    filter: hue-rotate(0deg) saturate(1.1);
+  }
+
+  100% {
+    filter: hue-rotate(360deg) saturate(1.35);
+  }
+}
+
+@keyframes win-fx-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate(var(--piece-x), var(--piece-y)) rotate(0deg) scale(0.8);
+  }
+
+  8% {
+    opacity: var(--piece-opacity, 1);
+  }
+
+  40% {
+    opacity: var(--piece-opacity, 1);
+    transform: translate(
+      calc(var(--piece-x) + (var(--piece-dx) * 0.4)),
+      calc(var(--piece-y) + (var(--piece-dy) * 0.46))
+    ) rotate(calc(var(--piece-rot) * 0.45)) scale(0.86);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(var(--piece-x) + var(--piece-dx)),
+      calc(var(--piece-y) + var(--piece-dy))
+    ) rotate(var(--piece-rot)) scale(var(--piece-scale-end, 0.44));
+    filter: blur(0.6px);
+  }
+}
+
+@keyframes win-fx-sparkle-twinkle {
+  0% {
+    opacity: 0.4;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.22);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 10px rgba(255, 255, 255, 0.55),
+      0 0 18px color-mix(in srgb, var(--piece-color, #ffffff) 60%, transparent 40%);
+  }
+
+  100% {
+    opacity: 0.42;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes win-fx-board-pulse {
+  0% {
+    transform: scale(1);
+    filter: saturate(1);
+  }
+
+  24% {
+    transform: scale(1.018);
+    filter: saturate(1.5);
+  }
+
+  54% {
+    transform: scale(1.012);
+    filter: saturate(1.28);
+  }
+
+  78% {
+    transform: scale(1.006);
+    filter: saturate(1.12);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: saturate(1);
+  }
+}
+
+@keyframes win-fx-screen-flash {
+  0% {
+    opacity: 0;
+  }
+
+  8% {
+    opacity: 0.98;
+  }
+
+  24% {
+    opacity: 0.78;
+  }
+
+  44% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes win-fx-app-shake {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  10% {
+    transform: translate(-4px, 2px);
+  }
+
+  20% {
+    transform: translate(4px, -3px);
+  }
+
+  32% {
+    transform: translate(-3px, 2px);
+  }
+
+  46% {
+    transform: translate(3px, -2px);
+  }
+
+  62% {
+    transform: translate(-2px, 1px);
+  }
+
+  78% {
+    transform: translate(1px, -1px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes win-fx-board-chroma {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+  }
+
+  20% {
+    filter:
+      drop-shadow(3px 0 0 rgba(244, 114, 182, 0.62))
+      drop-shadow(-3px 0 0 rgba(56, 189, 248, 0.64));
+  }
+
+  44% {
+    filter:
+      drop-shadow(-2px 0 0 rgba(244, 114, 182, 0.48))
+      drop-shadow(2px 0 0 rgba(56, 189, 248, 0.52));
+  }
+
+  68% {
+    filter:
+      drop-shadow(1px 0 0 rgba(244, 114, 182, 0.3))
+      drop-shadow(-1px 0 0 rgba(56, 189, 248, 0.34));
+  }
+
+  100% {
+    filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+  }
+}
+
+.menu-title {
+  position: relative;
+  color: var(--color-title);
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  will-change: auto;
+  animation: none;
+}
+
+.menu-title::before,
+.menu-title::after {
+  content: attr(data-title);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  text-align: center;
+  letter-spacing: inherit;
+}
+
+/* ── Plasma Surface: reusable animated texture skin ── */
+.plasma-surface {
+  background-image: url("./textures/plasma.png");
+  background-size: 130%;
+  background-position: 30% 35%;
+  animation: plasma-bg-drift calc(var(--plasma-bg-drift-duration-ms, 18000ms) / var(--animation-speed, 1)) linear infinite;
+}
+
+/* Full filter+hue cycle for non-title, non-tile hosts (displacement filter conflicts with 3D flip transforms) */
+.plasma-surface:not(.menu-title):not(.tile-front):not(.tile-back) {
+  animation:
+    plasma-bg-drift calc(var(--plasma-bg-drift-duration-ms, 18000ms) / var(--animation-speed, 1)) linear infinite,
+    plasma-texture-hue calc(var(--plasma-hue-cycle-duration-ms, 10800ms) / var(--animation-speed, 1)) ease-in-out infinite;
+}
+
+/* Tile-front plasma: zoomed in 500%, each tile offset by its index */
+.tile-front.plasma-surface,
+.tile-back.plasma-surface {
+  animation: plasma-tile-drift calc(var(--plasma-tile-drift-duration-ms, 90000ms) / var(--animation-speed, 1)) linear infinite;
+  animation-delay: calc(var(--tile-index, 0) * -1 * var(--plasma-tile-index-offset-delay-ms, 6185ms));
+}
+
+/* Glow overlay */
+.plasma-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 18% 50%, color-mix(in srgb, var(--color-menu-title) 64%, transparent 36%) 0%, transparent 58%),
+    radial-gradient(120% 90% at 82% 50%, color-mix(in srgb, var(--color-btn-text) 72%, transparent 28%) 0%, transparent 62%),
+    linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--color-title) 34%, transparent 66%) 50%, transparent 100%);
+  mix-blend-mode: screen;
+  opacity: var(--plasma-glow-opacity, 0.7);
+  animation: plasma-glow-sweep calc(var(--plasma-glow-sweep-duration-ms, 12400ms) / var(--animation-speed, 1)) ease-in-out infinite;
+}
+
+/* Flares overlay */
+.plasma-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      108deg,
+      color-mix(in srgb, var(--color-title) 12%, transparent 88%) 0px,
+      color-mix(in srgb, var(--color-title) 0%, transparent 100%) 16px,
+      color-mix(in srgb, var(--color-btn-text) 16%, transparent 84%) 28px,
+      color-mix(in srgb, var(--color-title) 0%, transparent 100%) 44px
+    );
+  mix-blend-mode: color-dodge;
+  opacity: var(--plasma-flares-opacity, 0.34);
+  filter: blur(1px);
+  animation: plasma-flares-shift calc(var(--plasma-flares-shift-duration-ms, 7600ms) / var(--animation-speed, 1)) linear infinite;
+}
+
+.tile-front.plasma-surface::before,
+.tile-back.plasma-surface::before {
+  opacity: calc(var(--plasma-glow-opacity, 0.7) * var(--tile-front-opacity, var(--tile-global-opacity, 0.5)));
+}
+
+.tile-back.plasma-surface::before {
+  opacity: calc(var(--plasma-glow-opacity, 0.7) * var(--tile-back-opacity, var(--tile-global-opacity, 0.5)));
+}
+
+.tile-front.plasma-surface::after,
+.tile-back.plasma-surface::after {
+  opacity: calc(var(--plasma-flares-opacity, 0.34) * var(--tile-front-opacity, var(--tile-global-opacity, 0.5)));
+}
+
+.tile-back.plasma-surface::after {
+  opacity: calc(var(--plasma-flares-opacity, 0.34) * var(--tile-back-opacity, var(--tile-global-opacity, 0.5)));
+}
+
+.menu-title::before {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0;
+  background:
+    url("./textures/plasma.png"),
+    radial-gradient(160% 114% at 12% 48%, color-mix(in srgb, var(--color-menu-title) 94%, white 6%) 0%, transparent 52%),
+    radial-gradient(152% 108% at 32% 42%, color-mix(in srgb, var(--color-btn-text) 84%, var(--color-title) 16%) 0%, transparent 50%),
+    radial-gradient(160% 116% at 50% 54%, color-mix(in srgb, var(--color-btn-text) 72%, black 28%) 0%, transparent 55%),
+    radial-gradient(152% 108% at 68% 42%, color-mix(in srgb, var(--color-btn-text) 84%, var(--color-title) 16%) 0%, transparent 50%),
+    radial-gradient(160% 114% at 88% 48%, color-mix(in srgb, var(--color-menu-title) 94%, white 6%) 0%, transparent 52%),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-menu-title) 92%, transparent 8%) 0%,
+      color-mix(in srgb, var(--color-btn-text) 82%, transparent 18%) 24%,
+      color-mix(in srgb, var(--color-btn-text) 64%, black 36%) 50%,
+      color-mix(in srgb, var(--color-btn-text) 82%, transparent 18%) 76%,
+      color-mix(in srgb, var(--color-menu-title) 92%, transparent 8%) 100%
+    );
+  background-size: 220% 220%, 124% 112%, 120% 110%, 126% 114%, 120% 110%, 124% 112%, 98% 96%;
+  background-position: 20% 25%, 14% 50%, 30% 44%, 50% 56%, 70% 44%, 86% 50%, 50% 50%;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-blend-mode: soft-light, screen, normal, normal, normal, screen, normal;
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 1;
+  filter: contrast(1.2) saturate(1.34) brightness(1.24);
+  will-change: background-position, filter;
+  animation-name: var(--plasma-main-animation, menu-title-plasma-flow), menu-title-texture-hue;
+  animation-duration: calc(var(--plasma-main-duration, 18000ms) / var(--animation-speed, 1)), calc(10800ms / var(--animation-speed, 1));
+  animation-timing-function: var(--plasma-main-ease, linear), ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: var(--plasma-main-direction, normal), normal;
+  mix-blend-mode: normal;
+}
+
+.menu-title::after {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0;
+  background:
+    radial-gradient(170% 122% at 24% 46%, color-mix(in srgb, var(--color-menu-title) 46%, transparent 54%) 0%, transparent 58%),
+    radial-gradient(170% 122% at 76% 46%, color-mix(in srgb, var(--color-btn-text) 46%, transparent 54%) 0%, transparent 58%);
+  background-size: 119% 108%, 119% 108%;
+  background-position: 20% 48%, 80% 48%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 0.52;
+  filter: blur(1.4px) brightness(1.22);
+  animation-name: var(--plasma-sheen-animation, menu-title-plasma-sheen);
+  animation-duration: var(--plasma-sheen-duration, 5000ms);
+  animation-timing-function: var(--plasma-sheen-ease, ease-in-out);
+  animation-iteration-count: infinite;
+  animation-direction: var(--plasma-sheen-direction, normal);
+  mix-blend-mode: normal;
+}
+
+@keyframes menu-title-plasma-flow {
+  0% {
+    background-position: 20% 25%, 14% 50%, 30% 44%, 50% 56%, 70% 44%, 86% 50%, 50% 50%;
+  }
+
+  25% {
+    background-position: 75% 20%, 8% 40%, 24% 56%, 44% 44%, 64% 56%, 80% 40%, 44% 48%;
+  }
+
+  50% {
+    background-position: 80% 75%, 14% 58%, 30% 38%, 50% 62%, 70% 38%, 86% 58%, 50% 54%;
+  }
+
+  75% {
+    background-position: 25% 80%, 20% 46%, 36% 40%, 56% 60%, 76% 40%, 92% 46%, 56% 52%;
+  }
+
+  100% {
+    background-position: 20% 25%, 14% 50%, 30% 44%, 50% 56%, 70% 44%, 86% 50%, 50% 50%;
+  }
+}
+
+
+@keyframes menu-title-plasma-sheen {
+  0%,
+  100% {
+    background-position: 20% 48%, 80% 48%;
+    opacity: 0.38;
+  }
+
+  25% {
+    background-position: 14% 44%, 74% 44%;
+    opacity: 0.46;
+  }
+
+  50% {
+    background-position: 34% 42%, 66% 42%;
+    opacity: 0.56;
+  }
+
+  75% {
+    background-position: 26% 44%, 86% 44%;
+    opacity: 0.46;
+  }
+}
+
+@keyframes menu-title-plasma-sheen-scan {
+  0% {
+    background-position: 6% 50%, 66% 50%;
+    opacity: 0.34;
+  }
+
+  50% {
+    background-position: 30% 42%, 90% 42%;
+    opacity: 0.62;
+  }
+
+  100% {
+    background-position: 6% 50%, 66% 50%;
+    opacity: 0.34;
+  }
+}
+
+@keyframes menu-title-plasma-sheen-pulse {
+  0% {
+    background-position: 24% 48%, 76% 48%;
+    opacity: 0.2;
+  }
+
+  25% {
+    background-position: 22% 44%, 78% 44%;
+    opacity: 0.52;
+  }
+
+  50% {
+    background-position: 20% 40%, 80% 40%;
+    opacity: 0.72;
+  }
+
+  75% {
+    background-position: 22% 44%, 78% 44%;
+    opacity: 0.52;
+  }
+
+  100% {
+    background-position: 24% 48%, 76% 48%;
+    opacity: 0.2;
+  }
+}
+
+@keyframes menu-title-plasma-sheen-ripple {
+  0% {
+    background-position: 16% 52%, 84% 52%;
+    background-size: 112% 104%, 116% 106%;
+    opacity: 0.38;
+  }
+
+  50% {
+    background-position: 28% 40%, 72% 40%;
+    background-size: 132% 122%, 136% 124%;
+    opacity: 0.58;
+  }
+
+  100% {
+    background-position: 16% 52%, 84% 52%;
+    background-size: 112% 104%, 116% 106%;
+    opacity: 0.38;
+  }
+}
+
+@keyframes menu-title-texture-hue {
+  0% {
+    filter: contrast(1.24) saturate(1.4) brightness(1.2) hue-rotate(0deg);
+  }
+
+  50% {
+    filter: contrast(1.28) saturate(1.6) brightness(1.22) hue-rotate(44deg);
+  }
+
+  100% {
+    filter: contrast(1.24) saturate(1.4) brightness(1.2) hue-rotate(0deg);
+  }
+}
+
+@keyframes plasma-bg-drift {
+  0% {
+    background-position: 30% 35%;
+    background-size: 130%;
+  }
+
+  25% {
+    background-position: 62% 44%;
+    background-size: 138%;
+  }
+
+  50% {
+    background-position: 46% 68%;
+    background-size: 133%;
+  }
+
+  75% {
+    background-position: 22% 52%;
+    background-size: 140%;
+  }
+
+  100% {
+    background-position: 30% 35%;
+    background-size: 130%;
+  }
+}
+
+@keyframes plasma-tile-drift {
+  0%   { background-position: 20% 20%; background-size: 500%; }
+  25%  { background-position: 75% 15%; background-size: 520%; }
+  50%  { background-position: 80% 80%; background-size: 500%; }
+  75%  { background-position: 15% 75%; background-size: 520%; }
+  100% { background-position: 20% 20%; background-size: 500%; }
+}
+
+@keyframes plasma-texture-hue {
+  0% {
+    filter: saturate(1.1) hue-rotate(0deg) contrast(1.04) brightness(1.08);
+  }
+
+  50% {
+    filter: saturate(1.5) hue-rotate(42deg) contrast(1.2) brightness(1.12);
+  }
+
+  100% {
+    filter: saturate(1.1) hue-rotate(0deg) contrast(1.04) brightness(1.08);
+  }
+}
+
+@keyframes plasma-glow-sweep {
+  0% {
+    background-position: 8% 50%, 88% 50%, 50% 50%;
+    opacity: 0.52;
+  }
+
+  50% {
+    background-position: 24% 42%, 72% 42%, 50% 46%;
+    opacity: 0.84;
+  }
+
+  100% {
+    background-position: 8% 50%, 88% 50%, 50% 50%;
+    opacity: 0.52;
+  }
+}
+
+@keyframes plasma-flares-shift {
+  0% {
+    background-position: 0% 0%;
+    transform: translateX(-4%);
+  }
+
+  100% {
+    background-position: 140% 0%;
+    transform: translateX(4%);
+  }
+}
