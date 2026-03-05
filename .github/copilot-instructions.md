@@ -64,6 +64,8 @@ npm run build
 ## Architecture Map
 
 - `src/index.ts`: app bootstrap, loop wiring, restart behavior
+- `src/settings-controller.ts`: settings state, two-phase commit, and settings UI
+- `src/debug-controller.ts`: debug menu, debug game modes, auto-match demo
 - `src/game.ts`: canonical game state and selection/match logic
 - `src/gameplay.ts`: GameplayEngine facade over game state
 - `src/board.ts`: tile markup rendering and click delegation
@@ -76,6 +78,7 @@ npm run build
 - `src/presentation.ts`: game presentation model for views
 - `src/session-score.ts`: session score flag normalization
 - `src/leaderboard.ts`: leaderboard scoring, storage, and runtime config
+- `src/leaderboard-view.ts`: leaderboard entry key/identity helpers and timestamp formatting
 - `src/runtime-config.ts`: UI/win-fx runtime config loading
 - `src/shadow-config.ts`: shadow preset loading
 - `src/cfg.ts`: shared cfg-file parsing utilities

@@ -66,7 +66,7 @@ npm run test
 npm run test:coverage
 ```
 
-⚠️ Development server warning: `npm run dev`, `npm run dev:full`, and
+Development server warning: `npm run dev`, `npm run dev:full`, and
 `npm run serve` are local-development commands only and must not be used as a
 production hosting setup.
 

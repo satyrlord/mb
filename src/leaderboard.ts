@@ -354,6 +354,7 @@ export const loadLeaderboardRuntimeConfig = async (): Promise<LeaderboardRuntime
  */
 export class LeaderboardClient {
   private readonly config: LeaderboardRuntimeConfig;
+  private cachedEntries: LeaderboardScoreEntry[] | null = null;
 
   public constructor(config: LeaderboardRuntimeConfig) {
     this.config = config;
@@ -364,27 +365,37 @@ export class LeaderboardClient {
   }
 
   private readStorage(): LeaderboardScoreEntry[] {
+    if (this.cachedEntries !== null) {
+      return this.cachedEntries;
+    }
+
     try {
       const raw = window.localStorage.getItem(LEADERBOARD_STORAGE_KEY);
 
       if (raw === null) {
-        return [];
+        this.cachedEntries = [];
+        return this.cachedEntries;
       }
 
       // Guard against excessively large payloads (e.g. tampered localStorage).
       if (raw.length > MAX_LEADERBOARD_STORAGE_BYTES) {
         console.warn("[MEMORYBLOX] Leaderboard storage exceeds size limit — ignoring.");
-        return [];
+        this.cachedEntries = [];
+        return this.cachedEntries;
       }
 
-      return normalizeLeaderboardPayload(JSON.parse(raw) as unknown, this.config.scoring);
+      this.cachedEntries = normalizeLeaderboardPayload(JSON.parse(raw) as unknown, this.config.scoring);
+      return this.cachedEntries;
     } catch (error) {
       console.warn("[MEMORYBLOX] Failed to read leaderboard from localStorage:", error);
-      return [];
+      this.cachedEntries = [];
+      return this.cachedEntries;
     }
   }
 
   private writeStorage(entries: readonly LeaderboardScoreEntry[]): void {
+    this.cachedEntries = null;
+
     try {
       const serialized = JSON.stringify(entries);
 

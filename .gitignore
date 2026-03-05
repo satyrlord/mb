@@ -4,3 +4,5 @@ dist/
 artifacts/
 coverage/
 .playwright-mcp/
+.vscode/
+.github/

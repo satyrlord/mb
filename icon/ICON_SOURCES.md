@@ -2,11 +2,13 @@
 
 Use this file to register allowed sources before importing assets.
 
-| Source | URL | License | Allowed For Project | Notes |
-| --- | --- | --- | --- | --- |
-| OpenMoji | <https://openmoji.org/> | CC BY-SA 4.0 | Yes | Attribution required |
-| Twemoji (graphics) | <https://twemoji.twitter.com/> | CC BY 4.0 | Yes | Attribution required |
-| Wikimedia Commons | <https://commons.wikimedia.org/> | Varies per asset | Conditional | Verify each asset license |
+- **OpenMoji** — <https://openmoji.org/> —
+  CC BY-SA 4.0 — Allowed: Yes — Attribution required
+- **Twemoji (graphics)** — <https://twemoji.twitter.com/> —
+  CC BY 4.0 — Allowed: Yes — Attribution required
+- **Wikimedia Commons** — <https://commons.wikimedia.org/> —
+  Varies per asset — Allowed: Conditional —
+  Verify each asset license
 
 ## Intake Checklist
 

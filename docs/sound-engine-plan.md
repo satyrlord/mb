@@ -432,15 +432,15 @@ fx_newgame=sound/newgame*.wav
 
 ## Success Criteria
 
-- ✅ No two sounds ever play simultaneously
-- ✅ Music fades out/in smoothly with 2s transitions
-- ✅ Music resumes from exact pause point
-- ✅ Mute buttons work independently for music and FX
-- ✅ Mute state persists in localStorage
-- ✅ Cross-browser compatible (Chrome, Firefox, Edge, Safari)
-- ✅ All tests pass
-- ✅ No TypeScript or ESLint errors
-- ✅ Code follows project conventions from copilot-instructions.md
+- No two sounds ever play simultaneously
+- Music fades out/in smoothly with 2s transitions
+- Music resumes from exact pause point
+- Mute buttons work independently for music and FX
+- Mute state persists in localStorage
+- Cross-browser compatible (Chrome, Firefox, Edge, Safari)
+- All tests pass
+- No TypeScript or ESLint errors
+- Code follows project conventions from copilot-instructions.md
 
 ## References
 

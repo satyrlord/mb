@@ -42,6 +42,13 @@ export const selectGeneralFxFiles = (files: readonly string[]): string[] => {
   });
 };
 
+/**
+ * Extracts audio filenames from an HTML directory listing.
+ *
+ * Trust boundary note: `html` may originate from a dev-server directory
+ * listing. Only filenames matching `AUDIO_FILE_PATTERN` are kept; results
+ * are used solely as fetch URLs for audio assets — never injected as markup.
+ */
 export const parseDirectoryListingForAudioFiles = (html: string): string[] => {
   const hrefPattern = /href=["']([^"']+)["']/giu;
   const discovered = new Set<string>();
@@ -385,8 +392,8 @@ export class SoundManager {
     await this.playMismatchFx();
   }
 
-  public async playWin(): Promise<number | null> {
-    return this.playWinFx();
+  public async playWin(onStarted?: (durationMs: number) => void): Promise<number | null> {
+    return this.playWinFx(onStarted);
   }
 
   public async playNewGame(): Promise<void> {
@@ -396,12 +403,15 @@ export class SoundManager {
     }
 
     const playback = this.playNewGameFx();
-    this.pendingNewGameFx = playback.finally(() => {
-      if (this.pendingNewGameFx === playback) {
-        this.pendingNewGameFx = null;
-      }
-    });
-    await this.pendingNewGameFx;
+    this.pendingNewGameFx = playback;
+    try {
+      await playback;
+    } catch (error) {
+      // New-game SFX is non-critical; keep gameplay flow alive if playback fails.
+      console.warn("[MEMORYBLOX] Failed to play new-game sound:", error);
+    } finally {
+      this.pendingNewGameFx = null;
+    }
   }
 
   private async waitForPendingNewGameFx(): Promise<void> {
@@ -483,7 +493,7 @@ export class SoundManager {
     });
   }
 
-  private async playWinFx(): Promise<number | null> {
+  private async playWinFx(onStarted?: (durationMs: number) => void): Promise<number | null> {
     if (!this.initialized) {
       return null;
     }
@@ -497,12 +507,13 @@ export class SoundManager {
     }
 
     const buffer = await this.audioLoader.load(winUrl);
+    const durationMs = Math.max(1, Math.round(buffer.duration * 1000));
+    onStarted?.(durationMs);
     void this.soundEngine.playSoundFX(buffer, {
       interruptMusic: false,
       musicDuckGainMultiplier: 0.3,
     });
-
-    return Math.max(1, Math.round(buffer.duration * 1000));
+    return durationMs;
   }
 
   private async ensureAudioContextRunning(): Promise<void> {

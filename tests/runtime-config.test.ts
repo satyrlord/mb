@@ -21,14 +21,14 @@ describe("runtimeConfigTesting", () => {
       # comment
       animation.defaultSpeed=1.25
       invalid line
-      winFx.durationMs = 5000
+      winFx.textDisplayDurationMs = 5000
       key-with-empty=
     `;
 
     const parsed = runtimeConfigTesting.parseCfgLines(content);
 
     expect(parsed.get("animation.defaultSpeed")).toBe("1.25");
-    expect(parsed.get("winFx.durationMs")).toBe("5000");
+    expect(parsed.get("winFx.textDisplayDurationMs")).toBe("5000");
     expect(parsed.get("key-with-empty")).toBe("");
     expect(parsed.has("invalid line")).toBe(false);
   });
@@ -312,11 +312,8 @@ describe("runtime config loaders", () => {
   test("loadWinFxRuntimeConfig loads and parses fetched config", async () => {
     vi.spyOn(window, "fetch").mockResolvedValue(
       createMockTextResponse([
-        "winFx.durationMs=1111",
-        "winFx.maxTilePieces=7",
-        "winFx.wavesPerTile=3",
-        "winFx.waveDelayMs=9",
-        "winFx.sparksPerTile=2",
+        "winFx.textDisplayDurationMs=777",
+        "winFx.maxParticles=300",
         "winFx.particleDelayJitterMs=10",
         "winFx.centerFinaleDelayMs=11",
         "winFx.centerFinaleWaves=2",
@@ -325,6 +322,7 @@ describe("runtime config loaders", () => {
         "winFx.confettiRainDelayMs=14",
         "winFx.confettiRainCount=15",
         "winFx.confettiRainSpreadMs=16",
+        "winFx.fireworkBursts=4",
         "winFx.colors=#010203,#111213",
         "winFx.textOptions=A,B",
         "winFx.rainColors=#abc,#def",
@@ -333,8 +331,9 @@ describe("runtime config loaders", () => {
 
     const loaded = await loadWinFxRuntimeConfig();
 
-    expect(loaded.options.durationMs).toBe(1111);
-    expect(loaded.options.maxTilePieces).toBe(7);
+    expect(loaded.options.textDisplayDurationMs).toBe(777);
+    expect(loaded.options.maxParticles).toBe(300);
+    expect(loaded.options.fireworkBursts).toBe(4);
     expect(loaded.options.colors).toEqual(["#010203", "#111213"]);
     expect(loaded.textOptions).toEqual(["A", "B"]);
     expect(loaded.rainColors).toEqual(["#abc", "#def"]);
@@ -353,7 +352,7 @@ describe("runtime config loaders", () => {
     // so the parser gets empty lists and falls back to the defaults.
     vi.spyOn(window, "fetch").mockResolvedValue(
       createMockTextResponse([
-        "winFx.durationMs=999",
+        "winFx.textDisplayDurationMs=999",
         "winFx.colors=",      // empty — triggers false branch: colors.length === 0
         "winFx.textOptions=", // empty — triggers false branch: textOptions.length === 0
         "winFx.rainColors=",  // empty — triggers false branch: rainColors.length === 0
@@ -365,14 +364,14 @@ describe("runtime config loaders", () => {
     expect(loaded.options.colors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.options.colors);
     expect(loaded.textOptions).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.textOptions);
     expect(loaded.rainColors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.rainColors);
-    expect(loaded.options.durationMs).toBe(999);
+    expect(loaded.options.textDisplayDurationMs).toBe(999);
   });
 
   test("loadWinFxRuntimeConfig uses default colors/textOptions/rainColors when keys are absent", async () => {
     // Omit colors/textOptions/rainColors keys entirely so entries.get() returns undefined
     // triggering the ?? "" false branch (Map.get returns undefined for missing keys)
     vi.spyOn(window, "fetch").mockResolvedValue(
-      createMockTextResponse("winFx.durationMs=500"),
+      createMockTextResponse("winFx.textDisplayDurationMs=500"),
     );
 
     const loaded = await loadWinFxRuntimeConfig();
@@ -380,6 +379,6 @@ describe("runtime config loaders", () => {
     expect(loaded.options.colors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.options.colors);
     expect(loaded.textOptions).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.textOptions);
     expect(loaded.rainColors).toEqual(DEFAULT_WIN_FX_RUNTIME_CONFIG.rainColors);
-    expect(loaded.options.durationMs).toBe(500);
+    expect(loaded.options.textDisplayDurationMs).toBe(500);
   });
 });

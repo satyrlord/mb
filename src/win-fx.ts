@@ -46,25 +46,14 @@ export class WinFxController {
     "★",
   ] as const;
 
-  private static readonly TITLE_FADE_OUT_MS = 4992;
+  /** Duration of the CSS `win-fx-firework-burst` animation (must match styles.winfx.css). */
+  private static readonly FIREWORK_CSS_ANIMATION_MS = 1660;
 
-  private static readonly FIREWORK_BURST_COUNT = 7;
-
-  private static readonly FIREWORK_BURST_INTERVAL_MS = 180;
+  // ── Firework spawn-area tuning ──────────────────────────────────────
 
   private static readonly FIREWORK_SPARKS_PER_BURST = 24;
 
   private static readonly FIREWORK_CORE_PER_BURST = 6;
-
-  /** Duration of the CSS `win-fx-firework-burst` animation (must match styles.winfx.css). */
-  private static readonly FIREWORK_CSS_ANIMATION_MS = 1660;
-
-  /** Time window after the title fades out during which post-fade bursts are spread. */
-  private static readonly POST_TITLE_FIREWORK_WINDOW_MS = 1200;
-
-  private static readonly POST_TITLE_FIREWORK_BURSTS = 5;
-
-  // ── Firework spawn-area tuning ──────────────────────────────────────
 
   /** Inset from area edges for firework spawn X position (fraction of area width). */
   private static readonly FIREWORK_SPAWN_INSET_X = 0.1;
@@ -93,6 +82,58 @@ export class WinFxController {
   /** Spread scale multiplier for core particles relative to outer sparks. */
   private static readonly FIREWORK_CORE_SPREAD_FACTOR = 0.88;
 
+  /** Delay between consecutive post-text firework bursts. */
+  private static readonly FIREWORK_BURST_INTERVAL_MS = 220;
+
+  /** Extra buffer to keep particles visible before final cleanup. */
+  private static readonly CLEANUP_BUFFER_MS = 120;
+
+  // ── Screen-level effect tuning ──────────────────────────────────────
+
+  /** Delay before screen flash fires (ms from play start). */
+  private static readonly SCREEN_FLASH_DELAY_MS = 0;
+
+  /** Delay before app shake fires after firework phase starts. */
+  private static readonly APP_SHAKE_DELAY_MS = 80;
+
+  /** Delay before chroma aberration fires after center finale starts. */
+  private static readonly CHROMA_DELAY_MS = 40;
+
+  /** Duration of CSS app-shake animation (must match styles.winfx.css). */
+  private static readonly APP_SHAKE_CSS_MS = 520;
+
+  /** Duration of CSS screen-flash animation (must match styles.winfx.css). */
+  private static readonly SCREEN_FLASH_CSS_MS = 600;
+
+  /** Duration of CSS chroma animation (must match styles.winfx.css). */
+  private static readonly CHROMA_CSS_MS = 900;
+
+  /** Duration of CSS particles pulse animation (must match styles.winfx.css). */
+  private static readonly PARTICLES_PULSE_CSS_MS = 800;
+
+  // ── Shimmer dust tuning ──────────────────────────────────────
+
+  private static readonly SHIMMER_DUST_COUNT = 18;
+
+  /** Shimmer dust spawn spread relative to board dimensions. */
+  private static readonly SHIMMER_SPREAD_FACTOR = 0.9;
+
+  /** Shimmer dust delay jitter (ms). */
+  private static readonly SHIMMER_DELAY_JITTER_MS = 600;
+
+  // ── Rising embers tuning ──────────────────────────────────────
+
+  private static readonly EMBER_COUNT = 12;
+
+  /** Vertical distance embers rise (px). */
+  private static readonly EMBER_RISE_DISTANCE = 320;
+
+  /** Horizontal sway range for embers (px). */
+  private static readonly EMBER_SWAY_RANGE = 140;
+
+  /** Ember spawn delay jitter (ms). */
+  private static readonly EMBER_DELAY_JITTER_MS = 800;
+
   private readonly appWindowElement: HTMLElement;
 
   private readonly boardElement: HTMLElement;
@@ -107,7 +148,7 @@ export class WinFxController {
 
   private cleanupTimeoutId: number | null = null;
 
-  private postFadeTimeoutIds: number[] = [];
+  private deferredTimeoutIds: number[] = [];
 
   private animationSpeed = 1;
 
@@ -140,14 +181,22 @@ export class WinFxController {
       this.cleanupTimeoutId = null;
     }
 
-    for (const id of this.postFadeTimeoutIds) {
+    for (const id of this.deferredTimeoutIds) {
       window.clearTimeout(id);
     }
-    this.postFadeTimeoutIds = [];
+    this.deferredTimeoutIds = [];
 
     this.winFxParticlesElement.style.clipPath = "";
+    this.winFxTextElement.style.removeProperty("--win-fx-text-duration");
 
-    this.appWindowElement.classList.remove("win-fx-active");
+    // Remove screen-level effect classes applied during play.
+    this.winFxLayerElement.classList.remove("win-fx-flash-active", "win-fx-vignette-active");
+    this.appWindowElement.classList.remove("win-fx-shake-active");
+    this.winFxParticlesElement.classList.remove(
+      "win-fx-chroma-active",
+      "win-fx-particles-pulse-active",
+    );
+
     this.winFxLayerElement.hidden = true;
     this.winFxParticlesElement.replaceChildren();
   }
@@ -179,21 +228,21 @@ export class WinFxController {
   public play(
     onFinished?: () => void,
     textOverride?: string,
-    durationOverrideMs?: number,
+    winSoundDurationMs?: number,
   ): void {
     this.clear();
 
     const winFx = this.runtimeConfig.options;
 
     const generation = this.generation;
-    const waveDelayMsUnit = this.scaleDuration(winFx.waveDelayMs);
-    const centerFinaleDelayMs = this.scaleDuration(winFx.centerFinaleDelayMs);
-    const centerFinaleWaveDelayMs = this.scaleDuration(winFx.centerFinaleWaveDelayMs);
     const appRect = this.appWindowElement.getBoundingClientRect();
-    const tileButtons = Array.from(
-      this.boardElement.querySelectorAll<HTMLButtonElement>(".tile"),
-    );
-    const tileStep = Math.max(1, Math.ceil(tileButtons.length / winFx.maxTilePieces));
+    const hasWinSoundDuration = typeof winSoundDurationMs === "number"
+      && Number.isFinite(winSoundDurationMs)
+      && winSoundDurationMs > 0;
+    const baseCleanupDurationMs = hasWinSoundDuration
+      ? Math.round(winSoundDurationMs)
+      : 0;
+    const celebrationTextDurationMs = this.scaleDuration(winFx.textDisplayDurationMs);
 
     // Clip particle canvas to the board area so nothing flies over the topbar or bottombar.
     const boardRect = this.boardElement.getBoundingClientRect();
@@ -205,170 +254,308 @@ export class WinFxController {
     this.winFxTextElement.textContent = nextWinText !== undefined && nextWinText.length > 0
       ? nextWinText
       : pickWinFxText(this.runtimeConfig.textOptions);
+    this.winFxTextElement.style.setProperty("--win-fx-text-duration", `${celebrationTextDurationMs}ms`);
     this.winFxLayerElement.hidden = false;
-    this.appWindowElement.classList.add("win-fx-active");
 
-    for (let index = 0; index < tileButtons.length; index += tileStep) {
-      const button = tileButtons[index];
+    // Allocate per-phase particle budgets up front so later phases are not
+    // starved by earlier ones when maxParticles is low.
+    const maxParticles = winFx.maxParticles;
+    const fireworkBurstSize = WinFxController.FIREWORK_SPARKS_PER_BURST
+      + WinFxController.FIREWORK_CORE_PER_BURST;
+    const requiredCenterPieces = winFx.centerFinaleWaves * winFx.centerFinaleCount;
+    const requiredFireworkPieces = winFx.fireworkBursts * fireworkBurstSize;
+    const requiredConfettiPieces = winFx.confettiRainCount;
+    const requiredShimmerPieces = WinFxController.SHIMMER_DUST_COUNT;
+    const requiredEmberPieces = WinFxController.EMBER_COUNT;
 
-      // Guard against potential undefined access if Array.from() somehow includes a sparse index
-      // or if the DOM changes between query execution and this loop iteration.
-      if (button === undefined) {
-        continue;
-      }
+    let remainingBudget = maxParticles;
+    const centerBudget = Math.min(requiredCenterPieces, remainingBudget);
+    remainingBudget -= centerBudget;
+    const fireworkBudget = Math.min(requiredFireworkPieces, remainingBudget);
+    remainingBudget -= fireworkBudget;
+    const confettiBudget = Math.min(requiredConfettiPieces, remainingBudget);
+    remainingBudget -= confettiBudget;
+    const shimmerBudget = Math.min(requiredShimmerPieces, remainingBudget);
+    remainingBudget -= shimmerBudget;
+    const emberBudget = Math.min(requiredEmberPieces, remainingBudget);
 
-      const buttonRect = button.getBoundingClientRect();
-      const x = buttonRect.left - appRect.left + (buttonRect.width / 2);
-      const y = buttonRect.top - appRect.top + (buttonRect.height / 2);
+    let centerPiecesCreated = 0;
+    let fireworkPiecesCreated = 0;
+    let confettiPiecesCreated = 0;
+    let shimmerPiecesCreated = 0;
+    let emberPiecesCreated = 0;
 
-      const symbol =
-        button.querySelector<HTMLElement>(".tile-back")?.textContent?.trim()
-        ?? WinFxController.DEFAULT_PARTICLE_SYMBOL;
-
-      for (let waveIndex = 0; waveIndex < winFx.wavesPerTile; waveIndex += 1) {
-        const waveDelayMs = waveIndex * waveDelayMsUnit;
-        const spreadScale = 1 + (waveIndex * 0.22);
-
-        this.winFxParticlesElement.append(
-          this.createWinFxPiece(x, y, symbol, false, waveDelayMs, spreadScale),
-        );
-
-        for (let sparkIndex = 0; sparkIndex < winFx.sparksPerTile; sparkIndex += 1) {
-          this.winFxParticlesElement.append(
-            this.createWinFxPiece(x, y, symbol, true, waveDelayMs, spreadScale),
-          );
-        }
-      }
+    const totalRequired = requiredCenterPieces + requiredFireworkPieces
+      + requiredConfettiPieces + requiredShimmerPieces + requiredEmberPieces;
+    if (totalRequired > maxParticles) {
+      console.warn(
+        "[MEMORYBLOX] winFx.maxParticles is lower than requested celebration pieces; confetti may be reduced to preserve center finale and fireworks.",
+      );
     }
 
+    // ── Phase 1 — Confetti Rain (after text appears) ────────────────
+    const confettiRainDelayMs = this.scaleDuration(winFx.confettiRainDelayMs);
+    {
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        const freshAppRect = this.appWindowElement.getBoundingClientRect();
+        for (let index = 0; index < confettiBudget; index += 1) {
+          if (confettiPiecesCreated >= confettiBudget) {
+            break;
+          }
+          this.winFxParticlesElement.append(
+            this.createWinFxRainPiece(freshAppRect.width, freshAppRect.height),
+          );
+          confettiPiecesCreated += 1;
+        }
+      }, confettiRainDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // ── Phase 2 — Center Finale Bouquet ─────────────────────────────
+    const centerFinaleStartDelayMs = confettiRainDelayMs + this.scaleDuration(winFx.centerFinaleDelayMs);
+    const centerFinaleWaveDelayMs = this.scaleDuration(winFx.centerFinaleWaveDelayMs);
     const centerX = boardRect.left - appRect.left + (boardRect.width / 2);
     const centerY = boardRect.top - appRect.top + (boardRect.height / 2);
 
     for (let waveIndex = 0; waveIndex < winFx.centerFinaleWaves; waveIndex += 1) {
-      const waveDelayMs = centerFinaleDelayMs
+      const waveDelayMs = centerFinaleStartDelayMs
         + (waveIndex * centerFinaleWaveDelayMs);
       const spreadScale = 2.2 + (waveIndex * 0.55);
 
-      for (let index = 0; index < winFx.centerFinaleCount; index += 1) {
-        const spark = index % 2 === 0;
-        const symbol = spark
-          ? ""
-          : this.pickRandomSymbol(
-            WinFxController.CENTER_FINALE_SYMBOL_OPTIONS,
-            WinFxController.DEFAULT_PARTICLE_SYMBOL,
-          );
-
-        this.winFxParticlesElement.append(
-          this.createWinFxPiece(
-            centerX,
-            centerY,
-            symbol,
-            spark,
-            waveDelayMs,
-            spreadScale,
-          ),
-        );
-      }
-    }
-
-    for (let index = 0; index < winFx.confettiRainCount; index += 1) {
-      this.winFxParticlesElement.append(
-        this.createWinFxRainPiece(appRect.width, appRect.height),
-      );
-    }
-
-    const hasExplicitDurationOverride = typeof durationOverrideMs === "number"
-      && Number.isFinite(durationOverrideMs)
-      && durationOverrideMs > 0;
-
-    const baseCleanupDurationMs = hasExplicitDurationOverride
-      ? Math.round(durationOverrideMs)
-      : this.scaleDuration(winFx.durationMs);
-
-    const titleFadeOutDelayMs = this.scaleDuration(WinFxController.TITLE_FADE_OUT_MS);
-    const fireworkCssAnimMs = this.scaleDuration(WinFxController.FIREWORK_CSS_ANIMATION_MS);
-
-    // --- Pre-baked firework bursts (CSS animation-delay based) ---
-    // These fire during the main animation while particles, text and confetti are visible.
-    // End them slightly before the title fades out so there is a brief visual gap
-    // before the dedicated post-fade finale begins.
-    const scaledBurstIntervalMs = this.scaleDuration(WinFxController.FIREWORK_BURST_INTERVAL_MS);
-    const baseBurstCount = WinFxController.FIREWORK_BURST_COUNT;
-    const fireworksStartDelayMs = hasExplicitDurationOverride
-      ? this.scaleDuration(240)
-      : Math.min(titleFadeOutDelayMs, this.scaleDuration(920));
-    const fireworksEndDelayMs = hasExplicitDurationOverride
-      ? Math.max(fireworksStartDelayMs, baseCleanupDurationMs - this.scaleDuration(320))
-      : Math.max(fireworksStartDelayMs, titleFadeOutDelayMs - this.scaleDuration(500));
-    const preBakedWindow = fireworksEndDelayMs - fireworksStartDelayMs;
-    const dynamicBurstCount = Math.max(
-      baseBurstCount,
-      preBakedWindow > 0 ? Math.floor(preBakedWindow / scaledBurstIntervalMs) : baseBurstCount,
-    );
-
-    // Board-relative bounds for firework spawn (offset from app top-left).
-    const boardAreaLeft = boardRect.left - appRect.left;
-    const boardAreaTop = boardRect.top - appRect.top;
-    const boardAreaWidth = boardRect.width;
-    const boardAreaHeight = boardRect.height;
-
-    for (let burstIndex = 0; burstIndex < dynamicBurstCount; burstIndex += 1) {
-      const progress = dynamicBurstCount <= 1
-        ? 0
-        : (burstIndex / (dynamicBurstCount - 1));
-      const burstDelayMs = Math.round(
-        fireworksStartDelayMs + ((fireworksEndDelayMs - fireworksStartDelayMs) * progress),
-      );
-      this.createWinFxFireworkBurst(
-        boardAreaLeft, boardAreaTop, boardAreaWidth, boardAreaHeight, burstDelayMs,
-      );
-    }
-
-    // --- Post-fade firework bursts (setTimeout-based) ---
-    // These fire AFTER the title text has fully faded out (TITLE_FADE_OUT_MS),
-    // delivering a dedicated fireworks-only finale the player can focus on.
-    const postFadeStartMs = titleFadeOutDelayMs;
-    const postFadeWindowMs = this.scaleDuration(WinFxController.POST_TITLE_FIREWORK_WINDOW_MS);
-    const postFadeCount = WinFxController.POST_TITLE_FIREWORK_BURSTS;
-    const postFadeSpacingMs = postFadeCount <= 1
-      ? 0
-      : Math.round(postFadeWindowMs / (postFadeCount - 1));
-    const lastPostFadeBurstMs = postFadeStartMs + ((postFadeCount - 1) * postFadeSpacingMs);
-
-    for (let burstIndex = 0; burstIndex < postFadeCount; burstIndex += 1) {
-      const scheduledDelayMs = postFadeStartMs + (burstIndex * postFadeSpacingMs);
       const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        for (let index = 0; index < winFx.centerFinaleCount; index += 1) {
+          if (centerPiecesCreated >= centerBudget) {
+            break;
+          }
+          const spark = index % 2 === 0;
+          const symbol = spark
+            ? ""
+            : this.pickRandomSymbol(
+              WinFxController.CENTER_FINALE_SYMBOL_OPTIONS,
+              WinFxController.DEFAULT_PARTICLE_SYMBOL,
+            );
+
+          this.winFxParticlesElement.append(
+            this.createWinFxPiece(
+              centerX,
+              centerY,
+              symbol,
+              spark,
+              0,
+              spreadScale,
+            ),
+          );
+          centerPiecesCreated += 1;
+        }
+      }, waveDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // ── Phase 3 — Fireworks after text disappears ───────────────────
+    const centerFinaleWindowMs = centerFinaleStartDelayMs
+      + ((Math.max(0, winFx.centerFinaleWaves - 1)) * centerFinaleWaveDelayMs);
+    const fireworkDelayMs = Math.max(celebrationTextDurationMs, centerFinaleWindowMs);
+    const fireworkBurstIntervalMs = this.scaleDuration(WinFxController.FIREWORK_BURST_INTERVAL_MS);
+    for (let burstIndex = 0; burstIndex < winFx.fireworkBursts; burstIndex += 1) {
+      const burstDelayMs = fireworkDelayMs + (burstIndex * fireworkBurstIntervalMs);
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
         if (generation !== this.generation) {
           return;
         }
         const freshAppRect = this.appWindowElement.getBoundingClientRect();
         const freshBoardRect = this.boardElement.getBoundingClientRect();
+        const allowed = Math.min(fireworkBurstSize, fireworkBudget - fireworkPiecesCreated);
+        if (allowed <= 0) {
+          return;
+        }
+
         this.createWinFxFireworkBurst(
           freshBoardRect.left - freshAppRect.left,
           freshBoardRect.top - freshAppRect.top,
           freshBoardRect.width,
           freshBoardRect.height,
           0,
+          allowed,
         );
-      }, scheduledDelayMs);
-      this.postFadeTimeoutIds.push(timeoutId);
+        fireworkPiecesCreated += allowed;
+      }, burstDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
     }
 
-    // --- Cleanup ---
-    // Must wait until the last post-fade burst's CSS animation has fully played out.
-    // Without this, replaceChildren() would remove firework particles mid-animation.
-    const minCleanupForPostFade = lastPostFadeBurstMs + fireworkCssAnimMs
-      + this.scaleDuration(200);
-    const cleanupDurationMs = Math.max(baseCleanupDurationMs, minCleanupForPostFade);
+    // ── Phase 4 — Shimmer Dust (during firework phase) ──────────────
+    {
+      const shimmerDelayMs = fireworkDelayMs;
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        const freshBoardRect = this.boardElement.getBoundingClientRect();
+        const freshAppRect = this.appWindowElement.getBoundingClientRect();
+        const bx = freshBoardRect.left - freshAppRect.left;
+        const by = freshBoardRect.top - freshAppRect.top;
+        for (let index = 0; index < shimmerBudget; index += 1) {
+          if (shimmerPiecesCreated >= shimmerBudget) {
+            break;
+          }
+          this.winFxParticlesElement.append(
+            this.createShimmerDustPiece(
+              bx, by,
+              freshBoardRect.width,
+              freshBoardRect.height,
+            ),
+          );
+          shimmerPiecesCreated += 1;
+        }
+      }, shimmerDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // ── Phase 5 — Rising Embers (during firework phase) ─────────────
+    {
+      const emberDelayMs = fireworkDelayMs + this.scaleDuration(200);
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        const freshBoardRect = this.boardElement.getBoundingClientRect();
+        const freshAppRect = this.appWindowElement.getBoundingClientRect();
+        const bx = freshBoardRect.left - freshAppRect.left;
+        const by = freshBoardRect.top - freshAppRect.top;
+        for (let index = 0; index < emberBudget; index += 1) {
+          if (emberPiecesCreated >= emberBudget) {
+            break;
+          }
+          this.winFxParticlesElement.append(
+            this.createRisingEmberPiece(
+              bx, by,
+              freshBoardRect.width,
+              freshBoardRect.height,
+            ),
+          );
+          emberPiecesCreated += 1;
+        }
+      }, emberDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // ── Screen-level effects ────────────────────────────────────────
+
+    // Flash at T=0 (immediate gold flash on play start).
+    {
+      const flashDelayMs = this.scaleDuration(WinFxController.SCREEN_FLASH_DELAY_MS);
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        this.winFxLayerElement.classList.add("win-fx-flash-active");
+        // Auto-remove after CSS animation completes.
+        const removeId = window.setTimeout(() => {
+          this.winFxLayerElement.classList.remove("win-fx-flash-active");
+        }, this.scaleDuration(WinFxController.SCREEN_FLASH_CSS_MS));
+        this.deferredTimeoutIds.push(removeId);
+      }, flashDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // Vignette (appears with text, stays through celebration).
+    this.winFxLayerElement.classList.add("win-fx-vignette-active");
+
+    // App shake at first firework burst.
+    {
+      const shakeDelayMs = fireworkDelayMs
+        + this.scaleDuration(WinFxController.APP_SHAKE_DELAY_MS);
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        this.appWindowElement.classList.add("win-fx-shake-active");
+        const removeId = window.setTimeout(() => {
+          this.appWindowElement.classList.remove("win-fx-shake-active");
+        }, this.scaleDuration(WinFxController.APP_SHAKE_CSS_MS));
+        this.deferredTimeoutIds.push(removeId);
+      }, shakeDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // Chromatic aberration on particles container at center finale.
+    {
+      const chromaDelayMs = centerFinaleStartDelayMs
+        + this.scaleDuration(WinFxController.CHROMA_DELAY_MS);
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        this.winFxParticlesElement.classList.add("win-fx-chroma-active");
+        const removeId = window.setTimeout(() => {
+          this.winFxParticlesElement.classList.remove("win-fx-chroma-active");
+        }, this.scaleDuration(WinFxController.CHROMA_CSS_MS));
+        this.deferredTimeoutIds.push(removeId);
+      }, chromaDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // Particles container pulse at firework start.
+    {
+      const pulseDelayMs = fireworkDelayMs;
+      const timeoutId = window.setTimeout(() => {
+        /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
+        if (generation !== this.generation) {
+          return;
+        }
+        this.winFxParticlesElement.classList.add("win-fx-particles-pulse-active");
+        const removeId = window.setTimeout(() => {
+          this.winFxParticlesElement.classList.remove("win-fx-particles-pulse-active");
+        }, this.scaleDuration(WinFxController.PARTICLES_PULSE_CSS_MS));
+        this.deferredTimeoutIds.push(removeId);
+      }, pulseDelayMs);
+      this.deferredTimeoutIds.push(timeoutId);
+    }
+
+    // ── Cleanup ───────────────────────────────────────────────────────
+    const fireworkCssAnimMs = this.scaleDuration(WinFxController.FIREWORK_CSS_ANIMATION_MS);
+    const fireworkWindowMs = winFx.fireworkBursts > 0
+      ? fireworkDelayMs
+        + ((winFx.fireworkBursts - 1) * fireworkBurstIntervalMs)
+        + fireworkCssAnimMs
+        + this.scaleDuration(WinFxController.CLEANUP_BUFFER_MS)
+      : 0;
+    const minPhaseWindowMs = Math.max(confettiRainDelayMs, centerFinaleStartDelayMs);
+    const cleanupDurationMs = Math.max(
+      baseCleanupDurationMs,
+      celebrationTextDurationMs,
+      fireworkWindowMs,
+      minPhaseWindowMs + this.scaleDuration(WinFxController.CLEANUP_BUFFER_MS),
+    );
 
     this.cleanupTimeoutId = window.setTimeout(() => {
+      /* v8 ignore next 3 -- defensive: clear() cancels this timeout before it fires */
       if (generation !== this.generation) {
         return;
       }
 
-      this.appWindowElement.classList.remove("win-fx-active");
       this.winFxLayerElement.hidden = true;
       this.winFxParticlesElement.replaceChildren();
+      this.winFxTextElement.style.removeProperty("--win-fx-text-duration");
+      this.winFxLayerElement.classList.remove("win-fx-flash-active", "win-fx-vignette-active");
+      this.appWindowElement.classList.remove("win-fx-shake-active");
+      this.winFxParticlesElement.classList.remove(
+        "win-fx-chroma-active",
+        "win-fx-particles-pulse-active",
+      );
       this.cleanupTimeoutId = null;
       onFinished?.();
     }, cleanupDurationMs);
@@ -478,12 +665,18 @@ export class WinFxController {
     areaWidth: number,
     areaHeight: number,
     burstDelayMs: number,
+    allowedParticles: number,
   ): void {
     const x = areaX + (areaWidth * WinFxController.FIREWORK_SPAWN_INSET_X) + (Math.random() * areaWidth * WinFxController.FIREWORK_SPAWN_RANGE_X);
     const y = areaY + (areaHeight * WinFxController.FIREWORK_SPAWN_INSET_Y) + (Math.random() * areaHeight * WinFxController.FIREWORK_SPAWN_RANGE_Y);
     const spreadScale = WinFxController.FIREWORK_BASE_SPREAD_SCALE + (Math.random() * WinFxController.FIREWORK_SPREAD_JITTER);
 
+    let created = 0;
+
     for (let sparkIndex = 0; sparkIndex < WinFxController.FIREWORK_SPARKS_PER_BURST; sparkIndex += 1) {
+      if (created >= allowedParticles) {
+        return;
+      }
       const piece = this.createWinFxPiece(
         x,
         y,
@@ -494,9 +687,13 @@ export class WinFxController {
         "win-fx-firework",
       );
       this.winFxParticlesElement.append(piece);
+      created += 1;
     }
 
     for (let coreIndex = 0; coreIndex < WinFxController.FIREWORK_CORE_PER_BURST; coreIndex += 1) {
+      if (created >= allowedParticles) {
+        return;
+      }
       const piece = this.createWinFxPiece(
         x,
         y,
@@ -507,6 +704,7 @@ export class WinFxController {
         "win-fx-firework win-fx-firework-core",
       );
       this.winFxParticlesElement.append(piece);
+      created += 1;
     }
   }
 
@@ -533,15 +731,10 @@ export class WinFxController {
     const rainColors = this.runtimeConfig.rainColors;
     const color = WinFxController.pickRandomColor(rainColors);
     const winFx = this.runtimeConfig.options;
-    const confettiRainDelayMs = this.scaleDuration(winFx.confettiRainDelayMs);
     const confettiRainSpreadMs = this.scaleDuration(winFx.confettiRainSpreadMs);
-    const delay = confettiRainDelayMs + Math.floor(Math.random() * confettiRainSpreadMs);
+    const delay = Math.floor(Math.random() * confettiRainSpreadMs);
     const fallDurationBase = 2444 + Math.floor((heavyBias * 1274) + (Math.random() * 806));
-    const colorCycleDurationBase = 910 + Math.floor(Math.random() * 494);
-    const twinkleDurationBase = 247 + Math.floor(Math.random() * 221);
     const fallDuration = this.scaleDuration(fallDurationBase);
-    const colorCycleDuration = this.scaleDuration(colorCycleDurationBase);
-    const twinkleDuration = this.scaleDuration(twinkleDurationBase);
     const opacity = 0.62 + ((1 - heavyBias) * 0.34);
     const endScale = 0.34 + ((1 - heavyBias) * 0.22);
 
@@ -554,10 +747,78 @@ export class WinFxController {
     element.style.setProperty("--piece-rot", rotation);
     element.style.setProperty("--piece-delay", `${delay}ms`);
     element.style.setProperty("--piece-fall-duration", `${fallDuration}ms`);
-    element.style.setProperty("--piece-color-cycle-duration", `${colorCycleDuration}ms`);
-    element.style.setProperty("--piece-twinkle-duration", `${twinkleDuration}ms`);
     element.style.setProperty("--piece-opacity", opacity.toFixed(3));
     element.style.setProperty("--piece-scale-end", endScale.toFixed(3));
+
+    return element;
+  }
+
+  private createShimmerDustPiece(
+    areaX: number,
+    areaY: number,
+    areaWidth: number,
+    areaHeight: number,
+  ): HTMLElement {
+    const element = document.createElement("span");
+    element.className = "win-fx-piece win-fx-shimmer";
+
+    const size = 3 + Math.floor(Math.random() * 3);
+    const spreadW = areaWidth * WinFxController.SHIMMER_SPREAD_FACTOR;
+    const spreadH = areaHeight * WinFxController.SHIMMER_SPREAD_FACTOR;
+    const x = areaX + ((areaWidth - spreadW) / 2) + (Math.random() * spreadW);
+    const y = areaY + ((areaHeight - spreadH) / 2) + (Math.random() * spreadH);
+    const dx = (Math.random() - 0.5) * 60;
+    const dy = (Math.random() - 0.5) * 60;
+
+    const winFx = this.runtimeConfig.options;
+    const colors =
+      winFx.colors.length > 0
+        ? winFx.colors
+        : DEFAULT_WIN_FX_RUNTIME_CONFIG.options.colors;
+    const color = WinFxController.pickRandomColor(colors);
+    const delay = Math.floor(
+      Math.random() * this.scaleDuration(WinFxController.SHIMMER_DELAY_JITTER_MS),
+    );
+
+    element.style.setProperty("--piece-color", color);
+    element.style.setProperty("--piece-size", `${size}px`);
+    element.style.setProperty("--piece-x", `${x}px`);
+    element.style.setProperty("--piece-y", `${y}px`);
+    element.style.setProperty("--piece-dx", `${dx}px`);
+    element.style.setProperty("--piece-dy", `${dy}px`);
+    element.style.setProperty("--piece-delay", `${delay}ms`);
+
+    return element;
+  }
+
+  private static readonly EMBER_COLORS = ["#ff6b35", "#ffa62d", "#fcff42", "#ff5e3a"] as const;
+
+  private createRisingEmberPiece(
+    areaX: number,
+    areaY: number,
+    areaWidth: number,
+    areaHeight: number,
+  ): HTMLElement {
+    const element = document.createElement("span");
+    element.className = "win-fx-piece win-fx-ember";
+
+    const size = 3 + Math.floor(Math.random() * 4);
+    const x = areaX + (Math.random() * areaWidth);
+    const y = areaY + (areaHeight * 0.5) + (Math.random() * areaHeight * 0.5);
+    const dx = (Math.random() - 0.5) * WinFxController.EMBER_SWAY_RANGE;
+    const dy = -(WinFxController.EMBER_RISE_DISTANCE * (0.6 + Math.random() * 0.4));
+    const color = WinFxController.pickRandomColor(WinFxController.EMBER_COLORS);
+    const delay = Math.floor(
+      Math.random() * this.scaleDuration(WinFxController.EMBER_DELAY_JITTER_MS),
+    );
+
+    element.style.setProperty("--piece-color", color);
+    element.style.setProperty("--piece-size", `${size}px`);
+    element.style.setProperty("--piece-x", `${x}px`);
+    element.style.setProperty("--piece-y", `${y}px`);
+    element.style.setProperty("--piece-dx", `${dx}px`);
+    element.style.setProperty("--piece-dy", `${dy}px`);
+    element.style.setProperty("--piece-delay", `${delay}ms`);
 
     return element;
   }

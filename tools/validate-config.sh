@@ -86,14 +86,37 @@ check_key config/shadow.cfg preset.balanced.leftOffsetPx
 check_key config/shadow.cfg preset.soft.leftOffsetPx
 
 # win-fx.cfg
-check_key config/win-fx.cfg winFx.durationMs
-check_key config/win-fx.cfg winFx.maxTilePieces
+check_key config/win-fx.cfg winFx.textDisplayDurationMs
+check_key config/win-fx.cfg winFx.maxParticles
+check_key config/win-fx.cfg winFx.fireworkBursts
 check_key config/win-fx.cfg winFx.colors
 check_key config/win-fx.cfg winFx.textOptions
 
 # leaderboard.cfg
 check_key config/leaderboard.cfg leaderboard.enabled
 check_key config/leaderboard.cfg leaderboard.maxEntries
+
+# ---------------------------------------------------------------------------
+# 4. Deprecated keys must not be present
+# ---------------------------------------------------------------------------
+echo ""
+echo "=== Checking for deprecated keys ==="
+
+check_no_key() {
+  local file="$1" key="$2"
+  if grep -qE "^${key}=" "$file" 2>/dev/null; then
+    fail "$file: deprecated key '$key' must be removed"
+  else
+    pass "$file: no deprecated '$key'"
+  fi
+}
+
+# win-fx.cfg — old keys replaced during config redesign
+check_no_key config/win-fx.cfg winFx.durationMs
+check_no_key config/win-fx.cfg winFx.maxTilePieces
+check_no_key config/win-fx.cfg winFx.wavesPerTile
+check_no_key config/win-fx.cfg winFx.waveDelayMs
+check_no_key config/win-fx.cfg winFx.sparksPerTile
 
 # ---------------------------------------------------------------------------
 # Summary

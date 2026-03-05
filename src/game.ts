@@ -277,6 +277,15 @@ export const resetGame = (state: GameState, deck: string[]): void => {
   Object.assign(state, refreshedState);
 };
 
+/**
+ * Returns the elapsed game time in milliseconds.
+ *
+ * Uses `performance.now()` for in-progress games. Note: `performance.now()`
+ * continues advancing while the browser tab is backgrounded, so a player
+ * who switches away mid-game will see an inflated elapsed time. This is
+ * intentional — it reflects wall-clock time and prevents score gaming by
+ * backgrounding the tab to pause the timer.
+ */
 export const getElapsedTimeMs = (state: GameState): number => {
   if (state.startedAt === null) {
     return 0;

@@ -66,11 +66,8 @@ export interface UiRuntimeConfig {
 }
 
 export interface WinFxOptions {
-  durationMs: number;
-  maxTilePieces: number;
-  wavesPerTile: number;
-  waveDelayMs: number;
-  sparksPerTile: number;
+  textDisplayDurationMs: number;
+  maxParticles: number;
   particleDelayJitterMs: number;
   centerFinaleDelayMs: number;
   centerFinaleWaves: number;
@@ -79,6 +76,7 @@ export interface WinFxOptions {
   confettiRainDelayMs: number;
   confettiRainCount: number;
   confettiRainSpreadMs: number;
+  fireworkBursts: number;
   colors: readonly string[];
 }
 
@@ -156,11 +154,8 @@ export const DEFAULT_UI_RUNTIME_CONFIG: UiRuntimeConfig = {
 
 export const DEFAULT_WIN_FX_RUNTIME_CONFIG: WinFxRuntimeConfig = {
   options: {
-    durationMs: 5460,
-    maxTilePieces: 56,
-    wavesPerTile: 2,
-    waveDelayMs: 64,
-    sparksPerTile: 1,
+    textDisplayDurationMs: 1000,
+    maxParticles: 500,
     particleDelayJitterMs: 180,
     centerFinaleDelayMs: 730,
     centerFinaleWaves: 3,
@@ -169,6 +164,7 @@ export const DEFAULT_WIN_FX_RUNTIME_CONFIG: WinFxRuntimeConfig = {
     confettiRainDelayMs: 1050,
     confettiRainCount: 124,
     confettiRainSpreadMs: 1640,
+    fireworkBursts: 1,
     colors: [
       "#26ccff",
       "#a25afd",
@@ -376,11 +372,8 @@ export const loadWinFxRuntimeConfig = async (): Promise<WinFxRuntimeConfig> => {
 
   return {
     options: {
-      durationMs: Math.max(1, cfg.integer("winFx.durationMs", defaultOptions.durationMs)),
-      maxTilePieces: Math.max(1, cfg.integer("winFx.maxTilePieces", defaultOptions.maxTilePieces)),
-      wavesPerTile: Math.max(1, cfg.integer("winFx.wavesPerTile", defaultOptions.wavesPerTile)),
-      waveDelayMs: Math.max(0, cfg.integer("winFx.waveDelayMs", defaultOptions.waveDelayMs)),
-      sparksPerTile: Math.max(0, cfg.integer("winFx.sparksPerTile", defaultOptions.sparksPerTile)),
+      textDisplayDurationMs: Math.max(1, cfg.integer("winFx.textDisplayDurationMs", defaultOptions.textDisplayDurationMs)),
+      maxParticles: Math.max(1, cfg.integer("winFx.maxParticles", defaultOptions.maxParticles)),
       particleDelayJitterMs: Math.max(0, cfg.integer("winFx.particleDelayJitterMs", defaultOptions.particleDelayJitterMs)),
       centerFinaleDelayMs: Math.max(0, cfg.integer("winFx.centerFinaleDelayMs", defaultOptions.centerFinaleDelayMs)),
       centerFinaleWaves: Math.max(1, cfg.integer("winFx.centerFinaleWaves", defaultOptions.centerFinaleWaves)),
@@ -389,6 +382,7 @@ export const loadWinFxRuntimeConfig = async (): Promise<WinFxRuntimeConfig> => {
       confettiRainDelayMs: Math.max(0, cfg.integer("winFx.confettiRainDelayMs", defaultOptions.confettiRainDelayMs)),
       confettiRainCount: Math.max(0, cfg.integer("winFx.confettiRainCount", defaultOptions.confettiRainCount)),
       confettiRainSpreadMs: Math.max(0, cfg.integer("winFx.confettiRainSpreadMs", defaultOptions.confettiRainSpreadMs)),
+      fireworkBursts: Math.max(0, cfg.integer("winFx.fireworkBursts", defaultOptions.fireworkBursts)),
       colors: colors.length > 0 ? colors : defaultOptions.colors,
     },
     textOptions: textOptions.length > 0 ? textOptions : defaults.textOptions,

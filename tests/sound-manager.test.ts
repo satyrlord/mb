@@ -642,6 +642,42 @@ describe("SoundManager", () => {
     expect(durationMs).toBeGreaterThan(0);
   });
 
+  it("playWin invokes onStarted callback with correct duration", async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+
+      if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
+        return createNotFoundResponse();
+      }
+
+      if (url.includes("/__asset-index?dir=.%2Fmusic")) {
+        return createJsonResponse({ files: ["01.mp3"] });
+      }
+
+      if (url.includes("/__asset-index?dir=.%2Fsound")) {
+        return createJsonResponse({
+          files: ["win.wav", "flip01.wav"],
+        });
+      }
+
+      if (url.includes("./music/") || url.includes("./sound/")) {
+        return createAudioResponse();
+      }
+
+      return createNotFoundResponse();
+    }) as typeof fetch;
+
+    const soundManager = new SoundManager();
+    await soundManager.initialize();
+
+    const onStarted = vi.fn();
+    const durationMs = await soundManager.playWin(onStarted);
+
+    expect(onStarted).toHaveBeenCalledOnce();
+    expect(onStarted).toHaveBeenCalledWith(durationMs);
+    expect(durationMs).toBeGreaterThan(0);
+  });
+
   it("stores and exposes mute state", async () => {
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
@@ -728,6 +764,119 @@ describe("SoundManager", () => {
 
     await soundManager.initialize();
     expect(soundManager.isMusicPlaying()).toBe(false);
+  });
+
+  it("playNewGame plays sound on second call after first completes", async () => {
+    const originalAudioContext = global.AudioContext;
+
+    try {
+      let bufferSourceCount = 0;
+      const OriginalMockContext = MockAudioContext;
+
+      class TrackingMockContext extends OriginalMockContext {
+        public override createBufferSource(): MockAudioBufferSourceNode {
+          bufferSourceCount += 1;
+          return super.createBufferSource();
+        }
+      }
+
+      global.AudioContext = vi.fn(() => new TrackingMockContext()) as unknown as typeof AudioContext;
+
+      global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+
+        if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
+          return createNotFoundResponse();
+        }
+
+        if (url.includes("/__asset-index?dir=.%2Fmusic")) {
+          return createJsonResponse({ files: ["01.mp3"] });
+        }
+
+        if (url.includes("/__asset-index?dir=.%2Fsound")) {
+          return createJsonResponse({
+            files: ["newgame1.wav", "newgame2.wav", "flip01.wav"],
+          });
+        }
+
+        if (url.includes("./music/") || url.includes("./sound/")) {
+          return createAudioResponse();
+        }
+
+        return createNotFoundResponse();
+      }) as typeof fetch;
+
+      const soundManager = new SoundManager();
+      await soundManager.initialize();
+
+      bufferSourceCount = 0;
+
+      await soundManager.playNewGame();
+      await soundManager.playNewGame();
+
+      expect(bufferSourceCount).toBe(2);
+    } finally {
+      global.AudioContext = originalAudioContext;
+    }
+  });
+
+  it("playNewGame clears pendingNewGameFx even when playback fails", async () => {
+    const originalAudioContext = global.AudioContext;
+
+    try {
+      let callCount = 0;
+
+      class FailingContext extends MockAudioContext {
+        public override createBufferSource(): MockAudioBufferSourceNode {
+          callCount += 1;
+          throw new Error("simulated playback failure");
+        }
+      }
+
+      global.AudioContext = vi.fn(() => new FailingContext()) as unknown as typeof AudioContext;
+
+      global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+
+        if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
+          return createNotFoundResponse();
+        }
+
+        if (url.includes("/__asset-index?dir=.%2Fmusic")) {
+          return createJsonResponse({ files: ["01.mp3"] });
+        }
+
+        if (url.includes("/__asset-index?dir=.%2Fsound")) {
+          return createJsonResponse({
+            files: ["newgame1.wav", "flip01.wav"],
+          });
+        }
+
+        if (url.includes("./music/") || url.includes("./sound/")) {
+          return createAudioResponse();
+        }
+
+        return createNotFoundResponse();
+      }) as typeof fetch;
+
+      const soundManager = new SoundManager();
+      await soundManager.initialize();
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // First call should not throw and must still clear pending state
+      await expect(soundManager.playNewGame()).resolves.toBeUndefined();
+
+      // Second call must not short-circuit — it should attempt playback again
+      await expect(soundManager.playNewGame()).resolves.toBeUndefined();
+
+      expect(callCount).toBe(2);
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    } finally {
+      global.AudioContext = originalAudioContext;
+    }
   });
 
   it("stopBackgroundMusic does not throw before or after initialize", async () => {

@@ -31,14 +31,12 @@ Coverage is collected via `@vitest/coverage-v8`. Reports are written to
 
 The following paths are excluded from coverage in `vitest.config.ts`:
 
-| Path | Reason |
-| --- | --- |
-| `tools/**` | Dev tooling (servers, scripts), not shipped game code. |
-| `src/index.ts` | Browser bootstrap entrypoint — see below. |
-| `dist/**` | Compiled output, not source. |
-| `eslint.config.mjs` | Linter config, not application code. |
-| `vitest.config.ts` | Test config, not application code. |
-| `.github/**` | CI/CD workflows and skill definitions. |
+- `tools/**` — Dev tooling (servers, scripts), not shipped game code.
+- `src/index.ts` — Browser bootstrap entrypoint — see below.
+- `dist/**` — Compiled output, not source.
+- `eslint.config.mjs` — Linter config, not application code.
+- `vitest.config.ts` — Test config, not application code.
+- `.github/**` — CI/CD workflows and skill definitions.
 
 ### Why `src/index.ts` is excluded
 
@@ -57,14 +55,12 @@ the module is excluded to avoid misleading coverage gaps in the report.
 
 Current test coverage (all metrics at 90%+):
 
-| Metric | Coverage |
-| --- | --- |
-| Statements | 97.55% |
-| Branches | 94.92% |
-| Functions | 98.60% |
-| Lines | 97.55% |
-| Test Files | 24/24 passing |
-| Tests | 395 tests passing |
+- Statements: 97.55%
+- Branches: 94.92%
+- Functions: 98.60%
+- Lines: 97.55%
+- Test Files: 24/24 passing
+- Tests: 395 tests passing
 
 ### Per-File Coverage
 

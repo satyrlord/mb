@@ -13,18 +13,6 @@
   overflow: hidden;
 }
 
-.win-fx-layer::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.08) 46%, transparent 72%),
-    linear-gradient(135deg, rgba(244, 114, 182, 0.24), rgba(56, 189, 248, 0.24));
-  mix-blend-mode: screen;
-  opacity: 0;
-  animation: win-fx-screen-flash calc(1335ms / var(--animation-speed, 1)) cubic-bezier(0.16, 0.84, 0.28, 1) forwards;
-}
-
 .win-fx-particles {
   position: absolute;
   inset: 0;
@@ -49,9 +37,10 @@
     0 0 12px rgba(250, 204, 21, 0.75),
     0 0 28px rgba(236, 72, 153, 0.6),
     0 0 48px rgba(56, 189, 248, 0.5);
+  opacity: 0;
   animation:
-    win-fx-title-float calc(4992ms / var(--animation-speed, 1)) cubic-bezier(0.22, 0.78, 0.24, 1) forwards,
-    win-fx-title-chroma-pulse calc(1480ms / var(--animation-speed, 1)) ease-in-out infinite;
+    win-fx-title-display var(--win-fx-text-duration, 2000ms) linear forwards,
+    win-fx-text-glow-pulse calc(1200ms / var(--animation-speed, 1)) ease-in-out 3;
 }
 
 .win-fx-piece {
@@ -78,9 +67,7 @@
     inset -1px -1px 0 rgba(15, 23, 42, 0.35);
   transform: translate(var(--piece-x), var(--piece-y));
   will-change: transform, filter, opacity;
-  animation:
-    win-fx-piece-blast calc(2606ms / var(--animation-speed, 1)) cubic-bezier(0.18, 0.76, 0.24, 1) forwards,
-    win-fx-piece-color-cycle calc(1161ms / var(--animation-speed, 1)) linear infinite;
+  animation: win-fx-piece-blast calc(2606ms / var(--animation-speed, 1)) cubic-bezier(0.18, 0.76, 0.24, 1) forwards;
   animation-delay: var(--piece-delay, 0ms);
 }
 
@@ -90,9 +77,7 @@
   border-radius: 999px;
   border: 0;
   color: transparent;
-  animation:
-    win-fx-piece-blast calc(2091ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards,
-    win-fx-sparkle-twinkle calc(174ms / var(--animation-speed, 1)) ease-in-out infinite;
+  animation: win-fx-piece-blast calc(2091ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards;
 }
 
 .win-fx-piece.win-fx-firework {
@@ -101,10 +86,7 @@
   box-shadow:
     0 0 12px color-mix(in srgb, var(--piece-color, #ffffff) 82%, transparent 18%),
     0 0 24px color-mix(in srgb, var(--piece-color, #ffffff) 66%, transparent 34%);
-  animation:
-    win-fx-firework-burst calc(1660ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards,
-    win-fx-piece-color-cycle calc(880ms / var(--animation-speed, 1)) linear infinite,
-    win-fx-sparkle-twinkle calc(132ms / var(--animation-speed, 1)) ease-in-out infinite;
+  animation: win-fx-firework-burst calc(1660ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards;
 }
 
 .win-fx-piece.win-fx-firework-core {
@@ -112,6 +94,10 @@
   box-shadow:
     0 0 14px color-mix(in srgb, var(--piece-color, #ffffff) 88%, transparent 12%),
     0 0 30px color-mix(in srgb, var(--piece-color, #ffffff) 72%, transparent 28%);
+  animation:
+    win-fx-firework-burst calc(1660ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards,
+    win-fx-sparkle-twinkle calc(320ms / var(--animation-speed, 1)) ease-in-out 3;
+  animation-delay: var(--piece-delay, 0ms);
 }
 
 .win-fx-piece.win-fx-circle {
@@ -143,69 +129,74 @@
 }
 
 .win-fx-piece.win-fx-fall {
-  animation:
-    win-fx-confetti-fall var(--piece-fall-duration, 2990ms) cubic-bezier(0.18, 0.82, 0.24, 1) forwards,
-    win-fx-piece-color-cycle var(--piece-color-cycle-duration, 1066ms) linear infinite,
-    win-fx-sparkle-twinkle var(--piece-twinkle-duration, 312ms) ease-in-out infinite;
+  animation: win-fx-confetti-fall var(--piece-fall-duration, 2990ms) cubic-bezier(0.18, 0.82, 0.24, 1) forwards;
   opacity: 0;
 }
 
-.app.win-fx-active .board {
-  animation: win-fx-board-pulse calc(1480ms / var(--animation-speed, 1)) ease-in-out infinite;
+/* ── Shimmer dust: tiny twinkling particles ── */
+.win-fx-piece.win-fx-shimmer {
+  width: var(--piece-size, 4px);
+  height: var(--piece-size, 4px);
+  border: 0;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--piece-color, #ffffff) 90%, white 10%),
+    transparent 70%
+  );
+  box-shadow:
+    0 0 6px color-mix(in srgb, var(--piece-color, #ffffff) 70%, transparent 30%),
+    0 0 14px color-mix(in srgb, var(--piece-color, #ffffff) 40%, transparent 60%);
+  animation:
+    win-fx-shimmer-drift calc(2800ms / var(--animation-speed, 1)) ease-in-out forwards,
+    win-fx-sparkle-twinkle calc(400ms / var(--animation-speed, 1)) ease-in-out infinite;
+  animation-delay: var(--piece-delay, 0ms);
 }
 
-.app.win-fx-active #gameFrame {
-  visibility: visible;
-  opacity: 0.76;
-  filter: saturate(1.32) contrast(1.1);
+/* ── Rising embers: upward-floating warm particles ── */
+.win-fx-piece.win-fx-ember {
+  width: var(--piece-size, 5px);
+  height: var(--piece-size, 5px);
+  border: 0;
+  border-radius: 999px;
+  color: transparent;
+  animation: win-fx-ember-rise calc(3200ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.82, 0.24, 1) forwards;
+  animation-delay: var(--piece-delay, 0ms);
 }
-
-.app.win-fx-active .win-fx-layer {
-  animation: win-fx-app-shake calc(1201ms / var(--animation-speed, 1)) cubic-bezier(0.24, 0.74, 0.24, 1) 1;
-}
-
-@keyframes win-fx-title-chroma-pulse {
-  0%,
-  100% {
-    text-shadow:
-      0 0 12px rgba(250, 204, 21, 0.72),
-      0 0 28px rgba(236, 72, 153, 0.56),
-      0 0 48px rgba(56, 189, 248, 0.46);
-  }
-
-  50% {
-    text-shadow:
-      0 0 16px rgba(250, 204, 21, 0.9),
-      0 0 36px rgba(236, 72, 153, 0.75),
-      0 0 64px rgba(56, 189, 248, 0.66);
-  }
-}
-
-@keyframes win-fx-title-float {
+@keyframes win-fx-title-display {
   0% {
     opacity: 0;
-    transform: translate(-50%, -42%) scale(0.7);
-    filter: saturate(1.4) brightness(1.24);
+    transform: translate(-50%, -50%) scale(0.3);
   }
 
-  12% {
+  10% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.16);
+    transform: translate(-50%, -50%) scale(1.08);
   }
 
-  42% {
+  18% {
     opacity: 1;
-    transform: translate(-50%, -52%) scale(1.03);
+    transform: translate(-50%, -50%) scale(0.96);
   }
 
-  78% {
+  26% {
     opacity: 1;
-    transform: translate(-50%, -54%) scale(1);
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+
+  34% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  85% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 
   100% {
     opacity: 0;
-    transform: translate(-50%, -61%) scale(0.9);
+    transform: translate(-50%, -54%) scale(0.98);
   }
 }
 
@@ -422,6 +413,168 @@
 
   100% {
     filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+  }
+}
+
+@keyframes win-fx-text-glow-pulse {
+  0% {
+    text-shadow:
+      0 0 12px rgba(250, 204, 21, 0.75),
+      0 0 28px rgba(236, 72, 153, 0.6),
+      0 0 48px rgba(56, 189, 248, 0.5);
+  }
+
+  50% {
+    text-shadow:
+      0 0 18px rgba(250, 204, 21, 0.95),
+      0 0 38px rgba(236, 72, 153, 0.82),
+      0 0 64px rgba(56, 189, 248, 0.72),
+      0 0 80px rgba(250, 204, 21, 0.3);
+  }
+
+  100% {
+    text-shadow:
+      0 0 12px rgba(250, 204, 21, 0.75),
+      0 0 28px rgba(236, 72, 153, 0.6),
+      0 0 48px rgba(56, 189, 248, 0.5);
+  }
+}
+
+@keyframes win-fx-shimmer-drift {
+  0% {
+    opacity: 0;
+    transform: translate(var(--piece-x), var(--piece-y)) scale(0.5);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  60% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(var(--piece-x) + var(--piece-dx)),
+      calc(var(--piece-y) + var(--piece-dy))
+    ) scale(0.2);
+  }
+}
+
+@keyframes win-fx-ember-rise {
+  0% {
+    opacity: 0;
+    transform: translate(var(--piece-x), var(--piece-y)) scale(0.6);
+  }
+
+  10% {
+    opacity: 0.9;
+  }
+
+  40% {
+    opacity: 0.8;
+    transform: translate(
+      calc(var(--piece-x) + (var(--piece-dx) * 0.4)),
+      calc(var(--piece-y) + (var(--piece-dy) * 0.5))
+    ) scale(0.7);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(var(--piece-x) + var(--piece-dx)),
+      calc(var(--piece-y) + var(--piece-dy))
+    ) scale(0.15);
+    filter: blur(0.8px);
+  }
+}
+
+/* ── Screen-level effect activation classes ── */
+
+.win-fx-layer.win-fx-flash-active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(254, 240, 138, 0.72) 0%,
+    rgba(250, 204, 21, 0.36) 40%,
+    transparent 76%
+  );
+  animation: win-fx-screen-flash calc(600ms / var(--animation-speed, 1)) ease-out forwards;
+}
+
+.win-fx-shake-active {
+  animation: win-fx-app-shake calc(520ms / var(--animation-speed, 1)) ease-out !important;
+}
+
+.win-fx-vignette-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 89;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 36%,
+    rgba(15, 23, 42, 0.42) 100%
+  );
+  animation: win-fx-vignette-fade calc(1400ms / var(--animation-speed, 1)) ease-in forwards;
+}
+
+@keyframes win-fx-vignette-fade {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.win-fx-chroma-active {
+  animation: win-fx-board-chroma calc(900ms / var(--animation-speed, 1)) ease-out;
+}
+
+.win-fx-particles-pulse-active {
+  animation: win-fx-board-pulse calc(800ms / var(--animation-speed, 1)) ease-out;
+}
+
+/* ── Reduced motion: disable intensive animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .win-fx-text {
+    animation: win-fx-title-display var(--win-fx-text-duration, 2000ms) linear forwards;
+    opacity: 1;
+  }
+
+  .win-fx-piece.win-fx-firework-core {
+    animation: win-fx-firework-burst calc(1660ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards;
+    animation-delay: var(--piece-delay, 0ms);
+  }
+
+  .win-fx-piece.win-fx-shimmer {
+    animation: win-fx-shimmer-drift calc(2800ms / var(--animation-speed, 1)) ease-in-out forwards;
+    animation-delay: var(--piece-delay, 0ms);
+  }
+
+  .win-fx-shake-active {
+    animation: none !important;
+  }
+
+  .win-fx-layer.win-fx-flash-active::before {
+    display: none;
+  }
+
+  .win-fx-chroma-active {
+    animation: none;
+  }
+
+  .win-fx-particles-pulse-active {
+    animation: none;
   }
 }
 
