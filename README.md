@@ -1,9 +1,16 @@
 # MEMORYBLOX (Windows 9x remake)
 
 Browser-based recreation of the classic Windows 9x game **MEMORYBLOX**
-using HTML, CSS, and TypeScript.
+using HTML, CSS, and TypeScript. Try it now at <https://satyrlord.github.io/mb/>
 
 ## Update Log
+
+### 2026-03-05
+
+- GitHub Pages deployment now includes `icon/`, `sound/`, and `music/`
+  asset directories so OpenMoji SVG icon packs and audio files are served.
+- Fixed 160 stale `dev/mb/` path prefixes in `artifacts/generated-icon-assets.json`.
+- Current verified test state: 24 test files, 395 tests passing.
 
 ### 2026-02-24
 
@@ -13,7 +20,6 @@ using HTML, CSS, and TypeScript.
   least 90% (Statements, Branches, Functions, Lines per row/file).
 - Test suite expanded with targeted edge-branch tests in game/sound/win-fx
   modules and helper utilities.
-- Current verified test state: 18 test files, 315 tests passing.
 
 ## Current Status
 
@@ -23,8 +29,8 @@ using HTML, CSS, and TypeScript.
 - Tile multiplier setting (1× / 2× / 3×) for multi-copy icon groups
 - Animation speed setting (1× / 2× / 3×)
 - Timer, attempts counter, restart button, and win state
-- Top-bar Debug menu with Demo, Win (near-win board), and Tiles
- (2-tile styling screen)
+- Top-bar Debug menu with Demo, Win (near-win board), Tiles
+  (2-tile styling screen), SVG imports, and Flip Tiles
 - Settings page with switchable themed icon packs, tile
  multiplier, and animation speed sliders
 - Global leaderboard support with username prompt on win
@@ -157,16 +163,27 @@ src/gameplay.ts            GameplayEngine facade over game state
 src/board.ts               Board rendering and tile input handling
 src/ui.ts                  HUD and status messaging updates
 src/icons.ts               Dynamic icon deck generation
+src/icon-assets.ts         OpenMoji SVG asset definitions and lookup
+src/openmoji-imports.ts    Auto-generated available OpenMoji token list
 src/utils.ts               Shared helpers (shuffle, time formatting)
 src/presentation.ts        Presentation layer helpers
 src/session-score.ts       Session score flag normalization
+src/difficulty.ts          Difficulty presets (Easy, Normal, Hard)
+src/tile-layout.ts         Tile multiplier and set distribution logic
 src/leaderboard.ts         Leaderboard scoring, storage, and runtime config
 src/runtime-config.ts      UI/win-fx runtime config loading
 src/shadow-config.ts       Shadow preset loading
 src/win-fx.ts              Win celebration particle effects
 src/flag-emoji.ts          Flag emoji CDN URL and country name helpers
 src/cfg.ts                 Shared cfg-file parsing utilities
+src/sound-engine.ts        Web Audio API core engine (dual-layer)
+src/sound-manager.ts       High-level game sound controller
+src/audio-loader.ts        Audio asset loading and caching
+src/window-resize.ts       Window resize handle controller
 config/                    Global runtime configuration files
+icon/                      OpenMoji SVG assets and pack catalog
+sound/                     Sound effect WAV files
+music/                     Background music MP3 files
 index.html                 Browser entry point
 styles.css                 Game styling
 styles.winfx.css           Win animation styling (isolated)

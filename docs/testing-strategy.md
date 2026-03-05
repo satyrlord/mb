@@ -1,7 +1,9 @@
 # Testing Strategy
 
-## Latest Update (2026-02-24)
+## Latest Update (2026-03-05)
 
+- Test suite expanded to 24 test files, 395 tests passing.
+- Coverage metrics updated to reflect the full source module set.
 - Quality gate now explicitly includes a VS Code Problems scan after
   `npm run test` and `npm run test:coverage`.
 - Coverage policy is enforced per reported table cell: each file/row metric
@@ -57,28 +59,30 @@ Current test coverage (all metrics at 90%+):
 
 | Metric | Coverage |
 | --- | --- |
-| Statements | 97.81% |
-| Branches | 96.08% |
-| Functions | 97.22% |
-| Lines | 97.81% |
-| Test Files | 18/18 passing |
-| Tests | 315 tests passing |
+| Statements | 97.55% |
+| Branches | 94.92% |
+| Functions | 98.60% |
+| Lines | 97.55% |
+| Test Files | 24/24 passing |
+| Tests | 395 tests passing |
 
 ### Per-File Coverage
 
 All source files (`src/`) meet or exceed 90% coverage:
 
-- 100% coverage: `game.ts`, `presentation.ts`, `runtime-config.ts`,
-  `session-score.ts`, `sound-engine.ts`, `ui.ts`
-- 99%+ coverage: `icons.ts` (99.11%), `win-fx.ts` (99.29%)
-- 97%+ coverage: `leaderboard.ts` (97.01%), `shadow-config.ts` (97.74%),
-  `audio-loader.ts` (98.03%)
-- 93%+ coverage: `sound-manager.ts` (93.95%), `board.ts` (94.98%),
-  `flag-emoji.ts` (96.19%), `utils.ts` (95%)
-- 91%+ coverage: `cfg.ts` (91.07%), `gameplay.ts` (95.55%)
-
-Branch coverage is now 96.08% overall, and every reported table cell remains
-at or above the 90% policy threshold.
+- 100% coverage: `difficulty.ts`, `game.ts`, `icon-assets.ts`,
+  `openmoji-imports.ts`, `presentation.ts`, `session-score.ts`,
+  `tile-layout.ts`, `ui.ts`
+- 99%+ coverage: `icons.ts` (99.18%)
+- 98%+ coverage: `audio-loader.ts` (98.07%), `win-fx.ts` (98.54%)
+- 96%+ coverage: `flag-emoji.ts` (96.19%), `runtime-config.ts` (97.12%),
+  `sound-engine.ts` (96.60%), `leaderboard.ts` (95.96%),
+  `window-resize.ts` (95.97%)
+- 95%+ coverage: `board.ts` (95.20%), `gameplay.ts` (95.55%),
+  `sound-manager.ts` (95.41%)
+- 91%+ coverage: `cfg.ts` (91.80%), `utils.ts` (93.58%)
+- `shadow-config.ts`: 100% statements/functions, 95.45% branches
+- `test-helpers.ts`: 100% across all metrics
 
 ## Conventions
 
