@@ -15,6 +15,7 @@ of a classic Windows 9x game called 'Memory Blocks'
 - Settings page with pack selection, tile multiplier, and animation speed
 - Web Audio-based sound engine with centralized sound manager and loader
 - Global leaderboard support with SQLite persistence
+- Orientation toggle (landscape / portrait mode) with score bonus
 - Win celebration particle effects
 - Browser entry via `index.html` + compiled `dist/index.js`
 - GitHub Pages deployment workflow in `.github/workflows/pages.yml`

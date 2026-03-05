@@ -9,6 +9,7 @@ export interface LeaderboardScoringConfig {
   debugScoreExtraReductionFactor: number;
   debugWinModeReductionFactor: number;
   debugTilesModeReductionFactor: number;
+  portraitBonusFactor: number;
 }
 
 export interface LeaderboardRuntimeConfig {
@@ -57,6 +58,7 @@ const LEADERBOARD_SCORE_SCALE_FACTOR = 1_000;
 const LEADERBOARD_DEBUG_SCORE_EXTRA_REDUCTION_FACTOR = 0.08;
 const LEADERBOARD_DEBUG_WIN_MODE_REDUCTION_FACTOR = 0.4;
 const LEADERBOARD_DEBUG_TILES_MODE_REDUCTION_FACTOR = 0.2;
+const LEADERBOARD_PORTRAIT_BONUS_FACTOR = 1.2;
 const LEGACY_EMOJI_SET_ID = "legacy";
 const LEGACY_EMOJI_SET_LABEL = "Legacy Set";
 
@@ -80,6 +82,7 @@ export const DEFAULT_LEADERBOARD_RUNTIME_CONFIG: LeaderboardRuntimeConfig = {
     debugScoreExtraReductionFactor: LEADERBOARD_DEBUG_SCORE_EXTRA_REDUCTION_FACTOR,
     debugWinModeReductionFactor: LEADERBOARD_DEBUG_WIN_MODE_REDUCTION_FACTOR,
     debugTilesModeReductionFactor: LEADERBOARD_DEBUG_TILES_MODE_REDUCTION_FACTOR,
+    portraitBonusFactor: LEADERBOARD_PORTRAIT_BONUS_FACTOR,
   },
 };
 
@@ -340,6 +343,10 @@ export const loadLeaderboardRuntimeConfig = async (): Promise<LeaderboardRuntime
         0,
         Math.min(1, cfg.number("leaderboard.debugTilesModeReductionFactor", defaultScoring.debugTilesModeReductionFactor)),
       ),
+      portraitBonusFactor: Math.max(
+        1,
+        cfg.number("leaderboard.portraitBonusFactor", defaultScoring.portraitBonusFactor),
+      ),
     },
   };
 };
@@ -463,6 +470,7 @@ export interface GameScoreComputationInput {
   timeMs: number;
   attempts: number;
   usedFlipTiles?: boolean;
+  isPortraitMode?: boolean;
 }
 
 export const computeGameScoreResult = (
@@ -478,13 +486,15 @@ export const computeGameScoreResult = (
     timeMs,
     attempts,
     usedFlipTiles = false,
+    isPortraitMode = false,
   } = input;
   const difficultyId = scoreCategory === "debug" ? "debug" : difficulty.id;
   const difficultyLabel = scoreCategory === "debug" ? "Debug" : difficulty.label;
   const hasPenalty = scoreCategory === "debug" || isAutoDemoScore;
   const baseScoreMultiplier = difficulty.scoreMultiplier > 0 ? difficulty.scoreMultiplier : 1;
+  const portraitBonus = isPortraitMode ? scoringConfig.portraitBonusFactor : 1;
   const tilePenaltyFactor = 1 / Math.max(1, tileMultiplier);
-  const adjustedScoreMultiplier = baseScoreMultiplier * tilePenaltyFactor;
+  const adjustedScoreMultiplier = baseScoreMultiplier * portraitBonus * tilePenaltyFactor;
   const scoreMultiplier = hasPenalty
     ? Number((adjustedScoreMultiplier * scoringConfig.scorePenaltyFactor).toFixed(2))
     : adjustedScoreMultiplier;

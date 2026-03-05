@@ -39,12 +39,36 @@ describe("BoardView", () => {
       targetTileSizePx: 100,
       tileGapPx: 12,
       boardHorizontalPaddingPx: 20,
+      boardChromePx: 24,
+      boardMarginTopPx: 8,
     });
 
     boardView.render(createTiles(8), 8);
 
     expect(container.style.width).toBe("min(924px, 100%)");
     expect(container.style.gridTemplateColumns).toBe("repeat(8, minmax(50px, 1fr))");
+  });
+
+  test("setLayoutConfig rounds fractional values and clamps negatives to zero", () => {
+    const container = document.createElement("section");
+    const boardView = new BoardView(container, () => {});
+
+    boardView.setLayoutConfig({
+      minTileSizePx: -5,
+      targetTileSizePx: 99.7,
+      tileGapPx: -1,
+      boardHorizontalPaddingPx: 15.3,
+      boardChromePx: -10,
+      boardMarginTopPx: 7.8,
+    });
+
+    // After clamping: minTileSizePx=1, targetTileSizePx=100, tileGapPx=0,
+    // boardHorizontalPaddingPx=15, boardChromePx=0, boardMarginTopPx=8.
+    // Board width = 2*15 + 8*(100 + 0) - 0 = 830
+    boardView.render(createTiles(8), 8);
+
+    expect(container.style.width).toBe("min(830px, 100%)");
+    expect(container.style.gridTemplateColumns).toBe("repeat(8, minmax(1px, 1fr))");
   });
 
   test("render rebuilds tile buttons when container DOM is unexpectedly cleared", () => {

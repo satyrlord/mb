@@ -200,7 +200,7 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "☕",
       "🍵",
       "🧃",
-      "🥛",
+      "🍊", // was 🥛 — replaced for better cross-platform rendering
       "🍺",
       "🍷",
       "🍹",
@@ -383,7 +383,7 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🏔️",
       "🏞️",
       "🌋",
-      "🌫️",
+      "🐍", // was 🌫️ — replaced for better visual distinctiveness on tile
       "🧿",
       "🗝️",
       "☠️",
@@ -520,9 +520,9 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "⏱️",
       "🔔",
       "📯",
-      "☁️",
+      "🏛️", // was ☁️ — replaced for better visual distinctiveness on tile
       "🌈",
-      "🫧",
+      "⛲", // was 🫧 — replaced for better cross-platform rendering
     ],
   },
 ] as const;

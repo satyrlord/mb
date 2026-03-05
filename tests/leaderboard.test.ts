@@ -36,6 +36,7 @@ describe("leaderboard runtime config", () => {
         "leaderboard.debugScoreExtraReductionFactor=0.09",
         "leaderboard.debugWinModeReductionFactor=0.45",
         "leaderboard.debugTilesModeReductionFactor=0.25",
+        "leaderboard.portraitBonusFactor=1.3",
       ].join("\n")),
     );
 
@@ -52,6 +53,7 @@ describe("leaderboard runtime config", () => {
         debugScoreExtraReductionFactor: 0.09,
         debugWinModeReductionFactor: 0.45,
         debugTilesModeReductionFactor: 0.25,
+        portraitBonusFactor: 1.3,
       },
     });
   });
@@ -785,5 +787,74 @@ describe("computeGameScoreResult", () => {
     }, scoringConfig);
 
     expect(result.scoreValue).toBeGreaterThan(0);
+  });
+
+  test("applies 20% portrait mode bonus to score multiplier", () => {
+    const landscape = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+      isPortraitMode: false,
+    }, scoringConfig);
+
+    const portrait = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+      isPortraitMode: true,
+    }, scoringConfig);
+
+    expect(portrait.scoreMultiplier).toBeCloseTo(landscape.scoreMultiplier * scoringConfig.portraitBonusFactor);
+    expect(portrait.scoreValue).toBeGreaterThan(landscape.scoreValue);
+  });
+
+  test("portrait bonus stacks with tile multiplier penalty", () => {
+    const result = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 2,
+      timeMs: 30_000,
+      attempts: 20,
+      isPortraitMode: true,
+    }, scoringConfig);
+
+    // baseDifficulty.scoreMultiplier (1.2) * portrait bonus * tilePenalty (0.5)
+    expect(result.scoreMultiplier).toBeCloseTo(1.2 * scoringConfig.portraitBonusFactor * 0.5);
+  });
+
+  test("portrait bonus defaults to off when omitted", () => {
+    const withoutFlag = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    const explicitLandscape = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+      isPortraitMode: false,
+    }, scoringConfig);
+
+    expect(withoutFlag.scoreMultiplier).toBe(explicitLandscape.scoreMultiplier);
+    expect(withoutFlag.scoreValue).toBe(explicitLandscape.scoreValue);
   });
 });

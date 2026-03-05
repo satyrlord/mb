@@ -22,9 +22,10 @@
   position: absolute;
   left: 50%;
   top: 48%;
+  width: 100%;
   margin: 0;
   transform: translate(-50%, -50%);
-  font-size: clamp(1.76rem, 8vw, 4.96rem);
+  font-size: clamp(1.4rem, 5.5vmin, 3.5rem);
   font-weight: 400;
   font-family: var(--font-display);
   letter-spacing: 0.1em;
@@ -41,6 +42,13 @@
   animation:
     win-fx-title-display var(--win-fx-text-duration, 2000ms) linear forwards,
     win-fx-text-glow-pulse calc(1200ms / var(--animation-speed, 1)) ease-in-out 3;
+  padding: 0 8px;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+}
+
+.app-shell[data-orientation="portrait"] .win-fx-text {
+  font-size: clamp(1.2rem, 4.5vmin, 2.2rem);
 }
 
 .win-fx-piece {

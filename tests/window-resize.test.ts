@@ -327,4 +327,34 @@ describe("WindowResizeController", () => {
     controller.attach();
     expect(() => window.dispatchEvent(new Event("resize"))).not.toThrow();
   });
+
+  // ── Reinitialize ─────────────────────────────────────────────────
+
+  it("reinitialize clears resize state and CSS properties", () => {
+    stubBounds(appWindow, 1024, 640);
+    controller.initialize();
+
+    expect(appShell.dataset.resizeReady).toBe("true");
+    expect(appShell.style.getPropertyValue("--ui-scale")).toBe("1");
+
+    controller.reinitialize();
+
+    expect(appShell.dataset.resizeReady).toBeUndefined();
+    expect(appShell.style.getPropertyValue("--app-base-width")).toBe("");
+    expect(appShell.style.getPropertyValue("--app-base-height")).toBe("");
+    expect(appShell.style.getPropertyValue("--ui-scale")).toBe("");
+  });
+
+  it("reinitialize cancels pending frame when called twice rapidly", () => {
+    const cancelSpy = vi.spyOn(window, "cancelAnimationFrame");
+
+    stubBounds(appWindow, 1024, 640);
+    controller.initialize();
+
+    controller.reinitialize();
+    controller.reinitialize();
+
+    // Second call should have cancelled the frame from the first call
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+  });
 });

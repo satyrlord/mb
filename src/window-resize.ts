@@ -48,6 +48,8 @@ export class WindowResizeController {
 
   private dragState: WindowResizeDragState | null = null;
 
+  private pendingReinitFrame: number | null = null;
+
   /** Bound handler kept as a stable reference for add/removeEventListener. */
   private readonly boundUpdateDrag = (e: PointerEvent): void => {
     this.updateResizeDrag(e);
@@ -121,6 +123,25 @@ export class WindowResizeController {
 
     const restoredScale = this.readStoredScale() ?? config.windowResizeLimits.defaultScale;
     this.applyScale(restoredScale, false);
+  }
+
+  /**
+   * Reset all resize state and re-run initialization on the next animation
+   * frame. Use when the orientation (and thus the aspect ratio) changes.
+   */
+  public reinitialize(): void {
+    if (this.pendingReinitFrame !== null) {
+      window.cancelAnimationFrame(this.pendingReinitFrame);
+    }
+    this.resizeState = null;
+    delete this.appShellElement.dataset.resizeReady;
+    this.appShellElement.style.removeProperty("--app-base-width");
+    this.appShellElement.style.removeProperty("--app-base-height");
+    this.appShellElement.style.removeProperty("--ui-scale");
+    this.pendingReinitFrame = window.requestAnimationFrame(() => {
+      this.pendingReinitFrame = null;
+      this.initialize();
+    });
   }
 
   // ── Scale persistence ────────────────────────────────────────────────

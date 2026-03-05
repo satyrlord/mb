@@ -69,6 +69,7 @@ export interface DebugAppSession {
   scoreCategory?: "standard" | "debug";
   isAutoDemoScore?: boolean;
   usedFlipTiles?: boolean;
+  isPortraitMode?: boolean;
 }
 
 export interface DebugGameplayTiming {
@@ -127,6 +128,7 @@ export class DebugController {
       scoreCategory: "debug",
       isAutoDemoScore: false,
       usedFlipTiles: false,
+      isPortraitMode: false,
       gameplay: createGameplayEngine({
         rows: DEBUG_TILES_DIFFICULTY.rows,
         columns: DEBUG_TILES_DIFFICULTY.columns,
@@ -170,6 +172,7 @@ export class DebugController {
       scoreCategory: "debug",
       isAutoDemoScore: false,
       usedFlipTiles: false,
+      isPortraitMode: false,
       gameplay: createGameplayEngine({
         rows: svgHardDifficulty.rows,
         columns: svgHardDifficulty.columns,

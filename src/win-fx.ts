@@ -8,7 +8,6 @@ import {
 
 interface WinFxElements {
   appWindowElement: HTMLElement;
-  boardElement: HTMLElement;
   winFxLayerElement: HTMLElement;
   winFxParticlesElement: HTMLElement;
   winFxTextElement: HTMLElement;
@@ -65,7 +64,7 @@ export class WinFxController {
   private static readonly FIREWORK_SPAWN_INSET_Y = 0.1;
 
   /** Height of firework spawn zone relative to area height. */
-  private static readonly FIREWORK_SPAWN_RANGE_Y = 0.5;
+  private static readonly FIREWORK_SPAWN_RANGE_Y = 0.8;
 
   /** Base spread scale for firework burst particles. */
   private static readonly FIREWORK_BASE_SPREAD_SCALE = 2.7;
@@ -136,8 +135,6 @@ export class WinFxController {
 
   private readonly appWindowElement: HTMLElement;
 
-  private readonly boardElement: HTMLElement;
-
   private readonly winFxLayerElement: HTMLElement;
 
   private readonly winFxParticlesElement: HTMLElement;
@@ -167,7 +164,6 @@ export class WinFxController {
 
   public constructor(elements: WinFxElements) {
     this.appWindowElement = elements.appWindowElement;
-    this.boardElement = elements.boardElement;
     this.winFxLayerElement = elements.winFxLayerElement;
     this.winFxParticlesElement = elements.winFxParticlesElement;
     this.winFxTextElement = elements.winFxTextElement;
@@ -186,7 +182,7 @@ export class WinFxController {
     }
     this.deferredTimeoutIds = [];
 
-    this.winFxParticlesElement.style.clipPath = "";
+    this.winFxParticlesElement.style.removeProperty("clipPath");
     this.winFxTextElement.style.removeProperty("--win-fx-text-duration");
 
     // Remove screen-level effect classes applied during play.
@@ -244,11 +240,9 @@ export class WinFxController {
       : 0;
     const celebrationTextDurationMs = this.scaleDuration(winFx.textDisplayDurationMs);
 
-    // Clip particle canvas to the board area so nothing flies over the topbar or bottombar.
-    const boardRect = this.boardElement.getBoundingClientRect();
-    const clipTop = Math.max(0, boardRect.top - appRect.top);
-    const clipBottom = Math.max(0, appRect.bottom - boardRect.bottom);
-    this.winFxParticlesElement.style.clipPath = `inset(${clipTop}px 0 ${clipBottom}px 0)`;
+    // Bars are opaque with higher z-index (100 vs 90) so no clip path is
+    // needed; particles that animate behind a bar are naturally hidden.
+    this.winFxParticlesElement.style.removeProperty("clipPath");
 
     const nextWinText = textOverride?.trim();
     this.winFxTextElement.textContent = nextWinText !== undefined && nextWinText.length > 0
@@ -318,8 +312,8 @@ export class WinFxController {
     // ── Phase 2 — Center Finale Bouquet ─────────────────────────────
     const centerFinaleStartDelayMs = confettiRainDelayMs + this.scaleDuration(winFx.centerFinaleDelayMs);
     const centerFinaleWaveDelayMs = this.scaleDuration(winFx.centerFinaleWaveDelayMs);
-    const centerX = boardRect.left - appRect.left + (boardRect.width / 2);
-    const centerY = boardRect.top - appRect.top + (boardRect.height / 2);
+    const centerX = appRect.width / 2;
+    const centerY = appRect.height / 2;
 
     for (let waveIndex = 0; waveIndex < winFx.centerFinaleWaves; waveIndex += 1) {
       const waveDelayMs = centerFinaleStartDelayMs
@@ -372,17 +366,16 @@ export class WinFxController {
           return;
         }
         const freshAppRect = this.appWindowElement.getBoundingClientRect();
-        const freshBoardRect = this.boardElement.getBoundingClientRect();
         const allowed = Math.min(fireworkBurstSize, fireworkBudget - fireworkPiecesCreated);
         if (allowed <= 0) {
           return;
         }
 
         this.createWinFxFireworkBurst(
-          freshBoardRect.left - freshAppRect.left,
-          freshBoardRect.top - freshAppRect.top,
-          freshBoardRect.width,
-          freshBoardRect.height,
+          0,
+          0,
+          freshAppRect.width,
+          freshAppRect.height,
           0,
           allowed,
         );
@@ -399,19 +392,16 @@ export class WinFxController {
         if (generation !== this.generation) {
           return;
         }
-        const freshBoardRect = this.boardElement.getBoundingClientRect();
         const freshAppRect = this.appWindowElement.getBoundingClientRect();
-        const bx = freshBoardRect.left - freshAppRect.left;
-        const by = freshBoardRect.top - freshAppRect.top;
         for (let index = 0; index < shimmerBudget; index += 1) {
           if (shimmerPiecesCreated >= shimmerBudget) {
             break;
           }
           this.winFxParticlesElement.append(
             this.createShimmerDustPiece(
-              bx, by,
-              freshBoardRect.width,
-              freshBoardRect.height,
+              0, 0,
+              freshAppRect.width,
+              freshAppRect.height,
             ),
           );
           shimmerPiecesCreated += 1;
@@ -428,19 +418,16 @@ export class WinFxController {
         if (generation !== this.generation) {
           return;
         }
-        const freshBoardRect = this.boardElement.getBoundingClientRect();
         const freshAppRect = this.appWindowElement.getBoundingClientRect();
-        const bx = freshBoardRect.left - freshAppRect.left;
-        const by = freshBoardRect.top - freshAppRect.top;
         for (let index = 0; index < emberBudget; index += 1) {
           if (emberPiecesCreated >= emberBudget) {
             break;
           }
           this.winFxParticlesElement.append(
             this.createRisingEmberPiece(
-              bx, by,
-              freshBoardRect.width,
-              freshBoardRect.height,
+              0, 0,
+              freshAppRect.width,
+              freshAppRect.height,
             ),
           );
           emberPiecesCreated += 1;
@@ -629,7 +616,8 @@ export class WinFxController {
     const verticalUp = (spark ? 520 : 430) * spreadScale;
 
     const dx = (Math.random() - 0.5) * horizontalSpread;
-    const dy = -40 - Math.random() * verticalUp;
+    const dySign = Math.random() < 0.5 ? -1 : 1;
+    const dy = dySign * (40 + Math.random() * verticalUp);
     const rotation = `${Math.floor((Math.random() - 0.5) * 900)}deg`;
     const drift = `${Math.floor((Math.random() - 0.5) * 160)}px`;
     const gravity = `${Math.floor(190 + (Math.random() * 380))}px`;

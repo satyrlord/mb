@@ -61,6 +61,9 @@ import { WindowResizeController } from "./window-resize.js";
 import { SettingsController } from "./settings-controller.js";
 import { DebugController } from "./debug-controller.js";
 const PLAYER_NAME_STORAGE_KEY = "memoryblox-player-name";
+const ORIENTATION_MODE_STORAGE_KEY = "memoryblox-orientation-mode";
+type OrientationMode = "landscape" | "portrait";
+
 interface AppRuntimeState {
   ui: UiRuntimeConfig;
 }
@@ -80,6 +83,13 @@ const runtimeState: AppRuntimeState = {
 /** When true, render() overrides all tile statuses to "revealed" without matching them. */
 let debugFlipAllTiles = false;
 
+const readStoredOrientationMode = (): OrientationMode => {
+  const stored = window.localStorage.getItem(ORIENTATION_MODE_STORAGE_KEY);
+  return stored === "portrait" ? "portrait" : "landscape";
+};
+
+let orientationMode: OrientationMode = readStoredOrientationMode();
+
 interface ActiveGameSession {
   mode: "game" | "debug-tiles";
   difficulty: DifficultyConfig;
@@ -90,6 +100,7 @@ interface ActiveGameSession {
   scoreCategory: "standard" | "debug";
   isAutoDemoScore: boolean;
   usedFlipTiles: boolean;
+  isPortraitMode: boolean;
 }
 
 type AppSession =
@@ -127,6 +138,9 @@ const muteMusicIconOff = requireElement<HTMLElement>("#muteMusicIconOff");
 const muteMusicStateText = requireElement<HTMLElement>("#muteMusicStateText");
 const muteSoundButton = requireElement<HTMLButtonElement>("#muteSoundButton");
 const menuButton = requireElement<HTMLButtonElement>("#menuButton");
+const orientationToggleButton = requireElement<HTMLButtonElement>("#orientationToggleButton");
+const orientationLandscapeIcon = requireElement<HTMLElement>("#orientationLandscapeIcon");
+const orientationPortraitIcon = requireElement<HTMLElement>("#orientationPortraitIcon");
 const menuHighScoresButton = requireElement<HTMLButtonElement>("#menuHighScoresButton");
 const menuSettingsButton = requireElement<HTMLButtonElement>("#menuSettingsButton");
 const leaderboardStatusElement = requireElement<HTMLElement>("#leaderboardStatus");
@@ -220,7 +234,6 @@ let pendingNamePromptCleanup: (() => void) | null = null;
 const emojiPacks = getEmojiPacks();
 const winFxController = new WinFxController({
   appWindowElement,
-  boardElement,
   winFxLayerElement,
   winFxParticlesElement,
   winFxTextElement,
@@ -362,6 +375,7 @@ interface SubmitWinToLeaderboardInput {
   timeMs: number;
   attempts: number;
   usedFlipTiles: boolean;
+  isPortraitMode: boolean;
 }
 
 const submitWinToLeaderboard = async (
@@ -379,6 +393,7 @@ const submitWinToLeaderboard = async (
     timeMs,
     attempts,
     usedFlipTiles,
+    isPortraitMode,
   } = input;
   const leaderboardAvailable = isLeaderboardEnabled();
 
@@ -392,6 +407,7 @@ const submitWinToLeaderboard = async (
       timeMs,
       attempts,
       usedFlipTiles,
+      isPortraitMode,
     }, leaderboardRuntimeConfig.scoring);
     const submittedScore = {
       playerName,
@@ -703,18 +719,48 @@ const resetForNewGame = (): void => {
   debugBoardView.resetBackFaceCache();
 };
 
+/**
+ * Declarative frame-layout configuration.
+ *
+ * Each `show*Frame` function passes one of these to `configureFrame()`
+ * to toggle the shared chrome elements, then does whatever unique
+ * post-setup work it needs (refresh leaderboard, start timer, etc.).
+ */
+interface FrameLayoutConfig {
+  frame: FrameName;
+  topbarLabel: string;
+  menuBottomRepoHidden: boolean;
+  statusMessageHidden: boolean;
+  audioUnlockNoticeHidden: boolean;
+  orientationToggleHidden: boolean;
+  leaderboardBackHidden: boolean;
+}
+
+/** Applies the shared chrome-toggle pattern used by every frame transition. */
+const configureFrame = (cfg: FrameLayoutConfig): void => {
+  debugController.close();
+  setActiveFrame(cfg.frame);
+  topbarMenuLabel.textContent = cfg.topbarLabel;
+  topbarMenuLabel.hidden = false;
+  menuBottomRepo.hidden = cfg.menuBottomRepoHidden;
+  statusMessageElement.hidden = cfg.statusMessageHidden;
+  audioUnlockNoticeElement.hidden = cfg.audioUnlockNoticeHidden;
+  orientationToggleButton.hidden = cfg.orientationToggleHidden;
+  leaderboardBackButton.hidden = cfg.leaderboardBackHidden;
+};
+
 const showLeaderboardFrame = (): void => {
   resetActiveEffects();
   stopHudTimer();
-  debugController.close();
-
-  setActiveFrame("leaderboard");
-  topbarMenuLabel.textContent = "High Scores";
-  topbarMenuLabel.hidden = false;
-  menuBottomRepo.hidden = false;
-  statusMessageElement.hidden = true;
-  audioUnlockNoticeElement.hidden = true;
-  leaderboardBackButton.hidden = false;
+  configureFrame({
+    frame: "leaderboard",
+    topbarLabel: "High Scores",
+    menuBottomRepoHidden: false,
+    statusMessageHidden: true,
+    audioUnlockNoticeHidden: true,
+    orientationToggleHidden: true,
+    leaderboardBackHidden: false,
+  });
   setDifficultySelection("");
   session = { mode: "menu" };
   void refreshLeaderboard().catch(() => {
@@ -742,6 +788,13 @@ const getDefaultDifficulty = (): DifficultyConfig => {
     );
   }
 
+  return difficulty;
+};
+
+const getEffectiveDifficulty = (difficulty: DifficultyConfig): DifficultyConfig => {
+  if (orientationMode === "portrait") {
+    return { ...difficulty, rows: difficulty.columns, columns: difficulty.rows };
+  }
   return difficulty;
 };
 
@@ -800,16 +853,18 @@ const startHudTimer = (): void => {
 };
 
 const showMenuFrame = (): void => {
+  window.scrollTo(0, 0);
   resetActiveEffects();
   stopHudTimer();
-  debugController.close();
-
-  setActiveFrame("menu");
-  topbarMenuLabel.textContent = "Select a difficulty";
-  topbarMenuLabel.hidden = false;
-  menuBottomRepo.hidden = false;
-  statusMessageElement.hidden = true;
-  leaderboardBackButton.hidden = true;
+  configureFrame({
+    frame: "menu",
+    topbarLabel: "Select a difficulty",
+    menuBottomRepoHidden: false,
+    statusMessageHidden: true,
+    audioUnlockNoticeHidden: false,
+    orientationToggleHidden: false,
+    leaderboardBackHidden: true,
+  });
   uiView.setStatus("Select difficulty.");
   setDifficultySelection("");
   session = { mode: "menu" };
@@ -846,42 +901,42 @@ const initializeMenuMusicAutoplayRecovery = (): void => {
 
 const showGameFrame = (): void => {
   startHudTimer();
-  debugController.close();
-
-  setActiveFrame("game");
-  topbarMenuLabel.textContent = "MEMORYBLOX";
-  topbarMenuLabel.hidden = false;
-  menuBottomRepo.hidden = true;
-  statusMessageElement.hidden = false;
-  audioUnlockNoticeElement.hidden = true;
-  leaderboardBackButton.hidden = true;
+  configureFrame({
+    frame: "game",
+    topbarLabel: "MEMORYBLOX",
+    menuBottomRepoHidden: true,
+    statusMessageHidden: false,
+    audioUnlockNoticeHidden: true,
+    orientationToggleHidden: true,
+    leaderboardBackHidden: true,
+  });
 };
 
 const showDebugTilesFrame = (): void => {
   startHudTimer();
-  debugController.close();
-
-  setActiveFrame("debugTiles");
-  topbarMenuLabel.textContent = "Debug: Tiles";
-  topbarMenuLabel.hidden = false;
-  menuBottomRepo.hidden = true;
-  statusMessageElement.hidden = false;
-  audioUnlockNoticeElement.hidden = true;
-  leaderboardBackButton.hidden = true;
+  configureFrame({
+    frame: "debugTiles",
+    topbarLabel: "Debug: Tiles",
+    menuBottomRepoHidden: true,
+    statusMessageHidden: false,
+    audioUnlockNoticeHidden: true,
+    orientationToggleHidden: true,
+    leaderboardBackHidden: true,
+  });
 };
 
 const showSettingsFrame = (): void => {
   resetActiveEffects();
   stopHudTimer();
-  debugController.close();
-
-  setActiveFrame("settings");
-  topbarMenuLabel.textContent = "Settings";
-  topbarMenuLabel.hidden = false;
-  menuBottomRepo.hidden = false;
-  statusMessageElement.hidden = true;
-  audioUnlockNoticeElement.hidden = true;
-  leaderboardBackButton.hidden = true;
+  configureFrame({
+    frame: "settings",
+    topbarLabel: "Settings",
+    menuBottomRepoHidden: false,
+    statusMessageHidden: true,
+    audioUnlockNoticeHidden: true,
+    orientationToggleHidden: true,
+    leaderboardBackHidden: true,
+  });
   uiView.setStatus("Select an icon pack.");
   setDifficultySelection("");
   session = { mode: "menu" };
@@ -893,9 +948,26 @@ const getDifficultyStatusMessage = (difficulty: DifficultyConfig): string => {
   return `Difficulty: ${difficulty.label}. Find all matching pairs.`;
 };
 
+/**
+ * Computes the ideal tile pixel size so the board fills the available
+ * frame area regardless of difficulty or orientation mode.
+ */
+const computeIdealTileSize = (
+  layout: import("./board.js").BoardLayoutConfig,
+  columns: number,
+  rows: number,
+  frameWidth: number,
+  frameHeight: number,
+): number => {
+  const tileFromWidth = (frameWidth - layout.boardChromePx - (columns - 1) * layout.tileGapPx) / columns;
+  const tileFromHeight = (frameHeight - layout.boardMarginTopPx - layout.boardChromePx - (rows - 1) * layout.tileGapPx) / rows;
+  return Math.max(layout.minTileSizePx, Math.floor(Math.min(tileFromWidth, tileFromHeight)));
+};
+
 const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
   resetForNewGame();
   const packId = settingsController.getSelectedEmojiPackId();
+  const effectiveDifficulty = getEffectiveDifficulty(difficulty);
   session = {
     mode: "game",
     difficulty,
@@ -905,13 +977,25 @@ const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
     scoreCategory: "standard",
     isAutoDemoScore: false,
     usedFlipTiles: false,
+    isPortraitMode: orientationMode === "portrait",
     gameplay: createGameplayEngine({
-      rows: difficulty.rows,
-      columns: difficulty.columns,
-      deck: createDeckForDifficulty(difficulty),
+      rows: effectiveDifficulty.rows,
+      columns: effectiveDifficulty.columns,
+      deck: createDeckForDifficulty(effectiveDifficulty),
     }),
   };
   showGameFrame();
+
+  const layout = runtimeState.ui.boardLayout;
+  const tileSizePx = computeIdealTileSize(
+    layout,
+    effectiveDifficulty.columns,
+    effectiveDifficulty.rows,
+    gameFrame.clientWidth,
+    gameFrame.clientHeight,
+  );
+  boardView.setLayoutConfig({ ...layout, targetTileSizePx: tileSizePx });
+
   setDifficultySelection(difficulty.id);
   uiView.setStatus(getDifficultyStatusMessage(difficulty));
   render();
@@ -1040,6 +1124,7 @@ const handleTileSelect = (
           timeMs: elapsedTimeMs,
           attempts,
           usedFlipTiles: session.usedFlipTiles,
+          isPortraitMode: session.isPortraitMode,
         }, leaderboardRuntimeConfig.scoring);
 
         uiView.setStatus("You win!");
@@ -1055,6 +1140,7 @@ const handleTileSelect = (
           timeMs: elapsedTimeMs,
           attempts,
           usedFlipTiles: session.usedFlipTiles,
+          isPortraitMode: session.isPortraitMode,
         });
         playWinSequenceWithText(
           `Congratulations ${playerName}!\nYour score was ${scoreResult.scoreValue.toLocaleString()}`,
@@ -1111,6 +1197,21 @@ const uiView = new UiView(
 const boardView = new BoardView(boardElement, handleTileSelect);
 const debugBoardView = new BoardView(debugTilesBoardElement, handleTileSelect);
 
+const updateOrientationToggleButton = (): void => {
+  const isPortrait = orientationMode === "portrait";
+  const label = isPortrait ? "Switch to landscape mode" : "Switch to portrait mode";
+  orientationToggleButton.setAttribute("aria-label", label);
+  orientationToggleButton.setAttribute("title", label);
+  orientationLandscapeIcon.hidden = isPortrait;
+  orientationPortraitIcon.hidden = !isPortrait;
+};
+
+const applyOrientationBoardLayout = (): void => {
+  appShellElement.dataset.orientation = orientationMode;
+  boardView.setLayoutConfig(runtimeState.ui.boardLayout);
+  debugBoardView.setLayoutConfig(runtimeState.ui.boardLayout);
+};
+
 const loadRuntimeConfig = async (): Promise<void> => {
   const [uiConfig, winFxConfig, leaderboardConfig] = await Promise.all([
     loadUiRuntimeConfig(),
@@ -1128,70 +1229,28 @@ const loadRuntimeConfig = async (): Promise<void> => {
     animationSpeed: { ...uiConfig.animationSpeed },
   };
 
-  document.documentElement.style.setProperty(
-    "--animation-speed-default",
-    runtimeState.ui.animationSpeed.defaultSpeed.toString(),
-  );
-  document.documentElement.style.setProperty(
-    "--tile-global-opacity",
-    runtimeState.ui.tileGlobalOpacity.toString(),
-  );
-  document.documentElement.style.setProperty(
-    "--tile-front-opacity",
-    runtimeState.ui.tileFrontOpacity.toString(),
-  );
-  document.documentElement.style.setProperty(
-    "--tile-back-opacity",
-    runtimeState.ui.tileBackOpacity.toString(),
-  );
-  document.documentElement.style.setProperty(
-    "--app-max-width-px",
-    runtimeState.ui.appMaxWidthPx.toString(),
-  );
-  document.documentElement.style.setProperty(
-    "--tile-flip-duration-ms",
-    `${runtimeState.ui.visualEffects.tileFlipDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--tile-match-disappear-duration-ms",
-    `${runtimeState.ui.gameplayTiming.matchedDisappearDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--tile-match-disappear-reduced-duration-ms",
-    `${runtimeState.ui.gameplayTiming.reducedMotionMatchedDisappearDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-bg-drift-duration-ms",
-    `${runtimeState.ui.visualEffects.plasmaBackgroundDriftDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-hue-cycle-duration-ms",
-    `${runtimeState.ui.visualEffects.plasmaHueCycleDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-tile-drift-duration-ms",
-    `${runtimeState.ui.visualEffects.plasmaTileDriftDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-glow-sweep-duration-ms",
-    `${runtimeState.ui.visualEffects.plasmaGlowSweepDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-flares-shift-duration-ms",
-    `${runtimeState.ui.visualEffects.plasmaFlaresShiftDurationMs}ms`,
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-glow-opacity",
-    runtimeState.ui.visualEffects.plasmaGlowOpacity.toString(),
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-flares-opacity",
-    runtimeState.ui.visualEffects.plasmaFlaresOpacity.toString(),
-  );
-  document.documentElement.style.setProperty(
-    "--plasma-tile-index-offset-delay-ms",
-    `${runtimeState.ui.visualEffects.plasmaTileIndexOffsetDelayMs}ms`,
-  );
+  const cssVars: Array<[string, string]> = [
+    ["--animation-speed-default", runtimeState.ui.animationSpeed.defaultSpeed.toString()],
+    ["--tile-global-opacity", runtimeState.ui.tileGlobalOpacity.toString()],
+    ["--tile-front-opacity", runtimeState.ui.tileFrontOpacity.toString()],
+    ["--tile-back-opacity", runtimeState.ui.tileBackOpacity.toString()],
+    ["--app-max-width-px", runtimeState.ui.appMaxWidthPx.toString()],
+    ["--tile-flip-duration-ms", `${runtimeState.ui.visualEffects.tileFlipDurationMs}ms`],
+    ["--tile-match-disappear-duration-ms", `${runtimeState.ui.gameplayTiming.matchedDisappearDurationMs}ms`],
+    ["--tile-match-disappear-reduced-duration-ms", `${runtimeState.ui.gameplayTiming.reducedMotionMatchedDisappearDurationMs}ms`],
+    ["--plasma-bg-drift-duration-ms", `${runtimeState.ui.visualEffects.plasmaBackgroundDriftDurationMs}ms`],
+    ["--plasma-hue-cycle-duration-ms", `${runtimeState.ui.visualEffects.plasmaHueCycleDurationMs}ms`],
+    ["--plasma-tile-drift-duration-ms", `${runtimeState.ui.visualEffects.plasmaTileDriftDurationMs}ms`],
+    ["--plasma-glow-sweep-duration-ms", `${runtimeState.ui.visualEffects.plasmaGlowSweepDurationMs}ms`],
+    ["--plasma-flares-shift-duration-ms", `${runtimeState.ui.visualEffects.plasmaFlaresShiftDurationMs}ms`],
+    ["--plasma-glow-opacity", runtimeState.ui.visualEffects.plasmaGlowOpacity.toString()],
+    ["--plasma-flares-opacity", runtimeState.ui.visualEffects.plasmaFlaresOpacity.toString()],
+    ["--plasma-tile-index-offset-delay-ms", `${runtimeState.ui.visualEffects.plasmaTileIndexOffsetDelayMs}ms`],
+  ];
+
+  for (const [property, value] of cssVars) {
+    document.documentElement.style.setProperty(property, value);
+  }
 
   winFxController.setAnimationSpeedBounds(
     runtimeState.ui.animationSpeed.minSpeed,
@@ -1363,17 +1422,40 @@ leaderboardBackButton.addEventListener("click", () => {
 });
 
 
+const getOrientationAwareResizeConfig = (): {
+  fixedWindowAspectRatio: number;
+  windowBaseSize: { minWidthPx: number; minHeightPx: number };
+  windowResizeLimits: typeof runtimeState.ui.windowResizeLimits;
+} => {
+  const isPortrait = orientationMode === "portrait";
+  const baseAspect = runtimeState.ui.fixedWindowAspectRatio;
+  return {
+    fixedWindowAspectRatio: isPortrait ? 1 / baseAspect : baseAspect,
+    windowBaseSize: isPortrait
+      ? {
+        minWidthPx: runtimeState.ui.windowBaseSize.minHeightPx,
+        minHeightPx: runtimeState.ui.windowBaseSize.minWidthPx,
+      }
+      : runtimeState.ui.windowBaseSize,
+    windowResizeLimits: runtimeState.ui.windowResizeLimits,
+  };
+};
+
 const windowResizeController = new WindowResizeController(
   appShellElement,
   appWindowElement,
   resizeHandleElement,
-  () => ({
-    fixedWindowAspectRatio: runtimeState.ui.fixedWindowAspectRatio,
-    windowBaseSize: runtimeState.ui.windowBaseSize,
-    windowResizeLimits: runtimeState.ui.windowResizeLimits,
-  }),
+  getOrientationAwareResizeConfig,
 );
 windowResizeController.attach();
+
+orientationToggleButton.addEventListener("click", () => {
+  orientationMode = orientationMode === "landscape" ? "portrait" : "landscape";
+  window.localStorage.setItem(ORIENTATION_MODE_STORAGE_KEY, orientationMode);
+  updateOrientationToggleButton();
+  applyOrientationBoardLayout();
+  windowResizeController.reinitialize();
+});
 
 enableHorizontalWheelScroll(topbarActionsElement);
 enableSliderWheelScroll(settingsTileMultiplierInput);
@@ -1384,6 +1466,7 @@ const bootstrap = async (): Promise<void> => {
   validateMinPackIconCount();
   await soundManager.initialize();
   await loadRuntimeConfig();
+  applyOrientationBoardLayout();
   void checkPlasmaTextureAvailability();
   enforceEmojiPackParity();
   settingsController.initialize();
@@ -1391,6 +1474,7 @@ const bootstrap = async (): Promise<void> => {
   initializeMuteButtonStates();
   initializeMenuMusicAutoplayRecovery();
   await initializeDropShadow();
+  updateOrientationToggleButton();
   showMenuFrame();
   render();
 

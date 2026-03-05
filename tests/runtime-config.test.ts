@@ -122,6 +122,8 @@ describe("runtime config loaders", () => {
         "board.targetTileSizePx=90",
         "board.tileGapPx=12",
         "board.boardHorizontalPaddingPx=20",
+        "board.boardChromePx=30",
+        "board.boardMarginTopPx=15",
         "window.baseMinWidthPx=900",
         "window.baseMinHeightPx=600",
         "window.defaultScale=1.2",
@@ -169,6 +171,8 @@ describe("runtime config loaders", () => {
       targetTileSizePx: 90,
       tileGapPx: 12,
       boardHorizontalPaddingPx: 20,
+      boardChromePx: 30,
+      boardMarginTopPx: 15,
     });
     expect(loaded.windowBaseSize).toEqual({ minWidthPx: 900, minHeightPx: 600 });
     expect(loaded.windowResizeLimits).toEqual({
@@ -293,6 +297,20 @@ describe("runtime config loaders", () => {
 
     expect(loaded.tileFrontOpacity).toBe(0);
     expect(loaded.tileBackOpacity).toBe(1);
+  });
+
+  test("loadUiRuntimeConfig clamps negative boardChromePx and boardMarginTopPx to zero", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "board.boardChromePx=-5",
+        "board.boardMarginTopPx=-10",
+      ].join("\n")),
+    );
+
+    const loaded = await loadUiRuntimeConfig();
+
+    expect(loaded.boardLayout.boardChromePx).toBe(0);
+    expect(loaded.boardLayout.boardMarginTopPx).toBe(0);
   });
 
   test("loadUiRuntimeConfig clamps plasma opacity keys into 0..1", async () => {

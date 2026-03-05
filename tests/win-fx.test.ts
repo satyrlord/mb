@@ -37,7 +37,6 @@ const createController = (): {
 
   const controller = new WinFxController({
     appWindowElement: app,
-    boardElement: board,
     winFxLayerElement: layer,
     winFxParticlesElement: particles,
     winFxTextElement: text,

@@ -15,6 +15,8 @@ export interface BoardLayoutConfig {
   targetTileSizePx: number;
   tileGapPx: number;
   boardHorizontalPaddingPx: number;
+  boardChromePx: number;
+  boardMarginTopPx: number;
 }
 
 export const DEFAULT_BOARD_LAYOUT_CONFIG: BoardLayoutConfig = {
@@ -22,6 +24,8 @@ export const DEFAULT_BOARD_LAYOUT_CONFIG: BoardLayoutConfig = {
   targetTileSizePx: 84,
   tileGapPx: 10,
   boardHorizontalPaddingPx: 16,
+  boardChromePx: 20,
+  boardMarginTopPx: 11,
 };
 
 /**
@@ -319,6 +323,8 @@ export class BoardView {
       targetTileSizePx: Math.max(1, Math.round(layoutConfig.targetTileSizePx)),
       tileGapPx: Math.max(0, Math.round(layoutConfig.tileGapPx)),
       boardHorizontalPaddingPx: Math.max(0, Math.round(layoutConfig.boardHorizontalPaddingPx)),
+      boardChromePx: Math.max(0, Math.round(layoutConfig.boardChromePx)),
+      boardMarginTopPx: Math.max(0, Math.round(layoutConfig.boardMarginTopPx)),
     };
   }
 

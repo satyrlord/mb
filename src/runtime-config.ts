@@ -110,6 +110,8 @@ export const DEFAULT_UI_RUNTIME_CONFIG: UiRuntimeConfig = {
     targetTileSizePx: 84,
     tileGapPx: 10,
     boardHorizontalPaddingPx: 16,
+    boardChromePx: 20,
+    boardMarginTopPx: 11,
   },
   gameplayTiming: {
     mismatchDelayMs: 700,
@@ -300,6 +302,8 @@ export const loadUiRuntimeConfig = async (): Promise<UiRuntimeConfig> => {
       targetTileSizePx: Math.max(1, cfg.integer("board.targetTileSizePx", defaultBoardLayout.targetTileSizePx)),
       tileGapPx: Math.max(0, cfg.integer("board.tileGapPx", defaultBoardLayout.tileGapPx)),
       boardHorizontalPaddingPx: Math.max(0, cfg.integer("board.boardHorizontalPaddingPx", defaultBoardLayout.boardHorizontalPaddingPx)),
+      boardChromePx: Math.max(0, cfg.integer("board.boardChromePx", defaultBoardLayout.boardChromePx)),
+      boardMarginTopPx: Math.max(0, cfg.integer("board.boardMarginTopPx", defaultBoardLayout.boardMarginTopPx)),
     },
     gameplayTiming: {
       mismatchDelayMs: Math.max(1, cfg.integer("gameplay.mismatchDelayMs", defaultGameplayTiming.mismatchDelayMs)),
