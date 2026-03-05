@@ -46,6 +46,53 @@ export class WinFxController {
     "★",
   ] as const;
 
+  private static readonly TITLE_FADE_OUT_MS = 4992;
+
+  private static readonly FIREWORK_BURST_COUNT = 7;
+
+  private static readonly FIREWORK_BURST_INTERVAL_MS = 180;
+
+  private static readonly FIREWORK_SPARKS_PER_BURST = 24;
+
+  private static readonly FIREWORK_CORE_PER_BURST = 6;
+
+  /** Duration of the CSS `win-fx-firework-burst` animation (must match styles.winfx.css). */
+  private static readonly FIREWORK_CSS_ANIMATION_MS = 1660;
+
+  /** Time window after the title fades out during which post-fade bursts are spread. */
+  private static readonly POST_TITLE_FIREWORK_WINDOW_MS = 1200;
+
+  private static readonly POST_TITLE_FIREWORK_BURSTS = 5;
+
+  // ── Firework spawn-area tuning ──────────────────────────────────────
+
+  /** Inset from area edges for firework spawn X position (fraction of area width). */
+  private static readonly FIREWORK_SPAWN_INSET_X = 0.1;
+
+  /** Width of firework spawn zone relative to area width. */
+  private static readonly FIREWORK_SPAWN_RANGE_X = 0.8;
+
+  /** Inset from area top for firework spawn Y position (fraction of area height). */
+  private static readonly FIREWORK_SPAWN_INSET_Y = 0.1;
+
+  /** Height of firework spawn zone relative to area height. */
+  private static readonly FIREWORK_SPAWN_RANGE_Y = 0.5;
+
+  /** Base spread scale for firework burst particles. */
+  private static readonly FIREWORK_BASE_SPREAD_SCALE = 2.7;
+
+  /** Random spread scale jitter added to the base firework spread. */
+  private static readonly FIREWORK_SPREAD_JITTER = 0.8;
+
+  /** Random delay jitter (ms) for individual firework spark particles. */
+  private static readonly FIREWORK_SPARK_DELAY_JITTER_MS = 120;
+
+  /** Random delay jitter (ms) for individual firework core particles. */
+  private static readonly FIREWORK_CORE_DELAY_JITTER_MS = 80;
+
+  /** Spread scale multiplier for core particles relative to outer sparks. */
+  private static readonly FIREWORK_CORE_SPREAD_FACTOR = 0.88;
+
   private readonly appWindowElement: HTMLElement;
 
   private readonly boardElement: HTMLElement;
@@ -59,6 +106,8 @@ export class WinFxController {
   private generation = 0;
 
   private cleanupTimeoutId: number | null = null;
+
+  private postFadeTimeoutIds: number[] = [];
 
   private animationSpeed = 1;
 
@@ -91,6 +140,13 @@ export class WinFxController {
       this.cleanupTimeoutId = null;
     }
 
+    for (const id of this.postFadeTimeoutIds) {
+      window.clearTimeout(id);
+    }
+    this.postFadeTimeoutIds = [];
+
+    this.winFxParticlesElement.style.clipPath = "";
+
     this.appWindowElement.classList.remove("win-fx-active");
     this.winFxLayerElement.hidden = true;
     this.winFxParticlesElement.replaceChildren();
@@ -120,7 +176,11 @@ export class WinFxController {
     };
   }
 
-  public play(onFinished?: () => void, textOverride?: string): void {
+  public play(
+    onFinished?: () => void,
+    textOverride?: string,
+    durationOverrideMs?: number,
+  ): void {
     this.clear();
 
     const winFx = this.runtimeConfig.options;
@@ -134,6 +194,12 @@ export class WinFxController {
       this.boardElement.querySelectorAll<HTMLButtonElement>(".tile"),
     );
     const tileStep = Math.max(1, Math.ceil(tileButtons.length / winFx.maxTilePieces));
+
+    // Clip particle canvas to the board area so nothing flies over the topbar or bottombar.
+    const boardRect = this.boardElement.getBoundingClientRect();
+    const clipTop = Math.max(0, boardRect.top - appRect.top);
+    const clipBottom = Math.max(0, appRect.bottom - boardRect.bottom);
+    this.winFxParticlesElement.style.clipPath = `inset(${clipTop}px 0 ${clipBottom}px 0)`;
 
     const nextWinText = textOverride?.trim();
     this.winFxTextElement.textContent = nextWinText !== undefined && nextWinText.length > 0
@@ -175,7 +241,6 @@ export class WinFxController {
       }
     }
 
-    const boardRect = this.boardElement.getBoundingClientRect();
     const centerX = boardRect.left - appRect.left + (boardRect.width / 2);
     const centerY = boardRect.top - appRect.top + (boardRect.height / 2);
 
@@ -212,6 +277,90 @@ export class WinFxController {
       );
     }
 
+    const hasExplicitDurationOverride = typeof durationOverrideMs === "number"
+      && Number.isFinite(durationOverrideMs)
+      && durationOverrideMs > 0;
+
+    const baseCleanupDurationMs = hasExplicitDurationOverride
+      ? Math.round(durationOverrideMs)
+      : this.scaleDuration(winFx.durationMs);
+
+    const titleFadeOutDelayMs = this.scaleDuration(WinFxController.TITLE_FADE_OUT_MS);
+    const fireworkCssAnimMs = this.scaleDuration(WinFxController.FIREWORK_CSS_ANIMATION_MS);
+
+    // --- Pre-baked firework bursts (CSS animation-delay based) ---
+    // These fire during the main animation while particles, text and confetti are visible.
+    // End them slightly before the title fades out so there is a brief visual gap
+    // before the dedicated post-fade finale begins.
+    const scaledBurstIntervalMs = this.scaleDuration(WinFxController.FIREWORK_BURST_INTERVAL_MS);
+    const baseBurstCount = WinFxController.FIREWORK_BURST_COUNT;
+    const fireworksStartDelayMs = hasExplicitDurationOverride
+      ? this.scaleDuration(240)
+      : Math.min(titleFadeOutDelayMs, this.scaleDuration(920));
+    const fireworksEndDelayMs = hasExplicitDurationOverride
+      ? Math.max(fireworksStartDelayMs, baseCleanupDurationMs - this.scaleDuration(320))
+      : Math.max(fireworksStartDelayMs, titleFadeOutDelayMs - this.scaleDuration(500));
+    const preBakedWindow = fireworksEndDelayMs - fireworksStartDelayMs;
+    const dynamicBurstCount = Math.max(
+      baseBurstCount,
+      preBakedWindow > 0 ? Math.floor(preBakedWindow / scaledBurstIntervalMs) : baseBurstCount,
+    );
+
+    // Board-relative bounds for firework spawn (offset from app top-left).
+    const boardAreaLeft = boardRect.left - appRect.left;
+    const boardAreaTop = boardRect.top - appRect.top;
+    const boardAreaWidth = boardRect.width;
+    const boardAreaHeight = boardRect.height;
+
+    for (let burstIndex = 0; burstIndex < dynamicBurstCount; burstIndex += 1) {
+      const progress = dynamicBurstCount <= 1
+        ? 0
+        : (burstIndex / (dynamicBurstCount - 1));
+      const burstDelayMs = Math.round(
+        fireworksStartDelayMs + ((fireworksEndDelayMs - fireworksStartDelayMs) * progress),
+      );
+      this.createWinFxFireworkBurst(
+        boardAreaLeft, boardAreaTop, boardAreaWidth, boardAreaHeight, burstDelayMs,
+      );
+    }
+
+    // --- Post-fade firework bursts (setTimeout-based) ---
+    // These fire AFTER the title text has fully faded out (TITLE_FADE_OUT_MS),
+    // delivering a dedicated fireworks-only finale the player can focus on.
+    const postFadeStartMs = titleFadeOutDelayMs;
+    const postFadeWindowMs = this.scaleDuration(WinFxController.POST_TITLE_FIREWORK_WINDOW_MS);
+    const postFadeCount = WinFxController.POST_TITLE_FIREWORK_BURSTS;
+    const postFadeSpacingMs = postFadeCount <= 1
+      ? 0
+      : Math.round(postFadeWindowMs / (postFadeCount - 1));
+    const lastPostFadeBurstMs = postFadeStartMs + ((postFadeCount - 1) * postFadeSpacingMs);
+
+    for (let burstIndex = 0; burstIndex < postFadeCount; burstIndex += 1) {
+      const scheduledDelayMs = postFadeStartMs + (burstIndex * postFadeSpacingMs);
+      const timeoutId = window.setTimeout(() => {
+        if (generation !== this.generation) {
+          return;
+        }
+        const freshAppRect = this.appWindowElement.getBoundingClientRect();
+        const freshBoardRect = this.boardElement.getBoundingClientRect();
+        this.createWinFxFireworkBurst(
+          freshBoardRect.left - freshAppRect.left,
+          freshBoardRect.top - freshAppRect.top,
+          freshBoardRect.width,
+          freshBoardRect.height,
+          0,
+        );
+      }, scheduledDelayMs);
+      this.postFadeTimeoutIds.push(timeoutId);
+    }
+
+    // --- Cleanup ---
+    // Must wait until the last post-fade burst's CSS animation has fully played out.
+    // Without this, replaceChildren() would remove firework particles mid-animation.
+    const minCleanupForPostFade = lastPostFadeBurstMs + fireworkCssAnimMs
+      + this.scaleDuration(200);
+    const cleanupDurationMs = Math.max(baseCleanupDurationMs, minCleanupForPostFade);
+
     this.cleanupTimeoutId = window.setTimeout(() => {
       if (generation !== this.generation) {
         return;
@@ -222,7 +371,7 @@ export class WinFxController {
       this.winFxParticlesElement.replaceChildren();
       this.cleanupTimeoutId = null;
       onFinished?.();
-    }, this.scaleDuration(winFx.durationMs));
+    }, cleanupDurationMs);
   }
 
   /**
@@ -259,9 +408,18 @@ export class WinFxController {
     spark: boolean,
     waveDelayMs: number,
     spreadScale: number,
+    additionalClassName = "",
   ): HTMLElement {
     const element = document.createElement("span");
     element.className = spark ? "win-fx-piece win-fx-spark" : "win-fx-piece";
+
+    if (additionalClassName.length > 0) {
+      for (const className of additionalClassName.split(/\s+/u)) {
+        if (className.length > 0) {
+          element.classList.add(className);
+        }
+      }
+    }
 
     const shapeClass = this.pickShapeClass();
     element.classList.add(`win-fx-${shapeClass}`);
@@ -312,6 +470,44 @@ export class WinFxController {
     element.style.setProperty("--piece-delay", `${pieceDelayMs}ms`);
 
     return element;
+  }
+
+  private createWinFxFireworkBurst(
+    areaX: number,
+    areaY: number,
+    areaWidth: number,
+    areaHeight: number,
+    burstDelayMs: number,
+  ): void {
+    const x = areaX + (areaWidth * WinFxController.FIREWORK_SPAWN_INSET_X) + (Math.random() * areaWidth * WinFxController.FIREWORK_SPAWN_RANGE_X);
+    const y = areaY + (areaHeight * WinFxController.FIREWORK_SPAWN_INSET_Y) + (Math.random() * areaHeight * WinFxController.FIREWORK_SPAWN_RANGE_Y);
+    const spreadScale = WinFxController.FIREWORK_BASE_SPREAD_SCALE + (Math.random() * WinFxController.FIREWORK_SPREAD_JITTER);
+
+    for (let sparkIndex = 0; sparkIndex < WinFxController.FIREWORK_SPARKS_PER_BURST; sparkIndex += 1) {
+      const piece = this.createWinFxPiece(
+        x,
+        y,
+        "",
+        true,
+        burstDelayMs + Math.floor(Math.random() * WinFxController.FIREWORK_SPARK_DELAY_JITTER_MS),
+        spreadScale,
+        "win-fx-firework",
+      );
+      this.winFxParticlesElement.append(piece);
+    }
+
+    for (let coreIndex = 0; coreIndex < WinFxController.FIREWORK_CORE_PER_BURST; coreIndex += 1) {
+      const piece = this.createWinFxPiece(
+        x,
+        y,
+        this.pickRandomSymbol(["✶", "✹", "★"], "✶"),
+        false,
+        burstDelayMs + Math.floor(Math.random() * WinFxController.FIREWORK_CORE_DELAY_JITTER_MS),
+        spreadScale * WinFxController.FIREWORK_CORE_SPREAD_FACTOR,
+        "win-fx-firework win-fx-firework-core",
+      );
+      this.winFxParticlesElement.append(piece);
+    }
   }
 
   private createWinFxRainPiece(

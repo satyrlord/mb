@@ -1,0 +1,66 @@
+{
+  "catalogPath": "icon/icon-pack-catalog.json",
+  "outputPath": "artifacts/generated-icon-packs.json",
+  "outputAttributionCsvPath": "artifacts/generated-icon-attribution.csv",
+  "outputAssetRegistryPath": "artifacts/generated-icon-assets.json",
+  "iconsPerPack": 50,
+  "emojiRatio": 0.6,
+  "svgRatio": 0.4,
+  "autoDownloadSvg": true,
+  "sources": [
+    {
+      "id": "openmoji",
+      "priority": 1,
+      "metadataUrl": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/15.1.0/data/openmoji.json",
+      "svgBaseUrl": "https://cdn.jsdelivr.net/npm/openmoji@15.1.0/color/svg",
+      "outputSvgDir": "icon/openmoji/svg",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "author": "OpenMoji contributors"
+    },
+    {
+      "id": "openmoji-black",
+      "priority": 2,
+      "metadataUrl": "https://raw.githubusercontent.com/hfg-gmuend/openmoji/15.1.0/data/openmoji.json",
+      "svgBaseUrl": "https://cdn.jsdelivr.net/npm/openmoji@15.1.0/black/svg",
+      "outputSvgDir": "icon/openmoji-black/svg",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "author": "OpenMoji contributors"
+    }
+  ],
+  "packs": [
+    {
+      "id": "space-astronomy",
+      "keywords": ["space", "rocket", "planet", "satellite", "astronaut", "galaxy", "stars"]
+    },
+    {
+      "id": "plants-nature",
+      "keywords": ["plant", "leaf", "tree", "flower", "animal", "nature", "water"]
+    },
+    {
+      "id": "food-drinks",
+      "keywords": ["food", "drink", "meal", "fruit", "vegetable", "snack"]
+    },
+    {
+      "id": "technology",
+      "keywords": ["tech", "tool", "robot", "device", "computer", "transport"]
+    },
+    {
+      "id": "world-flags",
+      "keywords": ["flag", "country", "world", "globe", "map"]
+    },
+    {
+      "id": "medieval-fantasy",
+      "keywords": ["castle", "sword", "dragon", "shield", "magic", "fantasy", "map"]
+    },
+    {
+      "id": "music-performance",
+      "keywords": ["music", "instrument", "performance", "arts", "craft", "theater"]
+    },
+    {
+      "id": "religious-symbols",
+      "keywords": ["religion", "symbol", "temple", "worship", "spiritual", "church"]
+    }
+  ]
+}

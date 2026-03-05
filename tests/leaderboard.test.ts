@@ -4,12 +4,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
   applyLeaderboardScorePenalty,
+  computeGameScoreResult,
   DEFAULT_LEADERBOARD_RUNTIME_CONFIG,
   getDifficultyScoreMultiplier,
   LeaderboardClient,
   leaderboardTesting,
   loadLeaderboardRuntimeConfig,
 } from "../src/leaderboard.ts";
+import type { LeaderboardScoreEntry } from "../src/leaderboard.ts";
 import { createMockTextResponse } from "./test-helpers.ts";
 
 beforeEach(() => {
@@ -549,6 +551,7 @@ describe("leaderboard client (localStorage)", () => {
       emojiSetId: "space",
       emojiSetLabel: "Space",
       scoreMultiplier: 1.0,
+      scoreValue: 1200,
     };
 
     const submission2 = {
@@ -560,6 +563,7 @@ describe("leaderboard client (localStorage)", () => {
       emojiSetId: "space",
       emojiSetLabel: "Space",
       scoreMultiplier: 1.0,
+      scoreValue: 1300,
     };
 
     await client.submitScore(submission1);
@@ -631,5 +635,155 @@ describe("leaderboard client (localStorage)", () => {
     const result = await client.fetchTopScores();
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("computeGameScoreResult", () => {
+  const scoringConfig = DEFAULT_LEADERBOARD_RUNTIME_CONFIG.scoring;
+  const baseDifficulty = { id: "easy", label: "Easy", scoreMultiplier: 1.2 };
+
+  test("returns a standard score for a normal game", () => {
+    const result = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    expect(result.difficultyId).toBe("easy");
+    expect(result.difficultyLabel).toBe("Easy");
+    expect(result.scoreMultiplier).toBe(1.2);
+    expect(result.scoreValue).toBeGreaterThan(0);
+  });
+
+  test("applies debug penalty when scoreCategory is debug", () => {
+    const standard = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    const debug = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "debug",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    expect(debug.difficultyId).toBe("debug");
+    expect(debug.difficultyLabel).toBe("Debug");
+    expect(debug.scoreValue).toBeLessThan(standard.scoreValue);
+  });
+
+  test("applies auto-demo penalty", () => {
+    const standard = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    const autoDemo = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: true,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    expect(autoDemo.scoreValue).toBeLessThan(standard.scoreValue);
+  });
+
+  test("applies tile multiplier penalty", () => {
+    const mult1 = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    const mult2 = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 2,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    expect(mult2.scoreMultiplier).toBeLessThan(mult1.scoreMultiplier);
+  });
+
+  test("returns 0 score when usedFlipTiles is true", () => {
+    const result = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+      usedFlipTiles: true,
+    }, scoringConfig);
+
+    expect(result.scoreValue).toBe(0);
+  });
+
+  test("applies debug-tiles mode reduction", () => {
+    const debugGame = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "game",
+      scoreCategory: "debug",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    const debugTiles = computeGameScoreResult({
+      difficulty: baseDifficulty,
+      sessionMode: "debug-tiles",
+      scoreCategory: "debug",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    expect(debugTiles.scoreValue).toBeLessThanOrEqual(debugGame.scoreValue);
+  });
+
+  test("uses 1 as base score multiplier when difficulty has 0", () => {
+    const zeroDifficulty = { id: "zero", label: "Zero", scoreMultiplier: 0 };
+    const result = computeGameScoreResult({
+      difficulty: zeroDifficulty,
+      sessionMode: "game",
+      scoreCategory: "standard",
+      isAutoDemoScore: false,
+      tileMultiplier: 1,
+      timeMs: 30_000,
+      attempts: 20,
+    }, scoringConfig);
+
+    expect(result.scoreValue).toBeGreaterThan(0);
   });
 });

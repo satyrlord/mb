@@ -21,6 +21,8 @@ describe("shadowConfigTesting", () => {
   });
 
   test("applyShadowConfigValue updates all supported keys and ignores unknown keys", () => {
+    // Suppress the expected console.warn for unrecognized shadow config keys.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const target: Partial<ShadowConfig> = {};
 
     shadowConfigTesting.applyShadowConfigValue(target, "leftOffsetPx", 1);
@@ -47,7 +49,8 @@ describe("shadowConfigTesting", () => {
     expect(parsed.activePreset).toBe("soft");
     expect(parsed.presets.get("soft")?.leftOffsetPx).toBe(1);
     expect(parsed.presets.get("soft")?.leftOpacity).toBe(0.75);
-    expect(parsed.presets.get("soft")?.badValue).toBeUndefined();
+    const softPreset = parsed.presets.get("soft") as Record<string, unknown> | undefined;
+    expect(softPreset?.badValue).toBeUndefined();
   });
 
   test("parseShadowConfig ignores malformed numeric values in preset keys", () => {

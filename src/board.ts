@@ -1,4 +1,5 @@
 import { getFlagEmojiCountryName, getFlagEmojiSvgUrl } from "./flag-emoji.js";
+import { getIconAssetByToken } from "./icon-assets.js";
 
 type TileSelectHandler = (index: number) => void;
 
@@ -71,6 +72,21 @@ const renderTileBackIcon = (
   icon: string,
   accessibleFlagLabel: string | null,
 ): void => {
+  const iconAsset = getIconAssetByToken(icon);
+
+  if (iconAsset !== null) {
+    const image = document.createElement("img");
+    image.className = "tile-asset-icon";
+    image.draggable = false;
+    image.decoding = "async";
+    image.src = iconAsset.src;
+    image.alt = iconAsset.label;
+    image.setAttribute("aria-hidden", "false");
+    element.replaceChildren(image);
+
+    return;
+  }
+
   const flagUrl = getFlagEmojiSvgUrl(icon);
 
   if (flagUrl === null) {
@@ -291,7 +307,7 @@ export class BoardView {
    *
    * Call this at the start of every new game to prevent DOM elements reused
    * from a previous game (same tile count, no rebuild) from retaining stale
-   * icons from a different emoji pack.
+   * icons from a different icon pack.
    */
   public resetBackFaceCache(): void {
     this.renderedBackFaces = new WeakSet<HTMLElement>();

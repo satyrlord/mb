@@ -13,6 +13,18 @@ import {
   type Tile,
 } from "./game.js";
 
+/**
+ * Facade interface for game-state operations.
+ *
+ * `DefaultGameplayEngine` is a thin pass-through to the free functions in
+ * `game.ts`.  This indirection is intentional:
+ * - It provides a seam for unit-testing the bootstrap layer (`index.ts`)
+ *   by substituting a mock or stub implementation.
+ * - It encapsulates `GameState` so consumers interact through a typed API
+ *   rather than mutating the state record directly.
+ *
+ * The JIT inlines the delegation, so the runtime overhead is negligible.
+ */
 export interface GameplayEngine {
   readonly state: GameState;
   selectTile(index: number): SelectionResult;

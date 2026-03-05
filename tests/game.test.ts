@@ -44,9 +44,47 @@ describe("prepareNearWinState", () => {
     expect(result.remainingPair).toBeNull();
     expect(result.matchedPairs).toEqual([]);
   });
+
+  test("handles boards where the last pairId has only one tile", () => {
+    const state = createGame({
+      rows: 2,
+      columns: 3,
+      deck: ["🟦", "🟦", "🟥", "🟥", "🟨", "🟥"],
+    });
+
+    const result = prepareNearWinState(state);
+
+    expect(result.remainingPair).toBeNull();
+    expect(state.remainingPairCount).toBe(0);
+  });
+
+  test("skips missing tile entries referenced by tile id", () => {
+    const state = createGame({
+      rows: 2,
+      columns: 2,
+      deck: ["🟦", "🟦", "🟥", "🟥"],
+    });
+
+    if (state.tiles[0] !== undefined) {
+      state.tiles[0].id = 99;
+    }
+
+    expect(() => prepareNearWinState(state)).not.toThrow();
+  });
 });
 
 describe("selectTile", () => {
+  test("ignores selecting a tile that is already revealed", () => {
+    const state = createGame({
+      rows: 2,
+      columns: 2,
+      deck: ["🟦", "🟥", "🟦", "🟥"],
+    });
+
+    expect(selectTile(state, 0)).toEqual({ type: "first", index: 0 });
+    expect(selectTile(state, 0)).toEqual({ type: "ignored" });
+  });
+
   test("throws when selecting an out-of-bounds tile index", () => {
     const state = createGame({
       rows: 2,
@@ -67,6 +105,31 @@ describe("selectTile", () => {
 
     // state.tiles.length is 4; index 4 is exactly one past the last valid index (3).
     expect(() => selectTile(state, state.tiles.length)).toThrowError(RangeError);
+  });
+
+  test("throws when tile entry is missing at a valid index", () => {
+    const state = createGame({
+      rows: 2,
+      columns: 2,
+      deck: ["🟦", "🟥", "🟦", "🟥"],
+    });
+
+    delete state.tiles[1];
+
+    expect(() => selectTile(state, 1)).toThrowError(RangeError);
+  });
+
+  test("throws on state corruption when remainingPairCount is already zero", () => {
+    const state = createGame({
+      rows: 2,
+      columns: 2,
+      deck: ["🟦", "🟦", "🟥", "🟥"],
+    });
+
+    state.remainingPairCount = 0;
+
+    expect(selectTile(state, 0).type).toBe("first");
+    expect(() => selectTile(state, 1)).toThrowError("State corruption detected");
   });
 
   test("auto-resolves prior mismatch when selecting a new tile", () => {
@@ -272,6 +335,22 @@ describe("findFirstUnmatchedPairIndices", () => {
 });
 
 describe("getRemainingUnmatchedPairCount", () => {
+  test("throws when createGame deck size does not match board dimensions", () => {
+    expect(() => createGame({
+      rows: 2,
+      columns: 2,
+      deck: ["🟦", "🟦", "🟥"],
+    })).toThrowError("Deck size must exactly match rows × columns.");
+  });
+
+  test("throws when matchable tile count is odd", () => {
+    expect(() => createGame({
+      rows: 1,
+      columns: 3,
+      deck: ["🟦", BLOCKED_TILE_TOKEN, BLOCKED_TILE_TOKEN],
+    })).toThrowError("Matchable tile count must be even.");
+  });
+
   test("counts remaining matchable pairIds (standard 2-copy sets)", () => {
     const state = createGame({
       rows: 2,

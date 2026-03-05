@@ -131,11 +131,54 @@ describe("WinFxController", () => {
     expect(rainPiece).not.toBeNull();
     expect(rainPiece?.style.getPropertyValue("--piece-color")).toBe("#00ff00");
 
+    const fireworkPieces = particlesElement.querySelectorAll<HTMLElement>(".win-fx-firework");
+    expect(fireworkPieces.length).toBeGreaterThan(0);
+    const fireworkCorePieces = particlesElement.querySelectorAll<HTMLElement>(".win-fx-firework-core");
+    expect(fireworkCorePieces.length).toBeGreaterThan(0);
+    const firstFireworkDelayMs = Number.parseInt(
+      fireworkPieces[0]?.style.getPropertyValue("--piece-delay").replace("ms", "") ?? "0",
+      10,
+    );
+    expect(firstFireworkDelayMs).toBeGreaterThanOrEqual(0);
+    expect(firstFireworkDelayMs).toBeLessThan(2000);
+
+    // Advance past the title fade-OUT point (TITLE_FADE_OUT_MS = 4992ms): the 5 guaranteed
+    // post-fade bursts fire via setTimeout starting at titleFadeOutDelayMs so new particles
+    // are dynamically inserted into the DOM exactly when the text disappears.
+    const piecesBeforeFade = particlesElement.childElementCount;
+    vi.advanceTimersByTime(5100);
+    // At least one setTimeout burst should have fired, dynamically inserting new pieces.
+    expect(particlesElement.childElementCount).toBeGreaterThan(piecesBeforeFade);
+
     vi.runAllTimers();
 
     expect(layerElement.hidden).toBe(true);
     expect(appElement.classList.contains("win-fx-active")).toBe(false);
     expect(particlesElement.childElementCount).toBe(0);
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  test("cleanup waits for post-fade fireworks even with short duration override", () => {
+    vi.useFakeTimers();
+    const { controller, appElement, layerElement } = createController();
+    const onFinished = vi.fn();
+
+    controller.play(onFinished, undefined, 120);
+
+    expect(layerElement.hidden).toBe(false);
+    expect(appElement.classList.contains("win-fx-active")).toBe(true);
+
+    // At 120ms (the override duration), cleanup should NOT have fired because
+    // the post-fade fireworks need more time to finish.
+    vi.advanceTimersByTime(120);
+
+    expect(layerElement.hidden).toBe(false);
+    expect(onFinished).toHaveBeenCalledTimes(0);
+
+    vi.runAllTimers();
+
+    expect(layerElement.hidden).toBe(true);
+    expect(appElement.classList.contains("win-fx-active")).toBe(false);
     expect(onFinished).toHaveBeenCalledTimes(1);
   });
 
@@ -401,6 +444,143 @@ describe("WinFxController", () => {
     // Even with 0ms duration, structure should be set up
     expect(particlesElement).toBeTruthy();
 
+    vi.runAllTimers();
+  });
+
+  test("skips stale cleanup callback when a new play starts", () => {
+    vi.useFakeTimers();
+    const { controller, appElement, layerElement } = createController();
+
+    const firstFinished = vi.fn();
+    const secondFinished = vi.fn();
+
+    controller.play(firstFinished, "First", 40);
+    controller.play(secondFinished, "Second", 80);
+
+    // Advance past both override durations — neither should have cleaned up yet
+    // because post-fade fireworks extend cleanup beyond the overrides.
+    vi.advanceTimersByTime(100);
+
+    expect(appElement.classList.contains("win-fx-active")).toBe(true);
+    expect(layerElement.hidden).toBe(false);
+    expect(firstFinished).not.toHaveBeenCalled();
+    expect(secondFinished).not.toHaveBeenCalled();
+
+    // Run all remaining timers — only the second play's callback fires.
+    vi.runAllTimers();
+
+    expect(secondFinished).toHaveBeenCalledTimes(1);
+    expect(firstFinished).not.toHaveBeenCalled();
+  });
+
+  test("falls back to default symbol when tile-back text is missing", () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = "";
+
+    const app = document.createElement("div");
+    const board = document.createElement("section");
+    const tile = document.createElement("button");
+    tile.className = "tile";
+    board.append(tile);
+
+    const layer = document.createElement("section");
+    const particles = document.createElement("div");
+    const text = document.createElement("p");
+    layer.hidden = true;
+    layer.append(particles, text);
+    app.append(board, layer);
+    document.body.append(app);
+
+    app.getBoundingClientRect = () => createMockDomRect(0, 0, 300, 200);
+    board.getBoundingClientRect = () => createMockDomRect(0, 0, 120, 80);
+    tile.getBoundingClientRect = () => createMockDomRect(10, 10, 30, 30);
+
+    const controller = new WinFxController({
+      appWindowElement: app,
+      boardElement: board,
+      winFxLayerElement: layer,
+      winFxParticlesElement: particles,
+      winFxTextElement: text,
+    });
+
+    controller.play();
+
+    expect(particles.childElementCount).toBeGreaterThan(0);
+
+    vi.runAllTimers();
+  });
+
+  test("covers private fallback branches for random pickers", () => {
+    const { controller } = createController();
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(1);
+
+    const privateController = controller as unknown as {
+      pickShapeClass: () => string;
+      pickRandomSymbol: (options: readonly string[], fallback: string) => string;
+    };
+    const privateClass = WinFxController as unknown as {
+      pickRandomColor: (palette: readonly string[]) => string;
+    };
+
+    expect(privateClass.pickRandomColor([])).toBe("#ffffff");
+    expect(privateClass.pickRandomColor(["#123456"])).toBe("#ffffff");
+    expect(privateController.pickShapeClass()).toBe("square");
+    expect(privateController.pickRandomSymbol(["A"], "F")).toBe("F");
+
+    randomSpy.mockRestore();
+  });
+
+  test("covers pickWinFxText fallback branch when random index resolves undefined", () => {
+    vi.useFakeTimers();
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(1);
+    const { controller, textElement } = createController();
+
+    controller.configureRuntime({
+      options: {
+        durationMs: 30,
+        maxTilePieces: 2,
+        wavesPerTile: 1,
+        waveDelayMs: 1,
+        sparksPerTile: 1,
+        particleDelayJitterMs: 0,
+        centerFinaleDelayMs: 0,
+        centerFinaleWaves: 1,
+        centerFinaleWaveDelayMs: 1,
+        centerFinaleCount: 2,
+        confettiRainDelayMs: 0,
+        confettiRainCount: 2,
+        confettiRainSpreadMs: 1,
+        colors: ["#ffffff"],
+      },
+      textOptions: ["ONLY-OPTION"],
+      rainColors: ["#00ff00"],
+    });
+
+    controller.play();
+
+    expect(textElement.textContent).toBe("YOU WIN!");
+
+    randomSpy.mockRestore();
+    vi.runAllTimers();
+  });
+
+  test("skips undefined buttons returned from Array.from", () => {
+    vi.useFakeTimers();
+    const { controller, particlesElement } = createController();
+    const tile = document.querySelector<HTMLButtonElement>(".tile");
+
+    expect(tile).not.toBeNull();
+
+    const fromSpy = vi.spyOn(Array, "from").mockReturnValueOnce([
+      tile as HTMLButtonElement,
+      undefined,
+    ] as unknown as HTMLButtonElement[]);
+
+    controller.play();
+
+    expect(particlesElement.childElementCount).toBeGreaterThan(0);
+
+    fromSpy.mockRestore();
     vi.runAllTimers();
   });
 });

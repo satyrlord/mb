@@ -3,6 +3,18 @@
 Browser-based recreation of the classic Windows 9x game **MEMORYBLOX**
 using HTML, CSS, and TypeScript.
 
+## Update Log
+
+### 2026-02-24
+
+- Quality gate policy reinforced: run `npm run test` and `npm run test:coverage`,
+  then scan VS Code Problems and resolve all diagnostics.
+- Coverage policy reinforced: every reported coverage table cell must be at
+  least 90% (Statements, Branches, Functions, Lines per row/file).
+- Test suite expanded with targeted edge-branch tests in game/sound/win-fx
+  modules and helper utilities.
+- Current verified test state: 18 test files, 315 tests passing.
+
 ## Current Status
 
 - Playable memory boards with multiple difficulty levels
@@ -13,7 +25,7 @@ using HTML, CSS, and TypeScript.
 - Timer, attempts counter, restart button, and win state
 - Top-bar Debug menu with Demo, Win (near-win board), and Tiles
  (2-tile styling screen)
-- Settings page with switchable themed emoji packs, tile
+- Settings page with switchable themed icon packs, tile
  multiplier, and animation speed sliders
 - Global leaderboard support with username prompt on win
 - Debug-assisted wins are recorded as `Debug` scores
@@ -106,6 +118,16 @@ eslint .
 tsc --noEmit
 ```
 
+Quality gate before commit/push:
+
+```bash
+npm run test
+npm run test:coverage
+```
+
+After the quality gate, always scan VS Code Problems and resolve all reported
+issues.
+
 ## Documentation
 
 - Store all project documentation in `docs/`.
@@ -115,7 +137,7 @@ tsc --noEmit
 - Store global variables and runtime-tunable global configuration in `config/`.
 - Keep docs concise, actionable, and aligned with the current implementation.
 - Update documentation when behavior, UI, or architecture changes.
-- Keep the total number of emoji packs even so the 2-column Settings layout
+- Keep the total number of icon packs even so the 2-column Settings layout
  remains balanced.
 
 ## Shadow Presets
@@ -134,7 +156,7 @@ src/game.ts                Game state and matching rules
 src/gameplay.ts            GameplayEngine facade over game state
 src/board.ts               Board rendering and tile input handling
 src/ui.ts                  HUD and status messaging updates
-src/icons.ts               Dynamic emoji deck generation
+src/icons.ts               Dynamic icon deck generation
 src/utils.ts               Shared helpers (shuffle, time formatting)
 src/presentation.ts        Presentation layer helpers
 src/session-score.ts       Session score flag normalization

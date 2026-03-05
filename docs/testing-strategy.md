@@ -1,5 +1,14 @@
 # Testing Strategy
 
+## Latest Update (2026-02-24)
+
+- Quality gate now explicitly includes a VS Code Problems scan after
+  `npm run test` and `npm run test:coverage`.
+- Coverage policy is enforced per reported table cell: each file/row metric
+  must be at least 90% for Statements, Branches, Functions, and Lines.
+- Targeted branch tests were added to strengthen edge-path coverage for
+  game flow, sound engine behavior, win-fx fallbacks, and test helpers.
+
 ## Test Runner
 
 All tests use [Vitest](https://vitest.dev/) with the `jsdom` environment
@@ -48,27 +57,28 @@ Current test coverage (all metrics at 90%+):
 
 | Metric | Coverage |
 | --- | --- |
-| Statements | 97.02% |
-| Branches | 92.35% |
-| Functions | 98.21% |
-| Lines | 97.02% |
-| Test Files | 14/14 passing |
-| Tests | 219 tests passing |
+| Statements | 97.81% |
+| Branches | 96.08% |
+| Functions | 97.22% |
+| Lines | 97.81% |
+| Test Files | 18/18 passing |
+| Tests | 315 tests passing |
 
 ### Per-File Coverage
 
 All source files (`src/`) meet or exceed 90% coverage:
 
-- 100% coverage: `presentation.ts`, `session-score.ts`, `ui.ts`, `utils.ts`,
-  `runtime-config.ts`, `shadow-config.ts`
-- 97%+ coverage: `leaderboard.ts` (97.01%), `win-fx.ts` (97.09%), `cfg.ts`
-  (96.15%)
-- 95%+ coverage: `game.ts` (95.37%), `gameplay.ts` (95.55%)
-- 90%+ coverage: `flag-emoji.ts` (90%), `board.ts` (91.39%), `icons.ts`
-  (98.84%)
+- 100% coverage: `game.ts`, `presentation.ts`, `runtime-config.ts`,
+  `session-score.ts`, `sound-engine.ts`, `ui.ts`
+- 99%+ coverage: `icons.ts` (99.11%), `win-fx.ts` (99.29%)
+- 97%+ coverage: `leaderboard.ts` (97.01%), `shadow-config.ts` (97.74%),
+  `audio-loader.ts` (98.03%)
+- 93%+ coverage: `sound-manager.ts` (93.95%), `board.ts` (94.98%),
+  `flag-emoji.ts` (96.19%), `utils.ts` (95%)
+- 91%+ coverage: `cfg.ts` (91.07%), `gameplay.ts` (95.55%)
 
-Branch coverage is also strong at 92.35% overall, with most files achieving
-85%+ branch coverage.
+Branch coverage is now 96.08% overall, and every reported table cell remains
+at or above the 90% policy threshold.
 
 ## Conventions
 

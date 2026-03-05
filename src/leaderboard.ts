@@ -1,5 +1,5 @@
 import { RUNTIME_CONFIG_PATHS } from "./runtime-config.js";
-import { parseCfgBoolean, parseCfgInteger, parseCfgLines, parseCfgNumber, loadCfgFile } from "./cfg.js";
+import { parseCfgBoolean, parseCfgInteger, parseCfgLines, loadCfgFile, createCfgReader } from "./cfg.js";
 
 export interface LeaderboardScoringConfig {
   scorePenaltyFactor: number;
@@ -62,6 +62,12 @@ const LEGACY_EMOJI_SET_LABEL = "Legacy Set";
 
 /** localStorage key used to persist local high scores. */
 const LEADERBOARD_STORAGE_KEY = "memoryblox.leaderboard";
+
+/** Maximum allowed localStorage payload size for leaderboard data (bytes). */
+const MAX_LEADERBOARD_STORAGE_BYTES = 512_000;
+
+/** Proportion of the storage limit at which a warning is logged. */
+const STORAGE_WARNING_THRESHOLD = 0.8;
 
 export const DEFAULT_LEADERBOARD_RUNTIME_CONFIG: LeaderboardRuntimeConfig = {
   enabled: true,
@@ -295,64 +301,44 @@ export const loadLeaderboardRuntimeConfig = async (): Promise<LeaderboardRuntime
     return DEFAULT_LEADERBOARD_RUNTIME_CONFIG;
   }
 
-  const enabled = parseCfgBoolean(entries.get("leaderboard.enabled") ?? "")
-    ?? DEFAULT_LEADERBOARD_RUNTIME_CONFIG.enabled;
+  const cfg = createCfgReader(entries);
+  const enabled = cfg.boolean("leaderboard.enabled", DEFAULT_LEADERBOARD_RUNTIME_CONFIG.enabled);
   const defaultScoring = DEFAULT_LEADERBOARD_RUNTIME_CONFIG.scoring;
 
   return {
     enabled,
     maxEntries: Math.max(
       1,
-      parseCfgInteger(entries.get("leaderboard.maxEntries") ?? "")
-        ?? DEFAULT_LEADERBOARD_RUNTIME_CONFIG.maxEntries,
+      cfg.integer("leaderboard.maxEntries", DEFAULT_LEADERBOARD_RUNTIME_CONFIG.maxEntries),
     ),
     scoring: {
       scorePenaltyFactor: Math.max(
         0,
-        Math.min(
-          1,
-          parseCfgNumber(entries.get("leaderboard.scorePenaltyFactor") ?? "")
-            ?? defaultScoring.scorePenaltyFactor,
-        ),
+        Math.min(1, cfg.number("leaderboard.scorePenaltyFactor", defaultScoring.scorePenaltyFactor)),
       ),
       attemptsPenaltyMs: Math.max(
         0,
-        parseCfgNumber(entries.get("leaderboard.attemptsPenaltyMs") ?? "")
-          ?? defaultScoring.attemptsPenaltyMs,
+        cfg.number("leaderboard.attemptsPenaltyMs", defaultScoring.attemptsPenaltyMs),
       ),
       baseScoreDividend: Math.max(
         1,
-        parseCfgNumber(entries.get("leaderboard.baseScoreDividend") ?? "")
-          ?? defaultScoring.baseScoreDividend,
+        cfg.number("leaderboard.baseScoreDividend", defaultScoring.baseScoreDividend),
       ),
       scoreScaleFactor: Math.max(
         1,
-        parseCfgNumber(entries.get("leaderboard.scoreScaleFactor") ?? "")
-          ?? defaultScoring.scoreScaleFactor,
+        cfg.number("leaderboard.scoreScaleFactor", defaultScoring.scoreScaleFactor),
       ),
       debugScoreExtraReductionFactor: Math.max(
         0,
-        Math.min(
-          1,
-          parseCfgNumber(entries.get("leaderboard.debugScoreExtraReductionFactor") ?? "")
-            ?? defaultScoring.debugScoreExtraReductionFactor,
-        ),
+        Math.min(1, cfg.number("leaderboard.debugScoreExtraReductionFactor", defaultScoring.debugScoreExtraReductionFactor)),
       ),
       debugWinModeReductionFactor: Math.max(
         0,
-        Math.min(
-          1,
-          parseCfgNumber(entries.get("leaderboard.debugWinModeReductionFactor") ?? "")
-            ?? defaultScoring.debugWinModeReductionFactor,
-        ),
+        Math.min(1, cfg.number("leaderboard.debugWinModeReductionFactor", defaultScoring.debugWinModeReductionFactor)),
       ),
       debugTilesModeReductionFactor: Math.max(
         0,
-        Math.min(
-          1,
-          parseCfgNumber(entries.get("leaderboard.debugTilesModeReductionFactor") ?? "")
-            ?? defaultScoring.debugTilesModeReductionFactor,
-        ),
+        Math.min(1, cfg.number("leaderboard.debugTilesModeReductionFactor", defaultScoring.debugTilesModeReductionFactor)),
       ),
     },
   };
@@ -386,8 +372,6 @@ export class LeaderboardClient {
       }
 
       // Guard against excessively large payloads (e.g. tampered localStorage).
-      const MAX_LEADERBOARD_STORAGE_BYTES = 512_000;
-
       if (raw.length > MAX_LEADERBOARD_STORAGE_BYTES) {
         console.warn("[MEMORYBLOX] Leaderboard storage exceeds size limit — ignoring.");
         return [];
@@ -402,7 +386,17 @@ export class LeaderboardClient {
 
   private writeStorage(entries: readonly LeaderboardScoreEntry[]): void {
     try {
-      window.localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(entries));
+      const serialized = JSON.stringify(entries);
+
+      if (serialized.length > MAX_LEADERBOARD_STORAGE_BYTES * STORAGE_WARNING_THRESHOLD) {
+        console.warn(
+          `[MEMORYBLOX] Leaderboard storage is approaching the size limit ` +
+          `(${serialized.length}/${MAX_LEADERBOARD_STORAGE_BYTES} bytes). ` +
+          `Oldest entries may be dropped.`,
+        );
+      }
+
+      window.localStorage.setItem(LEADERBOARD_STORAGE_KEY, serialized);
     } catch (error) {
       const errorType = error instanceof DOMException ? "Storage quota exceeded" : "Write error";
       console.warn(`[MEMORYBLOX] Failed to write leaderboard to localStorage (${errorType}):`, error);
@@ -442,6 +436,74 @@ export class LeaderboardClient {
   }
 }
 
+export interface GameScoreComputationResult {
+  difficultyId: string;
+  difficultyLabel: string;
+  scoreMultiplier: number;
+  scoreValue: number;
+}
+
+export interface GameScoreComputationInput {
+  difficulty: { id: string; label: string; scoreMultiplier: number };
+  sessionMode: string;
+  scoreCategory: "standard" | "debug";
+  isAutoDemoScore: boolean;
+  tileMultiplier: number;
+  timeMs: number;
+  attempts: number;
+  usedFlipTiles?: boolean;
+}
+
+export const computeGameScoreResult = (
+  input: GameScoreComputationInput,
+  scoringConfig: LeaderboardScoringConfig,
+): Readonly<GameScoreComputationResult> => {
+  const {
+    difficulty,
+    sessionMode,
+    scoreCategory,
+    isAutoDemoScore,
+    tileMultiplier,
+    timeMs,
+    attempts,
+    usedFlipTiles = false,
+  } = input;
+  const difficultyId = scoreCategory === "debug" ? "debug" : difficulty.id;
+  const difficultyLabel = scoreCategory === "debug" ? "Debug" : difficulty.label;
+  const hasPenalty = scoreCategory === "debug" || isAutoDemoScore;
+  const baseScoreMultiplier = difficulty.scoreMultiplier > 0 ? difficulty.scoreMultiplier : 1;
+  const tilePenaltyFactor = 1 / Math.max(1, tileMultiplier);
+  const adjustedScoreMultiplier = baseScoreMultiplier * tilePenaltyFactor;
+  const scoreMultiplier = hasPenalty
+    ? Number((adjustedScoreMultiplier * scoringConfig.scorePenaltyFactor).toFixed(2))
+    : adjustedScoreMultiplier;
+  const baseScoreValue = calculateLeaderboardScore({
+    timeMs,
+    attempts,
+    scoreMultiplier: adjustedScoreMultiplier,
+  }, scoringConfig);
+  let scoreValue = hasPenalty
+    ? applyLeaderboardScorePenalty(baseScoreValue, scoringConfig.scorePenaltyFactor)
+    : baseScoreValue;
+
+  if (scoreCategory === "debug") {
+    scoreValue = Math.max(0, Math.round(scoreValue * scoringConfig.debugScoreExtraReductionFactor));
+
+    if (sessionMode === "debug-tiles") {
+      scoreValue = Math.max(0, Math.round(scoreValue * scoringConfig.debugTilesModeReductionFactor));
+    } else if (!isAutoDemoScore) {
+      scoreValue = Math.max(0, Math.round(scoreValue * scoringConfig.debugWinModeReductionFactor));
+    }
+  }
+
+  return {
+    difficultyId,
+    difficultyLabel,
+    scoreMultiplier,
+    scoreValue: usedFlipTiles ? 0 : scoreValue,
+  };
+};
+
 export const leaderboardTesting = {
   parseCfgLines,
   parseCfgInteger,
@@ -452,4 +514,7 @@ export const leaderboardTesting = {
   normalizeLeaderboardPayload,
   rankLeaderboardEntries,
   LEADERBOARD_STORAGE_KEY,
+  MAX_LEADERBOARD_STORAGE_BYTES,
+  STORAGE_WARNING_THRESHOLD,
+  computeGameScoreResult,
 };

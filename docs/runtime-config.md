@@ -1,5 +1,15 @@
 # Runtime Configuration
 
+## Latest Update (2026-02-24)
+
+- Runtime key behavior in this document was revalidated against current
+  loaders and tests.
+- No new config keys were added today; existing key contracts remain active.
+- Project quality workflow now requires running the quality gate and scanning
+  VS Code Problems before commit/push.
+- Coverage policy is enforced at the per-row/per-file table-cell level
+  (minimum 90% for Statements, Branches, Functions, and Lines).
+
 This project stores global runtime-tunable values in `config/`.
 
 ## Files

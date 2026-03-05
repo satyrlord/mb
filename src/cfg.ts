@@ -76,3 +76,21 @@ export const loadCfgFile = async (path: string): Promise<Map<string, string> | n
     return null;
   }
 };
+
+/**
+ * Convenience reader that wraps a parsed config `Map` and provides typed
+ * field access with fallback defaults.  Eliminates the repetitive
+ * `parseCfg*(entries.get(key) ?? "") ?? fallback` pattern used across
+ * config loaders.
+ */
+export interface CfgReader {
+  number: (key: string, fallback: number) => number;
+  integer: (key: string, fallback: number) => number;
+  boolean: (key: string, fallback: boolean) => boolean;
+}
+
+export const createCfgReader = (entries: Map<string, string>): CfgReader => ({
+  number: (key, fallback) => parseCfgNumber(entries.get(key) ?? "") ?? fallback,
+  integer: (key, fallback) => parseCfgInteger(entries.get(key) ?? "") ?? fallback,
+  boolean: (key, fallback) => parseCfgBoolean(entries.get(key) ?? "") ?? fallback,
+});

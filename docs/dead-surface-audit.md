@@ -1,5 +1,12 @@
 # Dead Surface Audit Checklist
 
+## Latest Update (2026-02-24)
+
+- Audit workflow now explicitly pairs surface cleanup with the full quality
+  gate and a VS Code Problems scan.
+- Coverage acceptance requires every reported table cell to remain at or above
+  90% after cleanup/refactor changes.
+
 Use this checklist when reviewing for dead or unnecessary code surfaces.
 Focus on reachability and ownership, not only lint/compile success.
 
@@ -39,6 +46,9 @@ Focus on reachability and ownership, not only lint/compile success.
 ## 6) Validation and Test Gate
 
 - Run `npm run validate` after any surface removal.
+- Run `npm run test` and `npm run test:coverage` after behavior-affecting
+  cleanup.
+- Scan VS Code Problems and resolve all diagnostics before commit/push.
 - Run targeted tests for updated config loaders and affected modules.
 - Add/adjust tests when a config shape or parser contract changes.
 

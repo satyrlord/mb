@@ -13,6 +13,13 @@ const runtimeConfig: FlagEmojiRuntimeConfig = {
   twemojiCdnBaseUrl: DEFAULT_TWEMOJI_CDN_BASE_URL,
 };
 
+/**
+ * Curated subset of ISO 3166-1 alpha-2 country codes mapped to display names.
+ *
+ * Only the ~30 countries used in the Flags icon pack are included. Countries
+ * not in this map fall back to displaying their raw two-letter country code
+ * via {@link getFlagEmojiCountryName}.
+ */
 const FLAG_COUNTRY_NAMES: Readonly<Record<string, string>> = {
   AR: "Argentina",
   AU: "Australia",
@@ -75,6 +82,12 @@ const getRegionalIndicatorLetter = (character: string): string | null => {
 
   const asciiCode = ASCII_A_CODE + (codePoint - REGIONAL_INDICATOR_START);
   return String.fromCharCode(asciiCode);
+};
+
+export const flagEmojiTesting = {
+  isRegionalIndicator,
+  getHexCodePoint,
+  getRegionalIndicatorLetter,
 };
 
 export const getFlagEmojiCountryCode = (icon: string): string | null => {

@@ -180,7 +180,7 @@ body {
   gap: 10px;
   flex-wrap: wrap;
   position: relative;
-  z-index: 40;
+  z-index: 100;
   overflow: visible;
   border-radius: 14px 14px 0 0;
   border-bottom: 1px solid var(--color-bar-border);
@@ -266,6 +266,35 @@ body {
   width: 1.1em;
   height: 1.1em;
   font-size: 1em;
+}
+
+.topbar-actions .btn-icon-only {
+  min-width: 38px;
+  padding-inline: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.topbar-actions .btn-icon-only .btn-icon-lg {
+  width: 1.3em;
+  height: 1.3em;
+  margin: 0;
+}
+
+.topbar-actions .music-toggle-state {
+  font-size: 0.62rem;
+  font-weight: var(--font-weight-ui-strong);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  min-width: 1.7em;
+  text-align: center;
+}
+
+.topbar-actions .btn-icon-only[aria-pressed="true"] {
+  background: linear-gradient(180deg, #2b3443, #1f2937);
+  opacity: 0.7;
 }
 
 .debug-menu-root {
@@ -363,6 +392,7 @@ body {
   gap: 10px;
   flex-wrap: wrap;
   position: relative;
+  z-index: 100;
   border-radius: 0 0 14px 14px;
   border-top: 1px solid var(--color-bar-border);
   box-shadow: var(--shadow-app-bar);
@@ -718,7 +748,7 @@ body {
 .name-prompt-overlay {
   position: absolute;
   inset: 0;
-  z-index: 45;
+  z-index: 110;
   display: grid;
   place-items: center;
   padding: 12px;
@@ -1195,6 +1225,13 @@ body {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
 }
 
+.tile-back .tile-asset-icon {
+  width: 74%;
+  height: 74%;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
+}
+
 .tile-right,
 .tile-top {
   display: none;
@@ -1227,6 +1264,12 @@ body {
 }
 
 .tile.matched .tile-back .flag-emoji {
+  filter:
+    drop-shadow(0 0 7px rgb(74 222 128 / calc(0.72 + (var(--tile-back-opacity, var(--tile-global-opacity, 0.5)) * 0.28))))
+    drop-shadow(0 0 15px rgb(34 197 94 / calc(0.54 + (var(--tile-back-opacity, var(--tile-global-opacity, 0.5)) * 0.3))));
+}
+
+.tile.matched .tile-back .tile-asset-icon {
   filter:
     drop-shadow(0 0 7px rgb(74 222 128 / calc(0.72 + (var(--tile-back-opacity, var(--tile-global-opacity, 0.5)) * 0.28))))
     drop-shadow(0 0 15px rgb(34 197 94 / calc(0.54 + (var(--tile-back-opacity, var(--tile-global-opacity, 0.5)) * 0.3))));

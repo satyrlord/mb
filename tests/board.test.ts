@@ -117,6 +117,21 @@ describe("BoardView", () => {
     expect(revealedBackFace?.querySelector("img")).not.toBeNull();
   });
 
+  test("render displays imported OpenMoji second-batch symbol for revealed non-flag tiles", () => {
+    const container = document.createElement("section");
+    const boardView = new BoardView(container, () => {});
+
+    boardView.render([
+      createTile("🛞", "revealed"),
+      createTile("🛞", "hidden"),
+    ], 2);
+
+    const revealedBackFace = container.querySelector<HTMLElement>("button[data-index='0'] .tile-back");
+
+    expect(revealedBackFace?.textContent).toBe("🛞");
+    expect(revealedBackFace?.querySelector("img")).toBeNull();
+  });
+
   test("clicking a tile notifies the select handler", () => {
     const container = document.createElement("section");
     const selections: number[] = [];
@@ -130,6 +145,31 @@ describe("BoardView", () => {
 
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(selections).toEqual([1]);
+  });
+
+  test("click ignores non-tile and invalid-index targets", () => {
+    const container = document.createElement("section");
+    const selections: number[] = [];
+    const boardView = new BoardView(container, (index) => {
+      selections.push(index);
+    });
+
+    boardView.render(createTiles(2), 2);
+
+    container.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    const noIndexButton = document.createElement("button");
+    noIndexButton.type = "button";
+    container.append(noIndexButton);
+    noIndexButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    const badIndexButton = document.createElement("button");
+    badIndexButton.type = "button";
+    badIndexButton.dataset.index = "NaN";
+    container.append(badIndexButton);
+    badIndexButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(selections).toEqual([]);
   });
 
   describe("animateMatchedPair", () => {
@@ -295,6 +335,45 @@ describe("BoardView", () => {
       expect(document.activeElement).toBe(btn0);
       container.remove();
     });
+
+    test("keydown ignores events from non-button targets and buttons missing data-index", () => {
+      const container = document.createElement("section");
+      document.body.append(container);
+      const boardView = new BoardView(container, () => {});
+
+      boardView.render(createTiles(4), 2);
+
+      container.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+
+      const orphanButton = document.createElement("button");
+      orphanButton.type = "button";
+      container.append(orphanButton);
+      orphanButton.focus();
+      orphanButton.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+
+      expect(document.activeElement).toBe(orphanButton);
+      container.remove();
+    });
+
+    test("vertical navigation at boundaries does nothing", () => {
+      const container = document.createElement("section");
+      document.body.append(container);
+      const boardView = new BoardView(container, () => {});
+
+      boardView.render(createTiles(4), 2);
+
+      const bottomLeft = container.querySelector<HTMLButtonElement>("button[data-index='2']")!;
+      bottomLeft.focus();
+      dispatchArrow(bottomLeft, "ArrowDown");
+      expect(document.activeElement).toBe(bottomLeft);
+
+      const topLeft = container.querySelector<HTMLButtonElement>("button[data-index='0']")!;
+      topLeft.focus();
+      dispatchArrow(topLeft, "ArrowUp");
+      expect(document.activeElement).toBe(topLeft);
+
+      container.remove();
+    });
   });
 
   test("needsRebuild detects non-button children in container", () => {
@@ -365,6 +444,23 @@ describe("BoardView", () => {
     // Non-flag emoji should render as text, not image
     expect(backFace0?.textContent).toBe("🧠");
     expect(backFace0?.querySelector("img")).toBeNull();
+  });
+
+  test("render handles imported SVG asset icon tokens", () => {
+    const container = document.createElement("section");
+    const boardView = new BoardView(container, () => {});
+
+    const tiles: BoardTileViewModel[] = [
+      { icon: "asset:openmoji:1F680", status: "revealed" },
+      { icon: "🧠", status: "hidden" },
+    ];
+
+    boardView.render(tiles, 2);
+    const backFace0 = container.querySelector<HTMLElement>("button[data-index='0'] .tile-back");
+    const image = backFace0?.querySelector<HTMLImageElement>("img.tile-asset-icon");
+
+    expect(image).not.toBeNull();
+    expect(image?.getAttribute("src")).toBe("icon/openmoji/svg/1F680.svg");
   });
 
   test("render with single column layout", () => {

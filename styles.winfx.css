@@ -8,7 +8,7 @@
 .win-fx-layer {
   position: absolute;
   inset: 0;
-  z-index: 22;
+  z-index: 90;
   pointer-events: none;
   overflow: hidden;
 }
@@ -95,6 +95,25 @@
     win-fx-sparkle-twinkle calc(174ms / var(--animation-speed, 1)) ease-in-out infinite;
 }
 
+.win-fx-piece.win-fx-firework {
+  border-radius: 999px;
+  border: 0;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--piece-color, #ffffff) 82%, transparent 18%),
+    0 0 24px color-mix(in srgb, var(--piece-color, #ffffff) 66%, transparent 34%);
+  animation:
+    win-fx-firework-burst calc(1660ms / var(--animation-speed, 1)) cubic-bezier(0.2, 0.74, 0.24, 1) forwards,
+    win-fx-piece-color-cycle calc(880ms / var(--animation-speed, 1)) linear infinite,
+    win-fx-sparkle-twinkle calc(132ms / var(--animation-speed, 1)) ease-in-out infinite;
+}
+
+.win-fx-piece.win-fx-firework-core {
+  border: 1px solid color-mix(in srgb, var(--piece-color, #ffffff) 74%, white 26%);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--piece-color, #ffffff) 88%, transparent 12%),
+    0 0 30px color-mix(in srgb, var(--piece-color, #ffffff) 72%, transparent 28%);
+}
+
 .win-fx-piece.win-fx-circle {
   border-radius: 999px;
 }
@@ -132,11 +151,13 @@
 }
 
 .app.win-fx-active .board {
-  animation: none;
+  animation: win-fx-board-pulse calc(1480ms / var(--animation-speed, 1)) ease-in-out infinite;
 }
 
 .app.win-fx-active #gameFrame {
-  visibility: hidden;
+  visibility: visible;
+  opacity: 0.76;
+  filter: saturate(1.32) contrast(1.1);
 }
 
 .app.win-fx-active .win-fx-layer {
@@ -209,6 +230,30 @@
       calc(var(--piece-y) + var(--piece-dy) + var(--piece-gravity, 0px))
     ) scale(var(--piece-scale-end, 0.3)) rotate(var(--piece-rot));
     filter: blur(1.3px);
+  }
+}
+
+@keyframes win-fx-firework-burst {
+  0% {
+    opacity: 0;
+    transform: translate(var(--piece-x), var(--piece-y)) scale(0.36) rotate(0deg);
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  52% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(var(--piece-x) + var(--piece-dx) + var(--piece-drift, 0px)),
+      calc(var(--piece-y) + var(--piece-dy) + (var(--piece-gravity, 0px) * 0.34))
+    ) scale(0.08) rotate(var(--piece-rot));
+    filter: blur(1.1px);
   }
 }
 

@@ -2,6 +2,13 @@
 
 This guide defines visual and styling rules for the game UI.
 
+## Latest Update (2026-02-24)
+
+- Style rules remain unchanged by today's code-quality and test updates.
+- Documentation was synchronized with current implementation status.
+- Continue to apply this guide as the single source of truth for all visual
+  and style changes.
+
 ## Core Principles
 
 - Keep the UI compact, readable, and game-first.

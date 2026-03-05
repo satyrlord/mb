@@ -1,5 +1,6 @@
 import { clamp } from "./utils.js";
-import { parseCfgInteger, parseCfgLines, parseCfgNumber, loadCfgFile } from "./cfg.js";
+import { parseCfgInteger, parseCfgLines, parseCfgNumber, loadCfgFile, createCfgReader } from "./cfg.js";
+import type { BoardLayoutConfig } from "./board.js";
 
 export interface WindowBaseSize {
   minWidthPx: number;
@@ -32,12 +33,7 @@ export interface GameplayTimingConfig {
   uiTimerUpdateIntervalMs: number;
 }
 
-export interface BoardLayoutConfig {
-  minTileSizePx: number;
-  targetTileSizePx: number;
-  tileGapPx: number;
-  boardHorizontalPaddingPx: number;
-}
+export type { BoardLayoutConfig } from "./board.js";
 
 export interface VisualEffectsConfig {
   tileFlipDurationMs: number;
@@ -246,48 +242,52 @@ export const loadUiRuntimeConfig = async (): Promise<UiRuntimeConfig> => {
     return DEFAULT_UI_RUNTIME_CONFIG;
   }
 
+  const cfg = createCfgReader(entries);
   const defaultWindowResizeLimits = DEFAULT_UI_RUNTIME_CONFIG.windowResizeLimits;
-  const rawMinScale = parseCfgNumber(entries.get("window.minScale") ?? "")
-    ?? defaultWindowResizeLimits.minScale;
-  const rawMaxScale = parseCfgNumber(entries.get("window.maxScale") ?? "")
-    ?? defaultWindowResizeLimits.maxScale;
+  const rawMinScale = cfg.number("window.minScale", defaultWindowResizeLimits.minScale);
+  const rawMaxScale = cfg.number("window.maxScale", defaultWindowResizeLimits.maxScale);
+  if (rawMinScale > rawMaxScale) {
+    console.warn(
+      `[MEMORYBLOX] window.minScale (${rawMinScale}) exceeds window.maxScale (${rawMaxScale}); values were swapped.`,
+    );
+  }
+
   const windowMaxScale = Math.max(rawMinScale, rawMaxScale);
   const windowMinScale = Math.min(rawMinScale, windowMaxScale);
 
   const defaultAnimationSpeed = DEFAULT_UI_RUNTIME_CONFIG.animationSpeed;
-  const rawMinSpeed = parseCfgNumber(entries.get("animation.minSpeed") ?? "")
-    ?? defaultAnimationSpeed.minSpeed;
-  const rawMaxSpeed = parseCfgNumber(entries.get("animation.maxSpeed") ?? "")
-    ?? defaultAnimationSpeed.maxSpeed;
+  const rawMinSpeed = cfg.number("animation.minSpeed", defaultAnimationSpeed.minSpeed);
+  const rawMaxSpeed = cfg.number("animation.maxSpeed", defaultAnimationSpeed.maxSpeed);
+  if (rawMinSpeed > rawMaxSpeed) {
+    console.warn(
+      `[MEMORYBLOX] animation.minSpeed (${rawMinSpeed}) exceeds animation.maxSpeed (${rawMaxSpeed}); values were swapped.`,
+    );
+  }
+
   const speedMax = Math.max(rawMinSpeed, rawMaxSpeed);
   const speedMin = Math.min(rawMinSpeed, speedMax);
-  const rawDefaultSpeed = parseCfgNumber(entries.get("animation.defaultSpeed") ?? "")
-    ?? defaultAnimationSpeed.defaultSpeed;
+  const rawDefaultSpeed = cfg.number("animation.defaultSpeed", defaultAnimationSpeed.defaultSpeed);
   const defaultBoardLayout = DEFAULT_UI_RUNTIME_CONFIG.boardLayout;
   const defaultGameplayTiming = DEFAULT_UI_RUNTIME_CONFIG.gameplayTiming;
   const defaultVisualEffects = DEFAULT_UI_RUNTIME_CONFIG.visualEffects;
   const tileGlobalOpacity = clamp(
-    parseCfgNumber(entries.get("ui.tileGlobalOpacity") ?? "")
-      ?? DEFAULT_UI_RUNTIME_CONFIG.tileGlobalOpacity,
+    cfg.number("ui.tileGlobalOpacity", DEFAULT_UI_RUNTIME_CONFIG.tileGlobalOpacity),
     0,
     1,
   );
   const tileFrontOpacity = clamp(
-    parseCfgNumber(entries.get("ui.tileFrontOpacity") ?? "")
-      ?? tileGlobalOpacity,
+    cfg.number("ui.tileFrontOpacity", tileGlobalOpacity),
     0,
     1,
   );
   const tileBackOpacity = clamp(
-    parseCfgNumber(entries.get("ui.tileBackOpacity") ?? "")
-      ?? tileGlobalOpacity,
+    cfg.number("ui.tileBackOpacity", tileGlobalOpacity),
     0,
     1,
   );
 
   return {
-    fixedWindowAspectRatio: parseCfgNumber(entries.get("ui.fixedWindowAspectRatio") ?? "")
-      ?? DEFAULT_UI_RUNTIME_CONFIG.fixedWindowAspectRatio,
+    fixedWindowAspectRatio: cfg.number("ui.fixedWindowAspectRatio", DEFAULT_UI_RUNTIME_CONFIG.fixedWindowAspectRatio),
     emojiPackParityMode:
       parseEmojiPackParityMode(entries.get("ui.emojiPackParityMode") ?? "")
       ?? DEFAULT_UI_RUNTIME_CONFIG.emojiPackParityMode,
@@ -296,170 +296,51 @@ export const loadUiRuntimeConfig = async (): Promise<UiRuntimeConfig> => {
     tileGlobalOpacity,
     tileFrontOpacity,
     tileBackOpacity,
-    appMaxWidthPx: Math.max(
-      1,
-      parseCfgInteger(entries.get("ui.appMaxWidthPx") ?? "")
-        ?? DEFAULT_UI_RUNTIME_CONFIG.appMaxWidthPx,
-    ),
-    leaderboardVisibleRowCount: Math.max(
-      1,
-      parseCfgInteger(entries.get("ui.leaderboardVisibleRowCount") ?? "")
-        ?? DEFAULT_UI_RUNTIME_CONFIG.leaderboardVisibleRowCount,
-    ),
-    namePromptFadeOutMs: Math.max(
-      0,
-      parseCfgInteger(entries.get("ui.namePromptFadeOutMs") ?? "")
-        ?? DEFAULT_UI_RUNTIME_CONFIG.namePromptFadeOutMs,
-    ),
+    appMaxWidthPx: Math.max(1, cfg.integer("ui.appMaxWidthPx", DEFAULT_UI_RUNTIME_CONFIG.appMaxWidthPx)),
+    leaderboardVisibleRowCount: Math.max(1, cfg.integer("ui.leaderboardVisibleRowCount", DEFAULT_UI_RUNTIME_CONFIG.leaderboardVisibleRowCount)),
+    namePromptFadeOutMs: Math.max(0, cfg.integer("ui.namePromptFadeOutMs", DEFAULT_UI_RUNTIME_CONFIG.namePromptFadeOutMs)),
     boardLayout: {
-      minTileSizePx: Math.max(
-        1,
-        parseCfgInteger(entries.get("board.minTileSizePx") ?? "")
-          ?? defaultBoardLayout.minTileSizePx,
-      ),
-      targetTileSizePx: Math.max(
-        1,
-        parseCfgInteger(entries.get("board.targetTileSizePx") ?? "")
-          ?? defaultBoardLayout.targetTileSizePx,
-      ),
-      tileGapPx: Math.max(
-        0,
-        parseCfgInteger(entries.get("board.tileGapPx") ?? "")
-          ?? defaultBoardLayout.tileGapPx,
-      ),
-      boardHorizontalPaddingPx: Math.max(
-        0,
-        parseCfgInteger(entries.get("board.boardHorizontalPaddingPx") ?? "")
-          ?? defaultBoardLayout.boardHorizontalPaddingPx,
-      ),
+      minTileSizePx: Math.max(1, cfg.integer("board.minTileSizePx", defaultBoardLayout.minTileSizePx)),
+      targetTileSizePx: Math.max(1, cfg.integer("board.targetTileSizePx", defaultBoardLayout.targetTileSizePx)),
+      tileGapPx: Math.max(0, cfg.integer("board.tileGapPx", defaultBoardLayout.tileGapPx)),
+      boardHorizontalPaddingPx: Math.max(0, cfg.integer("board.boardHorizontalPaddingPx", defaultBoardLayout.boardHorizontalPaddingPx)),
     },
     gameplayTiming: {
-      mismatchDelayMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.mismatchDelayMs") ?? "")
-          ?? defaultGameplayTiming.mismatchDelayMs,
-      ),
-      reducedMotionMismatchExtraDelayMs: Math.max(
-        0,
-        parseCfgInteger(entries.get("gameplay.reducedMotionMismatchExtraDelayMs") ?? "")
-          ?? defaultGameplayTiming.reducedMotionMismatchExtraDelayMs,
-      ),
-      matchedDisappearPauseMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.matchedDisappearPauseMs") ?? "")
-          ?? defaultGameplayTiming.matchedDisappearPauseMs,
-      ),
-      matchedDisappearDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.matchedDisappearDurationMs") ?? "")
-          ?? defaultGameplayTiming.matchedDisappearDurationMs,
-      ),
-      reducedMotionMatchedDisappearDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.reducedMotionMatchedDisappearDurationMs") ?? "")
-          ?? defaultGameplayTiming.reducedMotionMatchedDisappearDurationMs,
-      ),
-      winCanvasFadeDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.winCanvasFadeDurationMs") ?? "")
-          ?? defaultGameplayTiming.winCanvasFadeDurationMs,
-      ),
-      autoMatchSecondSelectionDelayMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.autoMatchSecondSelectionDelayMs") ?? "")
-          ?? defaultGameplayTiming.autoMatchSecondSelectionDelayMs,
-      ),
-      autoMatchBootDelayMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.autoMatchBootDelayMs") ?? "")
-          ?? defaultGameplayTiming.autoMatchBootDelayMs,
-      ),
-      autoMatchBetweenPairsDelayMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.autoMatchBetweenPairsDelayMs") ?? "")
-          ?? defaultGameplayTiming.autoMatchBetweenPairsDelayMs,
-      ),
-      uiTimerUpdateIntervalMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("gameplay.uiTimerUpdateIntervalMs") ?? "")
-          ?? defaultGameplayTiming.uiTimerUpdateIntervalMs,
-      ),
+      mismatchDelayMs: Math.max(1, cfg.integer("gameplay.mismatchDelayMs", defaultGameplayTiming.mismatchDelayMs)),
+      reducedMotionMismatchExtraDelayMs: Math.max(0, cfg.integer("gameplay.reducedMotionMismatchExtraDelayMs", defaultGameplayTiming.reducedMotionMismatchExtraDelayMs)),
+      matchedDisappearPauseMs: Math.max(1, cfg.integer("gameplay.matchedDisappearPauseMs", defaultGameplayTiming.matchedDisappearPauseMs)),
+      matchedDisappearDurationMs: Math.max(1, cfg.integer("gameplay.matchedDisappearDurationMs", defaultGameplayTiming.matchedDisappearDurationMs)),
+      reducedMotionMatchedDisappearDurationMs: Math.max(1, cfg.integer("gameplay.reducedMotionMatchedDisappearDurationMs", defaultGameplayTiming.reducedMotionMatchedDisappearDurationMs)),
+      winCanvasFadeDurationMs: Math.max(1, cfg.integer("gameplay.winCanvasFadeDurationMs", defaultGameplayTiming.winCanvasFadeDurationMs)),
+      autoMatchSecondSelectionDelayMs: Math.max(1, cfg.integer("gameplay.autoMatchSecondSelectionDelayMs", defaultGameplayTiming.autoMatchSecondSelectionDelayMs)),
+      autoMatchBootDelayMs: Math.max(1, cfg.integer("gameplay.autoMatchBootDelayMs", defaultGameplayTiming.autoMatchBootDelayMs)),
+      autoMatchBetweenPairsDelayMs: Math.max(1, cfg.integer("gameplay.autoMatchBetweenPairsDelayMs", defaultGameplayTiming.autoMatchBetweenPairsDelayMs)),
+      uiTimerUpdateIntervalMs: Math.max(1, cfg.integer("gameplay.uiTimerUpdateIntervalMs", defaultGameplayTiming.uiTimerUpdateIntervalMs)),
     },
     visualEffects: {
-      tileFlipDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("animation.tileFlipDurationMs") ?? "")
-          ?? defaultVisualEffects.tileFlipDurationMs,
-      ),
-      plasmaBackgroundDriftDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("plasma.backgroundDriftDurationMs") ?? "")
-          ?? defaultVisualEffects.plasmaBackgroundDriftDurationMs,
-      ),
-      plasmaHueCycleDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("plasma.hueCycleDurationMs") ?? "")
-          ?? defaultVisualEffects.plasmaHueCycleDurationMs,
-      ),
-      plasmaTileDriftDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("plasma.tileDriftDurationMs") ?? "")
-          ?? defaultVisualEffects.plasmaTileDriftDurationMs,
-      ),
-      plasmaTileIndexOffsetDelayMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("plasma.tileIndexOffsetDelayMs") ?? "")
-          ?? defaultVisualEffects.plasmaTileIndexOffsetDelayMs,
-      ),
-      plasmaGlowSweepDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("plasma.glowSweepDurationMs") ?? "")
-          ?? defaultVisualEffects.plasmaGlowSweepDurationMs,
-      ),
-      plasmaFlaresShiftDurationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("plasma.flaresShiftDurationMs") ?? "")
-          ?? defaultVisualEffects.plasmaFlaresShiftDurationMs,
-      ),
-      plasmaGlowOpacity: clamp(
-        parseCfgNumber(entries.get("plasma.glowOpacity") ?? "")
-          ?? defaultVisualEffects.plasmaGlowOpacity,
-        0,
-        1,
-      ),
-      plasmaFlaresOpacity: clamp(
-        parseCfgNumber(entries.get("plasma.flaresOpacity") ?? "")
-          ?? defaultVisualEffects.plasmaFlaresOpacity,
-        0,
-        1,
-      ),
+      tileFlipDurationMs: Math.max(1, cfg.integer("animation.tileFlipDurationMs", defaultVisualEffects.tileFlipDurationMs)),
+      plasmaBackgroundDriftDurationMs: Math.max(1, cfg.integer("plasma.backgroundDriftDurationMs", defaultVisualEffects.plasmaBackgroundDriftDurationMs)),
+      plasmaHueCycleDurationMs: Math.max(1, cfg.integer("plasma.hueCycleDurationMs", defaultVisualEffects.plasmaHueCycleDurationMs)),
+      plasmaTileDriftDurationMs: Math.max(1, cfg.integer("plasma.tileDriftDurationMs", defaultVisualEffects.plasmaTileDriftDurationMs)),
+      plasmaTileIndexOffsetDelayMs: Math.max(1, cfg.integer("plasma.tileIndexOffsetDelayMs", defaultVisualEffects.plasmaTileIndexOffsetDelayMs)),
+      plasmaGlowSweepDurationMs: Math.max(1, cfg.integer("plasma.glowSweepDurationMs", defaultVisualEffects.plasmaGlowSweepDurationMs)),
+      plasmaFlaresShiftDurationMs: Math.max(1, cfg.integer("plasma.flaresShiftDurationMs", defaultVisualEffects.plasmaFlaresShiftDurationMs)),
+      plasmaGlowOpacity: clamp(cfg.number("plasma.glowOpacity", defaultVisualEffects.plasmaGlowOpacity), 0, 1),
+      plasmaFlaresOpacity: clamp(cfg.number("plasma.flaresOpacity", defaultVisualEffects.plasmaFlaresOpacity), 0, 1),
     },
     windowBaseSize: {
-      minWidthPx: Math.max(
-        1,
-        parseCfgInteger(entries.get("window.baseMinWidthPx") ?? "")
-          ?? DEFAULT_UI_RUNTIME_CONFIG.windowBaseSize.minWidthPx,
-      ),
-      minHeightPx: Math.max(
-        1,
-        parseCfgInteger(entries.get("window.baseMinHeightPx") ?? "")
-          ?? DEFAULT_UI_RUNTIME_CONFIG.windowBaseSize.minHeightPx,
-      ),
+      minWidthPx: Math.max(1, cfg.integer("window.baseMinWidthPx", DEFAULT_UI_RUNTIME_CONFIG.windowBaseSize.minWidthPx)),
+      minHeightPx: Math.max(1, cfg.integer("window.baseMinHeightPx", DEFAULT_UI_RUNTIME_CONFIG.windowBaseSize.minHeightPx)),
     },
     windowResizeLimits: {
       defaultScale: clamp(
-        parseCfgNumber(entries.get("window.defaultScale") ?? "")
-          ?? defaultWindowResizeLimits.defaultScale,
+        cfg.number("window.defaultScale", defaultWindowResizeLimits.defaultScale),
         windowMinScale,
         windowMaxScale,
       ),
       minScale: windowMinScale,
       maxScale: windowMaxScale,
-      viewportPaddingPx: Math.max(
-        0,
-        parseCfgInteger(entries.get("window.viewportPaddingPx") ?? "")
-          ?? defaultWindowResizeLimits.viewportPaddingPx,
-      ),
+      viewportPaddingPx: Math.max(0, cfg.integer("window.viewportPaddingPx", defaultWindowResizeLimits.viewportPaddingPx)),
     },
     animationSpeed: {
       defaultSpeed: clamp(rawDefaultSpeed, speedMin, speedMax),
@@ -486,6 +367,7 @@ export const loadWinFxRuntimeConfig = async (): Promise<WinFxRuntimeConfig> => {
     return DEFAULT_WIN_FX_RUNTIME_CONFIG;
   }
 
+  const cfg = createCfgReader(entries);
   const defaults = DEFAULT_WIN_FX_RUNTIME_CONFIG;
   const defaultOptions = defaults.options;
   const colors = parseCfgHexColorList(entries.get("winFx.colors") ?? "");
@@ -494,66 +376,19 @@ export const loadWinFxRuntimeConfig = async (): Promise<WinFxRuntimeConfig> => {
 
   return {
     options: {
-      durationMs: Math.max(
-        1,
-        parseCfgInteger(entries.get("winFx.durationMs") ?? "") ?? defaultOptions.durationMs,
-      ),
-      maxTilePieces: Math.max(
-        1,
-        parseCfgInteger(entries.get("winFx.maxTilePieces") ?? "") ?? defaultOptions.maxTilePieces,
-      ),
-      wavesPerTile: Math.max(
-        1,
-        parseCfgInteger(entries.get("winFx.wavesPerTile") ?? "") ?? defaultOptions.wavesPerTile,
-      ),
-      waveDelayMs: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.waveDelayMs") ?? "") ?? defaultOptions.waveDelayMs,
-      ),
-      sparksPerTile: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.sparksPerTile") ?? "") ?? defaultOptions.sparksPerTile,
-      ),
-      particleDelayJitterMs: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.particleDelayJitterMs") ?? "")
-          ?? defaultOptions.particleDelayJitterMs,
-      ),
-      centerFinaleDelayMs: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.centerFinaleDelayMs") ?? "")
-          ?? defaultOptions.centerFinaleDelayMs,
-      ),
-      centerFinaleWaves: Math.max(
-        1,
-        parseCfgInteger(entries.get("winFx.centerFinaleWaves") ?? "")
-          ?? defaultOptions.centerFinaleWaves,
-      ),
-      centerFinaleWaveDelayMs: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.centerFinaleWaveDelayMs") ?? "")
-          ?? defaultOptions.centerFinaleWaveDelayMs,
-      ),
-      centerFinaleCount: Math.max(
-        1,
-        parseCfgInteger(entries.get("winFx.centerFinaleCount") ?? "")
-          ?? defaultOptions.centerFinaleCount,
-      ),
-      confettiRainDelayMs: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.confettiRainDelayMs") ?? "")
-          ?? defaultOptions.confettiRainDelayMs,
-      ),
-      confettiRainCount: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.confettiRainCount") ?? "")
-          ?? defaultOptions.confettiRainCount,
-      ),
-      confettiRainSpreadMs: Math.max(
-        0,
-        parseCfgInteger(entries.get("winFx.confettiRainSpreadMs") ?? "")
-          ?? defaultOptions.confettiRainSpreadMs,
-      ),
+      durationMs: Math.max(1, cfg.integer("winFx.durationMs", defaultOptions.durationMs)),
+      maxTilePieces: Math.max(1, cfg.integer("winFx.maxTilePieces", defaultOptions.maxTilePieces)),
+      wavesPerTile: Math.max(1, cfg.integer("winFx.wavesPerTile", defaultOptions.wavesPerTile)),
+      waveDelayMs: Math.max(0, cfg.integer("winFx.waveDelayMs", defaultOptions.waveDelayMs)),
+      sparksPerTile: Math.max(0, cfg.integer("winFx.sparksPerTile", defaultOptions.sparksPerTile)),
+      particleDelayJitterMs: Math.max(0, cfg.integer("winFx.particleDelayJitterMs", defaultOptions.particleDelayJitterMs)),
+      centerFinaleDelayMs: Math.max(0, cfg.integer("winFx.centerFinaleDelayMs", defaultOptions.centerFinaleDelayMs)),
+      centerFinaleWaves: Math.max(1, cfg.integer("winFx.centerFinaleWaves", defaultOptions.centerFinaleWaves)),
+      centerFinaleWaveDelayMs: Math.max(0, cfg.integer("winFx.centerFinaleWaveDelayMs", defaultOptions.centerFinaleWaveDelayMs)),
+      centerFinaleCount: Math.max(1, cfg.integer("winFx.centerFinaleCount", defaultOptions.centerFinaleCount)),
+      confettiRainDelayMs: Math.max(0, cfg.integer("winFx.confettiRainDelayMs", defaultOptions.confettiRainDelayMs)),
+      confettiRainCount: Math.max(0, cfg.integer("winFx.confettiRainCount", defaultOptions.confettiRainCount)),
+      confettiRainSpreadMs: Math.max(0, cfg.integer("winFx.confettiRainSpreadMs", defaultOptions.confettiRainSpreadMs)),
       colors: colors.length > 0 ? colors : defaultOptions.colors,
     },
     textOptions: textOptions.length > 0 ? textOptions : defaults.textOptions,

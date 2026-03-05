@@ -10,6 +10,7 @@ of a classic Windows 9x game called 'Memory Blocks'
 - Playable boards with three difficulties (5x6, 5x8, 5x10)
 - Dynamic emoji deck generation by selected difficulty
 - Timer, attempt counter, restart flow, and win message
+- Web Audio-based sound engine with centralized sound manager and loader
 - Browser entry via `index.html` + compiled `dist/index.js`
 - GitHub Pages deployment workflow in `.github/workflows/pages.yml`
 
@@ -33,6 +34,12 @@ Quality gate (run before any commit/push):
 npm run test
 npm run test:coverage
 ```
+
+Test coverage policy: every reported coverage table cell must be at least
+90% (Statements, Branches, Functions, and Lines for each reported row/file).
+
+Always scan the VS Code Problems tab after running the quality gate and resolve
+all reported issues before commit/push.
 
 Validation order is fixed:
 
@@ -72,7 +79,7 @@ npm run build
 10. Keep visual/style rules in `docs/style-guide.md`; do not mix non-style governance there.
 11. All game styling changes must strictly follow `docs/style-guide.md`.
 12. Store global variables and runtime-tunable global configuration in `config/`.
-13. Keep the total emoji pack count even to preserve the 2-column Settings
+13. Keep the total icon pack count even to preserve the 2-column Settings
   pack grid layout.
 14. When cleaning up or refactoring features, run and follow
   `docs/dead-surface-audit.md` to remove dead/unnecessary code surfaces.

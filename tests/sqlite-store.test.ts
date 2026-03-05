@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { SqliteLeaderboardStore } from "../tools/leaderboard/sqlite-store.mjs";
 
@@ -65,7 +65,14 @@ const parseEntryForTest = (value: unknown) => {
 const tempDirs: string[] = [];
 const openStores: { close: () => void }[] = [];
 
+beforeEach(() => {
+  // Suppress expected WAL warnings from :memory: databases during tests.
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+
 afterEach(async () => {
+  vi.restoreAllMocks();
+
   while (openStores.length > 0) {
     openStores.pop()?.close();
   }

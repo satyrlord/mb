@@ -1,12 +1,16 @@
 import { shuffle } from "./utils.js";
+import {
+  IMPORTED_OPENMOJI_ICON_TOKENS,
+  IMPORTED_OPENMOJI_ICON_TOKEN_SET,
+} from "./openmoji-imports.js";
 
 export type EmojiPackId =
   | "space-astronomy"
   | "plants-nature"
   | "food-drinks"
-  | "industry"
+  | "technology"
   | "world-flags"
-  | "science-tech"
+  | "medieval-fantasy"
   | "music-performance"
   | "religious-symbols";
 
@@ -20,9 +24,9 @@ interface EmojiPackDefinition {
 /**
  * Minimum number of icons required in a pack to support all difficulties.
  *
- * The hardest board currently uses 50 tiles, which corresponds to 25 pairs.
- * Each emoji pack must therefore provide at least 25 unique icons so the
- * deck generator can build a full hard-mode board from a single pack.
+ * The 1x tile-multiplier uniqueness policy targets up to 50 unique tiles.
+ * Each icon pack must therefore provide at least 50 unique icons so the
+ * deck generator can satisfy this no-repetition target from a single pack.
  *
  * This value is the single source of truth for the minimum icon count within
  * the icon system. It is enforced at runtime by
@@ -34,8 +38,21 @@ interface EmojiPackDefinition {
  * See the `DIFFICULTIES` array in `src/index.ts` when modifying the
  * hardest board size or tile count.
  */
-export const MIN_ICONS_PER_PACK = 25;
+export const MIN_ICONS_PER_PACK = 50;
 
+export const MIN_ASSET_ICON_RATIO = 0.3;
+
+/**
+ * Icon pack definitions embedded inline for type safety and instant availability.
+ *
+ * These are kept in source rather than loaded from JSON because:
+ * - `EmojiPackId` union type is verified against pack `id` fields at compile time.
+ * - Icons are available at module load without async I/O or fetch.
+ * - Tree-shaking can eliminate unused packs in downstream builds.
+ *
+ * The equivalent machine-readable catalog for tooling lives separately in
+ * `icon/icon-pack-catalog.json` (synced via `npm run icons:sync`).
+ */
 export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
   {
     id: "space-astronomy",
@@ -44,22 +61,20 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
     icons: [
       "☀️",
       "🌞",
-      "🌝",
-      "🌚",
-      "🌛",
-      "🌜",
       "🌕",
-      "🌖",
-      "🌗",
-      "🌘",
-      "🌑",
-      "🌒",
-      "🌓",
-      "🌔",
       "🌙",
       "🌍",
-      "🌎",
-      "🌏",
+      "🌀",
+      "🕳️",
+      "🧑‍🔬",
+      "🧠",
+      "🌉",
+      "🏙️",
+      "🔥",
+      "❄️",
+      "🪂",
+      "🛸",
+      "🔦",
       "🪐",
       "💫",
       "⭐",
@@ -72,13 +87,13 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🌃",
       "🌄",
       "🌅",
-      "🛸",
+      "🗼",
       "🚀",
       "🛰️",
       "🔭",
-      "🧑‍🚀",
-      "👨‍🚀",
-      "👩‍🚀",
+      "asset:openmoji:1F680",
+      "asset:openmoji:1F916",
+      "asset:openmoji:1F52C",
       "👽",
       "🌐",
       "♈",
@@ -93,6 +108,8 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "♑",
       "♒",
       "♓",
+      "🛰",
+      "🛩️",
     ],
   },
   {
@@ -123,9 +140,9 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🌼",
       "💐",
       "🪻",
-      "🪷",
+      "🦉",
       "🍄",
-      "🪹",
+      "🦔",
       "🪺",
       "🌊",
       "⛰️",
@@ -134,20 +151,20 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🐝",
       "🐞",
       "🪲",
-      "🪳",
+      "🦬",
       "🕷️",
-      "🦗",
-      "🐌",
-      "🐛",
+      "🦫",
+      "🦦",
+      "🦭",
       "🐸",
       "🦆",
-      "🦢",
-      "🐢",
+      "🦩",
+      "🐿️",
       "🦎",
-      "🐠",
-      "🐟",
+      "🪸",
+      "🐚",
       "🐬",
-      "🦀",
+      "🦪",
       "🦞",
       "🪼",
     ],
@@ -161,12 +178,12 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🍓",
       "🍋",
       "🍇",
-      "🥝",
-      "🍒",
-      "🍍",
+      "🍛",
+      "🥪",
+      "🥞",
       "🍎",
-      "🍑",
-      "🥥",
+      "🧇",
+      "🍗",
       "🥑",
       "🌽",
       "🥕",
@@ -187,23 +204,43 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🍺",
       "🍷",
       "🍹",
+      "🍖",
+      "🍤",
+      "🍜",
+      "🫐",
+      "🍝",
+      "🥟",
+      "🥭",
+      "🍅",
+      "🍆",
+      "🥔",
+      "🧅",
+      "🧄",
+      "🥦",
+      "🥬",
+      "🫛",
+      "🫘",
+      "🌶️",
+      "🫑",
+      "🥒",
+      "🫒",
     ],
   },
   {
-    id: "industry",
-    name: "Industry",
-    previewIcon: "🏗️",
+    id: "technology",
+    name: "Technology",
+    previewIcon: "🤖",
     icons: [
       "🚗",
-      "🚕",
-      "🚙",
+      "🧮",
+      "🔐",
       "🚌",
-      "🚎",
+      "🗜️",
       "🚓",
       "🚑",
       "🚒",
-      "🚚",
-      "🚛",
+      "📺",
+      "📠",
       "🚜",
       "🚲",
       "🛵",
@@ -212,7 +249,6 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🚆",
       "✈️",
       "🚁",
-      "🚀",
       "🚢",
       "⚓",
       "⛽",
@@ -223,55 +259,9 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "⚙️",
       "⛓️",
       "🧰",
-      "🏗️",
-    ],
-  },
-  {
-    id: "world-flags",
-    name: "World Flags",
-    previewIcon: "🌍",
-    icons: [
-      "🇦🇷",
-      "🇦🇺",
-      "🇧🇪",
-      "🇧🇷",
-      "🇨🇦",
-      "🇨🇱",
-      "🇨🇳",
-      "🇨🇴",
-      "🇩🇰",
-      "🇪🇬",
-      "🇫🇮",
-      "🇫🇷",
-      "🇩🇪",
-      "🇬🇷",
-      "🇮🇳",
-      "🇮🇩",
-      "🇮🇪",
-      "🇮🇹",
-      "🇯🇵",
-      "🇨🇭",
-      "🇲🇽",
-      "🇳🇱",
-      "🇲🇳",
-      "🇳🇴",
-      "🇵🇱",
-      "🇵🇹",
-      "🇰🇷",
-      "🇪🇸",
-      "🇸🇪",
-      "🇷🇴",
-    ],
-  },
-  {
-    id: "science-tech",
-    name: "Science & Tech",
-    previewIcon: "🧪",
-    icons: [
       "🧪",
       "⚗️",
       "🔬",
-      "🔭",
       "🧬",
       "🧫",
       "🧲",
@@ -287,17 +277,138 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🖨️",
       "📱",
       "📡",
-      "📟",
-      "📠",
-      "🛰️",
+      "📼",
+      "📀",
       "🤖",
       "🦾",
-      "⚙️",
-      "🔧",
-      "🪛",
-      "🧰",
-      "🛜",
+      "asset:openmoji:1F9EA",
       "📶",
+      "asset:openmoji:1F6DE",
+      "asset:openmoji:1F9ED",
+      "asset:openmoji:1FA9D",
+      "asset:openmoji:1FAAA",
+      "asset:openmoji:1F6DF",
+      "asset:openmoji:1F9EF",
+      "asset:openmoji:1FA83",
+      "asset:openmoji:1FA99",
+      "asset:openmoji:1FA9C",
+      "asset:openmoji:1FAA0",
+      "asset:openmoji:1F9F1",
+      "asset:openmoji:1F6DD",
+    ],
+  },
+  {
+    id: "world-flags",
+    name: "World Flags",
+    previewIcon: "🌍",
+    icons: [
+      "🇳🇵",
+      "🇦🇺",
+      "🇯🇲",
+      "🇧🇷",
+      "🇨🇦",
+      "🇨🇱",
+      "🇨🇳",
+      "🇨🇴",
+      "🇩🇰",
+      "🇪🇬",
+      "🇫🇮",
+      "🇸🇨",
+      "🇩🇪",
+      "🇬🇷",
+      "🇮🇳",
+      "🇰🇪",
+      "🇮🇪",
+      "🇧🇹",
+      "🇯🇵",
+      "🇨🇭",
+      "🇲🇽",
+      "🇰🇭",
+      "🇲🇳",
+      "🇳🇴",
+      "🇵🇱",
+      "🇵🇹",
+      "🇰🇷",
+      "🇪🇸",
+      "🇸🇪",
+      "🇦🇪",
+      "🇺🇸",
+      "🇬🇧",
+      "🇺🇦",
+      "🇹🇷",
+      "🇿🇦",
+      "🇳🇿",
+      "🇹🇭",
+      "🇻🇳",
+      "🇸🇬",
+      "🇲🇾",
+      "🇵🇭",
+      "🇵🇰",
+      "🇸🇦",
+      "🇮🇱",
+      "🇨🇿",
+      "🇭🇺",
+      "🇦🇹",
+      "🇧🇬",
+      "🇭🇷",
+      "🇸🇰",
+    ],
+  },
+  {
+    id: "medieval-fantasy",
+    name: "Medieval Fantasy",
+    previewIcon: "🐉",
+    icons: [
+      "asset:openmoji:1F3F0",
+      "asset:openmoji:1F6E1",
+      "asset:openmoji:2694",
+      "🗡️",
+      "🏹",
+      "🪄",
+      "🔮",
+      "asset:openmoji:1F409",
+      "🧙",
+      "🧝",
+      "🧚",
+      "🧌",
+      "🦄",
+      "👑",
+      "🏇",
+      "🐎",
+      "🧞",
+      "🧛",
+      "🧟",
+      "🧟‍♂️",
+      "🪓",
+      "🏔️",
+      "🏞️",
+      "🌋",
+      "🌫️",
+      "🧿",
+      "🗝️",
+      "☠️",
+      "♖",
+      "🦁",
+      "♘",
+      "🐏",
+      "asset:openmoji:1F432",
+      "asset:openmoji:1F43A",
+      "asset:openmoji:1F987",
+      "asset:openmoji:1F982",
+      "asset:openmoji:1F5FA-FE0F",
+      "asset:openmoji:1FAA4",
+      "asset:openmoji:1FAA8",
+      "🏺",
+      "asset:openmoji:1F578-FE0F",
+      "asset:openmoji:1F9B4",
+      "asset:openmoji:1F985",
+      "asset:openmoji:1F417",
+      "asset:openmoji:1F99C",
+      "asset:openmoji:1FAB6",
+      "asset:openmoji:1F6D6",
+      "asset:openmoji:1F531",
+      "asset:openmoji:26B0-FE0F",
+      "asset:openmoji:1F98F",
     ],
   },
   {
@@ -315,7 +426,7 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🎧",
       "📻",
       "🪩",
-      "🎸",
+      "asset:openmoji:1F3B8",
       "🎹",
       "🥁",
       "🎷",
@@ -326,15 +437,35 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "🕺",
       "💃",
       "🩰",
-      "🎭",
+      "asset:openmoji:1F3AD",
       "🎬",
       "🎥",
       "🎞️",
       "🎟️",
       "🎨",
       "🎪",
-      "✨",
-      "🌟",
+      "🖌️",
+      "🧵",
+      "🪡",
+      "🧶",
+      "🧷",
+      "🎲",
+      "🎯",
+      "🎮",
+      "🕹️",
+      "👾",
+      "🎰",
+      "🎳",
+      "🪀",
+      "🪁",
+      "🪈",
+      "🧑‍🎤",
+      "📝",
+      "✂️",
+      "🎐",
+      "🪅",
+      "🧸",
+      "🎎",
     ],
   },
   {
@@ -372,24 +503,46 @@ export const EMOJI_PACKS: readonly EmojiPackDefinition[] = [
       "⚱️",
       "🪦",
       "☮️",
+      "🕊️",
+      "👼",
+      "🪽",
+      "🤲",
+      "🙌",
+      "🙇",
+      "🫶",
+      "💒",
+      "🪬",
+      "⚜️",
+      "🪧",
+      "🪆",
+      "⚖️",
+      "⏳",
+      "⏱️",
+      "🔔",
+      "📯",
+      "☁️",
+      "🌈",
+      "🫧",
     ],
   },
 ] as const;
 
 /**
- * Validates that each emoji pack contains only unique icons.
+ * Validates that each icon pack contains only unique icons.
  *
- * Iterates over the provided emoji packs (or {@link EMOJI_PACKS} by default)
+ * Iterates over the provided icon packs (or {@link EMOJI_PACKS} by default)
  * and throws an error as soon as a duplicate icon is found within a pack.
  * The error message includes the pack ID and the first duplicate icon.
  *
- * @param packs - The emoji packs to validate for duplicate icons.
+ * @param packs - The icon packs to validate for duplicate icons.
  * @throws {Error} If any pack contains duplicate icons. The error message
  * includes the pack ID and the duplicate icon that triggered the error.
  */
 export const validateUniquePackIcons = (
-  packs: readonly Pick<EmojiPackDefinition, "id" | "icons">[] = EMOJI_PACKS,
+  packs: readonly { id: string; icons: readonly string[] }[] = EMOJI_PACKS,
 ): void => {
+  const globalSeen = new Map<string, string>();
+
   for (const pack of packs) {
     const seen = new Set<string>();
 
@@ -399,18 +552,28 @@ export const validateUniquePackIcons = (
           `[MEMORYBLOX] Duplicate icon found in '${pack.id}': ${icon}`,
         );
       }
+
+      const existingPackId = globalSeen.get(icon);
+
+      if (existingPackId !== undefined) {
+        throw new Error(
+          `[MEMORYBLOX] Duplicate icon found across packs '${existingPackId}' and '${pack.id}': ${icon}`,
+        );
+      }
+
       seen.add(icon);
+      globalSeen.set(icon, pack.id);
     }
   }
 };
 
 export const validateMinPackIconCount = (
-  packs: readonly Pick<EmojiPackDefinition, "id" | "icons">[] = EMOJI_PACKS,
+  packs: readonly { id: string; icons: readonly string[] }[] = EMOJI_PACKS,
 ): void => {
   for (const pack of packs) {
     if (pack.icons.length < MIN_ICONS_PER_PACK) {
       throw new Error(
-        `[MEMORYBLOX] Emoji pack '${pack.id}' has ${pack.icons.length} icons; minimum required is ${MIN_ICONS_PER_PACK}.`,
+        `[MEMORYBLOX] Icon pack '${pack.id}' has ${pack.icons.length} icons; minimum required is ${MIN_ICONS_PER_PACK}.`,
       );
     }
   }
@@ -420,6 +583,34 @@ export const DEFAULT_EMOJI_PACK_ID: EmojiPackId = "space-astronomy";
 
 /** Minimum number of copies generated per icon; standard pairs require exactly 2 tiles. */
 export const MIN_COPIES_PER_ICON = 2;
+
+export const OPENMOJI_IMPORTED_ICON_TOKENS = IMPORTED_OPENMOJI_ICON_TOKENS;
+
+export const OPENMOJI_IMPORTED_ICON_COUNT = OPENMOJI_IMPORTED_ICON_TOKENS.length;
+
+export const getActiveOpenmojiIconTokens = (): string[] => {
+  const activeTokens = new Set<string>();
+
+  for (const pack of EMOJI_PACKS) {
+    for (const icon of pack.icons) {
+      if (IMPORTED_OPENMOJI_ICON_TOKEN_SET.has(icon)) {
+        activeTokens.add(icon);
+      }
+    }
+  }
+
+  return [...activeTokens].sort((a, b) => a.localeCompare(b));
+};
+
+export const getInactiveImportedOpenmojiIconTokens = (): string[] => {
+  const activeTokens = new Set(getActiveOpenmojiIconTokens());
+
+  return OPENMOJI_IMPORTED_ICON_TOKENS.filter((token) => !activeTokens.has(token));
+};
+
+const isAssetToken = (icon: string): boolean => {
+  return icon.startsWith("asset:");
+};
 
 export const getEmojiPacks = (): Array<{ id: EmojiPackId; name: string; previewIcon: string }> => {
   return EMOJI_PACKS.map((pack) => ({ id: pack.id, name: pack.name, previewIcon: pack.previewIcon }));
@@ -436,7 +627,7 @@ const getPackById = (packId: EmojiPackId): EmojiPackDefinition => {
 
   if (fallbackPack === undefined) {
     throw new Error(
-      `[MEMORYBLOX] Default emoji pack '${DEFAULT_EMOJI_PACK_ID}' is missing from pack definitions.`,
+      `[MEMORYBLOX] Default icon pack '${DEFAULT_EMOJI_PACK_ID}' is missing from pack definitions.`,
     );
   }
 
@@ -448,8 +639,8 @@ const getPackById = (packId: EmojiPackId): EmojiPackDefinition => {
  * specified pack and duplicating each according to `copiesPerIcon`.
  *
  * @param uniqueIconCount - Number of unique icons to include. Must not exceed the
- *   pack's icon count (minimum `MIN_ICONS_PER_PACK` = 25 icons per pack).
- * @param packId - The emoji pack to draw icons from.
+ *   pack's icon count (minimum `MIN_ICONS_PER_PACK` = 50 icons per pack).
+ * @param packId - The icon pack to draw icons from.
  * @param copiesPerIcon - Number of tiles to create per icon. Accepts either:
  *   - A single `number` applied uniformly to all icons (default: `2` for standard pairs).
  *   - A `readonly number[]` with one entry per icon, allowing a mixed deck where
@@ -503,7 +694,28 @@ export const generateEmojiDeck = (
     );
   }
 
-  const chosenIcons = shuffle([...pack.icons]).slice(0, uniqueIconCount);
+  const shuffledIcons = shuffle([...pack.icons]);
+  const assetIcons = shuffledIcons.filter((icon) => isAssetToken(icon));
+  const standardIcons = shuffledIcons.filter((icon) => !isAssetToken(icon));
+  const minAssetIcons = assetIcons.length === 0
+    ? 0
+    : Math.min(
+      assetIcons.length,
+      uniqueIconCount,
+      Math.max(1, Math.ceil(uniqueIconCount * MIN_ASSET_ICON_RATIO)),
+    );
+  const selectedAssetIcons = assetIcons.slice(0, minAssetIcons);
+  const remainingSlots = uniqueIconCount - selectedAssetIcons.length;
+  const selectedStandardIcons = standardIcons.slice(0, remainingSlots);
+  const fallbackAssetIcons = assetIcons.slice(
+    selectedAssetIcons.length,
+    selectedAssetIcons.length + Math.max(0, remainingSlots - selectedStandardIcons.length),
+  );
+  const chosenIcons = shuffle([
+    ...selectedAssetIcons,
+    ...selectedStandardIcons,
+    ...fallbackAssetIcons,
+  ]);
   const tiles = chosenIcons.flatMap((icon, index) => {
     const copyCount = Array.isArray(normalizedCopies)
       ? (normalizedCopies[index] ?? MIN_COPIES_PER_ICON)

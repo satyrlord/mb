@@ -131,4 +131,19 @@ describe("createGameplayEngine", () => {
     expect(result.remainingPair).not.toBeNull();
     expect(result.matchedPairs.length).toBe(2);
   });
+
+  test("supports imported OpenMoji second-batch symbols in gameplay matching", () => {
+    const engine = createGameplayEngine({
+      rows: 2,
+      columns: 2,
+      deck: ["🛞", "🛞", "🧭", "🧭"],
+    });
+
+    const first = engine.selectTile(0);
+    const second = engine.selectTile(1);
+
+    expect(first.type).toBe("first");
+    expect(second.type).toBe("match");
+    expect(engine.getRemainingUnmatchedPairCount()).toBe(1);
+  });
 });

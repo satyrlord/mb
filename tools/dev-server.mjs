@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { extname, join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,6 +29,33 @@ const MIME = {
 
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${HOST}:${PORT}`);
+
+  if (url.pathname === "/__asset-index") {
+    const requestedDir = (url.searchParams.get("dir") ?? "").trim();
+    const normalizedDir = requestedDir.replace(/^\/+|\/+$/gu, "");
+
+    if (normalizedDir.length === 0) {
+      res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ error: "Missing dir query parameter." }));
+      return;
+    }
+
+    const dirPath = join(ROOT, normalizedDir);
+
+    if (!dirPath.startsWith(ROOT) || !existsSync(dirPath) || !statSync(dirPath).isDirectory()) {
+      res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ files: [] }));
+      return;
+    }
+
+    const files = readdirSync(dirPath)
+      .filter((entry) => statSync(join(dirPath, entry)).isFile());
+
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ files }));
+    return;
+  }
+
   let pathname = decodeURIComponent(url.pathname);
 
   // default to index.html

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 
 import {
+  flagEmojiTesting,
   getFlagEmojiCountryCode,
   getFlagEmojiCountryName,
   getFlagEmojiSvgUrl,
@@ -123,5 +124,13 @@ describe("flag emoji helpers", () => {
     setFlagEmojiCdnBaseUrl("");
     expect(getFlagEmojiSvgUrl("🇨🇦")).toContain("cdn.jsdelivr.net");
     setFlagEmojiCdnBaseUrl(DEFAULT_CDN_BASE_URL);
+  });
+
+  test("flag helper internals handle empty and non-regional indicator characters", () => {
+    expect(flagEmojiTesting.isRegionalIndicator("A")).toBe(false);
+    expect(flagEmojiTesting.isRegionalIndicator("")).toBe(false);
+    expect(flagEmojiTesting.getHexCodePoint("")).toBeNull();
+    expect(flagEmojiTesting.getRegionalIndicatorLetter("")).toBeNull();
+    expect(flagEmojiTesting.getRegionalIndicatorLetter("A")).toBeNull();
   });
 });

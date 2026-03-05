@@ -1,4 +1,10 @@
 import { BoardView } from "./board.js";
+import {
+  DEBUG_TILES_DIFFICULTY,
+  DEFAULT_DIFFICULTY_ID,
+  getDifficultyById,
+  type DifficultyConfig,
+} from "./difficulty.js";
 import { setFlagEmojiCdnBaseUrl } from "./flag-emoji.js";
 import {
   createGameplayEngine,
@@ -8,6 +14,8 @@ import {
   DEFAULT_EMOJI_PACK_ID,
   generateEmojiDeck,
   getEmojiPacks,
+  MIN_COPIES_PER_ICON,
+  OPENMOJI_IMPORTED_ICON_TOKENS,
   validateMinPackIconCount,
   validateUniquePackIcons,
   type EmojiPackId,
@@ -25,8 +33,7 @@ import {
   loadShadowConfig,
 } from "./shadow-config.js";
 import {
-  applyLeaderboardScorePenalty,
-  calculateLeaderboardScore,
+  computeGameScoreResult,
   DEFAULT_LEADERBOARD_RUNTIME_CONFIG,
   LeaderboardClient,
   loadLeaderboardRuntimeConfig,
@@ -34,11 +41,24 @@ import {
   type LeaderboardScoreEntry,
 } from "./leaderboard.js";
 import { normalizeScoreFlagsForPlayerSelection } from "./session-score.js";
+import {
+  clampTileMultiplier,
+  computeTileLayout,
+} from "./tile-layout.js";
 import { UiView } from "./ui.js";
-import { clamp, enableHorizontalWheelScroll, enableSliderWheelScroll, formatElapsedTime } from "./utils.js";
+import {
+  clamp,
+  enableHorizontalWheelScroll,
+  enableSliderWheelScroll,
+  formatElapsedTime,
+  requireElement,
+  sanitizePlayerName,
+  shuffle,
+} from "./utils.js";
 import { WinFxController } from "./win-fx.js";
+import { SoundManager } from "./sound-manager.js";
+import { WindowResizeController } from "./window-resize.js";
 
-const WINDOW_SCALE_STORAGE_KEY = "memoryblox-window-scale";
 const EMOJI_PACK_STORAGE_KEY = "memoryblox-emoji-pack";
 const TILE_MULTIPLIER_STORAGE_KEY = "memoryblox-tile-multiplier";
 const ANIMATION_SPEED_STORAGE_KEY = "memoryblox-animation-speed";
@@ -59,30 +79,8 @@ const runtimeState: AppRuntimeState = {
   },
 };
 
-const DEFAULT_DIFFICULTY_ID = "normal";
-
-interface DifficultyConfig {
-  id: string;
-  label: string;
-  rows: number;
-  columns: number;
-  scoreMultiplier: number;
-}
-
-const DEBUG_TILES_DIFFICULTY: DifficultyConfig = {
-  id: "debug-tiles",
-  label: "Debug Tiles",
-  rows: 1,
-  columns: 2,
-  scoreMultiplier: 0,
-};
-
-interface TileLayout {
-  tileCount: number;
-  multiSetCount: number;
-  pairSetCount: number;
-  multiSetCopies: number;
-}
+/** When true, render() overrides all tile statuses to "revealed" without matching them. */
+let debugFlipAllTiles = false;
 
 interface ActiveGameSession {
   mode: "game" | "debug-tiles";
@@ -93,6 +91,7 @@ interface ActiveGameSession {
   gameplay: GameplayEngine;
   scoreCategory: "standard" | "debug";
   isAutoDemoScore: boolean;
+  usedFlipTiles: boolean;
 }
 
 type AppSession =
@@ -101,39 +100,9 @@ type AppSession =
   }
   | ActiveGameSession;
 
-interface WindowResizeState {
-  baseWidthPx: number;
-  baseHeightPx: number;
-  aspectRatio: number;
-  scale: number;
-}
-
-interface WindowResizeDragState {
-  pointerId: number;
-  startX: number;
-  startY: number;
-  startWidthPx: number;
-  startHeightPx: number;
-}
-
 // Fallback shadow values are defined in `src/shadow-config.ts` and intentionally
 // match the `balanced` preset in `config/shadow.cfg`.
 
-const DIFFICULTIES: DifficultyConfig[] = [
-  { id: "easy", label: "Easy", rows: 5, columns: 6, scoreMultiplier: 1.2 },
-  { id: "normal", label: "Normal", rows: 5, columns: 8, scoreMultiplier: 1.8 },
-  { id: "hard", label: "Hard", rows: 5, columns: 10, scoreMultiplier: 2.4 },
-];
-
-const requireElement = <T extends Element>(selector: string): T => {
-  const element = document.querySelector<T>(selector);
-
-  if (element === null) {
-    throw new Error(`Required element not found: ${selector}`);
-  }
-
-  return element;
-};
 
 const boardElement = requireElement<HTMLElement>("#board");
 const appShellElement = requireElement<HTMLElement>("#appShell");
@@ -142,6 +111,7 @@ const timeValueElement = requireElement<HTMLElement>("#timeValue");
 const attemptsValueElement = requireElement<HTMLElement>("#attemptsValue");
 const statusMessageElement = requireElement<HTMLElement>("#statusMessage");
 const plasmaWarningElement = requireElement<HTMLElement>("#plasmaWarning");
+const audioUnlockNoticeElement = requireElement<HTMLElement>("#audioUnlockNotice");
 const topbarMenuLabel = requireElement<HTMLElement>("#topbarMenuLabel");
 const topbarActionsElement = requireElement<HTMLElement>(".topbar-actions");
 const menuBottomRepo = requireElement<HTMLElement>("#menuBottomRepo");
@@ -151,6 +121,13 @@ const debugMenuPanel = requireElement<HTMLElement>("#debugMenuPanel");
 const debugDemoButton = requireElement<HTMLButtonElement>("#debugDemoButton");
 const debugWinButton = requireElement<HTMLButtonElement>("#debugWinButton");
 const debugTilesButton = requireElement<HTMLButtonElement>("#debugTilesButton");
+const debugSvgImportsButton = requireElement<HTMLButtonElement>("#debugSvgImportsButton");
+const debugFlipTilesButton = requireElement<HTMLButtonElement>("#debugFlipTilesButton");
+const muteMusicButton = requireElement<HTMLButtonElement>("#muteMusicButton");
+const muteMusicIconOn = requireElement<HTMLElement>("#muteMusicIconOn");
+const muteMusicIconOff = requireElement<HTMLElement>("#muteMusicIconOff");
+const muteMusicStateText = requireElement<HTMLElement>("#muteMusicStateText");
+const muteSoundButton = requireElement<HTMLButtonElement>("#muteSoundButton");
 const menuButton = requireElement<HTMLButtonElement>("#menuButton");
 const menuHighScoresButton = requireElement<HTMLButtonElement>("#menuHighScoresButton");
 const menuSettingsButton = requireElement<HTMLButtonElement>("#menuSettingsButton");
@@ -180,43 +157,80 @@ const difficultyButtons = Array.from(
   difficultyMenu.querySelectorAll<HTMLButtonElement>("button[data-difficulty]"),
 );
 
+// ── Frame visibility management ──────────────────────────────────────────────────
+
+type FrameName = "menu" | "leaderboard" | "settings" | "game" | "debugTiles";
+
+const frameElements: Record<FrameName, HTMLElement> = {
+  menu: menuFrame,
+  leaderboard: leaderboardFrame,
+  settings: settingsFrame,
+  game: gameFrame,
+  debugTiles: debugTilesFrame,
+};
+
+/** Sets exactly one frame visible and hides all others. */
+const setActiveFrame = (activeFrame: FrameName): void => {
+  for (const [name, element] of Object.entries(frameElements)) {
+    element.hidden = name !== activeFrame;
+  }
+};
+
 let session: AppSession = { mode: "menu" };
-// Timer cancellation uses an interval id plus a generation counter to prevent
-// stale callbacks from affecting UI or game state after restarts or cancels.
+
+// ── Cancellable timer & async-sequence state ─────────────────────────────
 /**
- * Timer cancellation strategy.
- *
- * - `timerIntervalId` tracks the currently active `setInterval` handle so it can
- *   be cleared when the timer is stopped or restarted.
- * - `timerIntervalGeneration` is incremented every time we (re)start the timer
- *   and is captured by timer callbacks.
- * - Inside the callback we compare the captured generation with the current one;
- *   if they differ, the callback is considered stale (from a previous timer run)
- *   and returns without touching UI or game state.
- *
- * This prevents race conditions where an old interval fires after a restart or
- * cancel, ensuring only the most recent timer controls the UI.
+ * Each cancellable timer or async chain uses an `AbortController` whose
+ * signal is captured at the start of the operation and checked inside
+ * every callback or continuation.  Calling `.abort()` on the controller
+ * instantly marks the signal as aborted, causing all outstanding callbacks
+ * to bail out the next time they check `signal.aborted`.
  */
 let timerIntervalId: number | null = null;
-let timerIntervalGeneration = 0;
-let autoDemoGeneration = 0;
+let timerAbortController: AbortController | null = null;
+let autoDemoAbortController: AbortController | null = null;
 let mismatchResolveTimeoutId: number | null = null;
-let mismatchResolveGeneration = 0;
+let mismatchAbortController: AbortController | null = null;
 let winSequenceTimeoutId: number | null = null;
-let winSequenceGeneration = 0;
+let winSequenceAbortController: AbortController | null = null;
+
+/**
+ * Settings state: two-phase commit model.
+ *
+ * `selected*` fields hold the live configuration applied to active games.
+ * `pending*` fields hold uncommitted values shown in the Settings UI.
+ * `applyPending*()` commits pending → selected and persists to localStorage.
+ * Pending state resets to selected when the Settings frame opens, so
+ * cancelling out of Settings discards uncommitted changes.
+ */
 let selectedEmojiPackId: EmojiPackId = DEFAULT_EMOJI_PACK_ID;
 let pendingEmojiPackId: EmojiPackId = DEFAULT_EMOJI_PACK_ID;
 let selectedTileMultiplier = 1;
 let pendingTileMultiplier = 1;
 let selectedAnimationSpeed = runtimeState.ui.animationSpeed.defaultSpeed;
 let pendingAnimationSpeed = runtimeState.ui.animationSpeed.defaultSpeed;
-let windowResizeState: WindowResizeState | null = null;
-let windowResizeDragState: WindowResizeDragState | null = null;
+
+/**
+ * Runtime configuration and leaderboard persistence state.
+ *
+ * `shadowConfig` and `leaderboardRuntimeConfig` are loaded once during
+ * bootstrap and may be reloaded via `loadRuntimeConfig()`.
+ * `leaderboardClient` is reconstructed whenever the leaderboard config
+ * changes. `leaderboardEntries` caches the most recently fetched scores.
+ */
 let shadowConfig: ShadowConfig = DEFAULT_SHADOW_CONFIG;
 let leaderboardRuntimeConfig: LeaderboardRuntimeConfig = DEFAULT_LEADERBOARD_RUNTIME_CONFIG;
 let leaderboardClient = new LeaderboardClient(DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
 let leaderboardEntries: LeaderboardScoreEntry[] = [];
 let lastSubmittedLeaderboardEntryKey: string | null = null;
+
+/**
+ * Name-prompt modal state.
+ *
+ * The prompt is shown once per win. `pendingNamePromptResolve` holds the
+ * Promise resolver; `pendingNamePromptCleanup` removes event listeners
+ * when the prompt closes. Both reset to `null` via `closePlayerNamePrompt()`.
+ */
 let pendingNamePromptResolve: ((name: string) => void) | null = null;
 let pendingNamePromptCleanup: (() => void) | null = null;
 const emojiPacks = getEmojiPacks();
@@ -227,6 +241,17 @@ const winFxController = new WinFxController({
   winFxParticlesElement,
   winFxTextElement,
 });
+const soundManager = new SoundManager();
+
+const updateAudioUnlockNotice = (): void => {
+  const shouldShow = !menuFrame.hidden
+    && soundManager.hasMusicTracks()
+    && !soundManager.getMusicMuted()
+    && !soundManager.isMusicPlaying()
+    && !soundManager.isAudioContextRunning();
+
+  audioUnlockNoticeElement.hidden = !shouldShow;
+};
 
 const applySelectedAnimationSpeed = (speed: number): void => {
   document.documentElement.style.setProperty("--animation-speed", speed.toString());
@@ -247,17 +272,13 @@ const clampAnimationSpeed = (speed: number): number => {
   return clamp(speed, minSpeed, maxSpeed);
 };
 
-const clampTileMultiplier = (value: number): number => {
-  const rounded = Math.round(value);
-  return clamp(rounded, 1, 3);
-};
-
 const getGameplayTiming = (): UiRuntimeConfig["gameplayTiming"] => {
   return runtimeState.ui.gameplayTiming;
 };
 
 const clearMismatchResolveTimeout = (): void => {
-  mismatchResolveGeneration += 1;
+  mismatchAbortController?.abort();
+  mismatchAbortController = null;
 
   if (mismatchResolveTimeoutId !== null) {
     window.clearTimeout(mismatchResolveTimeoutId);
@@ -266,7 +287,8 @@ const clearMismatchResolveTimeout = (): void => {
 };
 
 const clearWinSequence = (): void => {
-  winSequenceGeneration += 1;
+  winSequenceAbortController?.abort();
+  winSequenceAbortController = null;
 
   if (winSequenceTimeoutId !== null) {
     window.clearTimeout(winSequenceTimeoutId);
@@ -299,14 +321,15 @@ const getScaledMatchedDisappearDuration = (): number => {
 const playWinSequenceWithText = (textOverride?: string): void => {
   clearWinSequence();
 
-  const generation = winSequenceGeneration;
+  winSequenceAbortController = new AbortController();
+  const { signal } = winSequenceAbortController;
   const gameplayTiming = getGameplayTiming();
   const tileAnimationDuration = scaleByAnimationSpeed(gameplayTiming.matchedDisappearPauseMs)
     + getScaledMatchedDisappearDuration();
   const fadeDuration = scaleByAnimationSpeed(gameplayTiming.winCanvasFadeDurationMs);
 
   winSequenceTimeoutId = window.setTimeout(() => {
-    if (generation !== winSequenceGeneration || !hasActiveGame(session)) {
+    if (signal.aborted || !hasActiveGame(session)) {
       return;
     }
 
@@ -319,86 +342,57 @@ const playWinSequenceWithText = (textOverride?: string): void => {
     winSequenceTimeoutId = window.setTimeout(() => {
       winSequenceTimeoutId = null;
 
-      if (generation !== winSequenceGeneration || !hasActiveGame(session)) {
+      if (signal.aborted || !hasActiveGame(session)) {
         return;
       }
 
-      winFxController.play(() => {
-        showMenuFrame();
-      }, textOverride);
+      void (async () => {
+        const winSoundDurationMs = await soundManager.playWin();
+
+        if (signal.aborted || !hasActiveGame(session)) {
+          return;
+        }
+
+        winFxController.play(() => {
+          showMenuFrame();
+        }, textOverride, winSoundDurationMs ?? undefined);
+      })();
     }, fadeDuration);
   }, tileAnimationDuration);
 };
 
-interface LeaderboardScoreComputationResult {
-  difficultyId: string;
-  difficultyLabel: string;
-  scoreMultiplier: number;
-  scoreValue: number;
+interface SubmitWinToLeaderboardInput {
+  playerName: string;
+  difficulty: DifficultyConfig;
+  sessionMode: ActiveGameSession["mode"];
+  emojiSetId: EmojiPackId;
+  emojiSetLabel: string;
+  scoreCategory: "standard" | "debug";
+  isAutoDemoScore: boolean;
+  tileMultiplier: number;
+  timeMs: number;
+  attempts: number;
 }
 
-const computeLeaderboardScoreResult = (
-  difficulty: DifficultyConfig,
-  sessionMode: ActiveGameSession["mode"],
-  scoreCategory: "standard" | "debug",
-  isAutoDemoScore: boolean,
-  tileMultiplier: number,
-  timeMs: number,
-  attempts: number,
-): LeaderboardScoreComputationResult => {
-  const difficultyId = scoreCategory === "debug" ? "debug" : difficulty.id;
-  const difficultyLabel = scoreCategory === "debug" ? "Debug" : difficulty.label;
-  const hasPenalty = scoreCategory === "debug" || isAutoDemoScore;
-  const scoringConfig = leaderboardRuntimeConfig.scoring;
-  const baseScoreMultiplier = difficulty.scoreMultiplier > 0 ? difficulty.scoreMultiplier : 1;
-  const tilePenaltyFactor = 1 / Math.max(1, tileMultiplier);
-  const adjustedScoreMultiplier = baseScoreMultiplier * tilePenaltyFactor;
-  const scoreMultiplier = hasPenalty
-    ? Number((adjustedScoreMultiplier * scoringConfig.scorePenaltyFactor).toFixed(2))
-    : adjustedScoreMultiplier;
-  const baseScoreValue = calculateLeaderboardScore({
+const submitWinToLeaderboard = async (
+  input: SubmitWinToLeaderboardInput,
+): Promise<void> => {
+  const {
+    playerName,
+    difficulty,
+    sessionMode,
+    emojiSetId,
+    emojiSetLabel,
+    scoreCategory,
+    isAutoDemoScore,
+    tileMultiplier,
     timeMs,
     attempts,
-    scoreMultiplier: adjustedScoreMultiplier,
-  }, scoringConfig);
-  let scoreValue = hasPenalty
-    ? applyLeaderboardScorePenalty(baseScoreValue, scoringConfig.scorePenaltyFactor)
-    : baseScoreValue;
-
-  if (scoreCategory === "debug") {
-    scoreValue = Math.max(0, Math.round(scoreValue * scoringConfig.debugScoreExtraReductionFactor));
-
-    if (sessionMode === "debug-tiles") {
-      scoreValue = Math.max(0, Math.round(scoreValue * scoringConfig.debugTilesModeReductionFactor));
-    } else if (!isAutoDemoScore) {
-      scoreValue = Math.max(0, Math.round(scoreValue * scoringConfig.debugWinModeReductionFactor));
-    }
-  }
-
-  return {
-    difficultyId,
-    difficultyLabel,
-    scoreMultiplier,
-    scoreValue,
-  };
-};
-
-const submitWinToLeaderboard = async (
-  playerName: string,
-  difficulty: DifficultyConfig,
-  sessionMode: ActiveGameSession["mode"],
-  emojiSetId: EmojiPackId,
-  emojiSetLabel: string,
-  scoreCategory: "standard" | "debug",
-  isAutoDemoScore: boolean,
-  tileMultiplier: number,
-  timeMs: number,
-  attempts: number,
-): Promise<void> => {
+  } = input;
   const leaderboardAvailable = isLeaderboardEnabled();
 
   try {
-    const scoreResult = computeLeaderboardScoreResult(
+    const scoreResult = computeGameScoreResult({
       difficulty,
       sessionMode,
       scoreCategory,
@@ -406,7 +400,7 @@ const submitWinToLeaderboard = async (
       tileMultiplier,
       timeMs,
       attempts,
-    );
+    }, leaderboardRuntimeConfig.scoring);
     const submittedScore = {
       playerName,
       timeMs,
@@ -433,7 +427,8 @@ const submitWinToLeaderboard = async (
     }
 
     uiView.setStatus("You win! Score not saved (high scores disabled).");
-  } catch {
+  } catch (error: unknown) {
+    console.warn("[MEMORYBLOX] Leaderboard submission failed:", error);
     uiView.setStatus("You win! Leaderboard submit failed.");
   }
 };
@@ -447,158 +442,20 @@ const getScaledMismatchDelay = (): number => {
   return scaleByAnimationSpeed(gameplayTiming.mismatchDelayMs + reducedMotionExtraDelay);
 };
 
+/** Factor applied to primary shadow opacity to derive the secondary (ambient) shadow. */
+const SECONDARY_SHADOW_OPACITY_FACTOR = 0.72;
+
 const initializeDropShadow = async (): Promise<void> => {
   shadowConfig = await loadShadowConfig();
   const { leftOffsetPx, leftBlurPx, leftOpacity } = shadowConfig;
   const secondaryBlurPx = Math.max(1, leftBlurPx);
-  const secondaryOpacity = clamp(leftOpacity * 0.72, 0, 1);
+  const secondaryOpacity = clamp(leftOpacity * SECONDARY_SHADOW_OPACITY_FACTOR, 0, 1);
   const fmt = (n: number): string => n.toFixed(3);
   const shadowValue = `0 ${leftOffsetPx.toFixed(2)}px ${leftBlurPx.toFixed(2)}px rgba(0,0,0,${fmt(leftOpacity)}), 0 0 ${secondaryBlurPx.toFixed(2)}px rgba(0,0,0,${fmt(secondaryOpacity)})`;
   const shadowFilterValue = `drop-shadow(0 ${leftOffsetPx.toFixed(2)}px ${leftBlurPx.toFixed(2)}px rgba(0,0,0,${fmt(leftOpacity)})) drop-shadow(0 0 ${secondaryBlurPx.toFixed(2)}px rgba(0,0,0,${fmt(secondaryOpacity)}))`;
 
   document.documentElement.style.setProperty("--shadow-text-physical", shadowValue);
   document.documentElement.style.setProperty("--shadow-filter-physical", shadowFilterValue);
-};
-
-const readStoredWindowScale = (): number | null => {
-  const value = window.localStorage.getItem(WINDOW_SCALE_STORAGE_KEY);
-
-  if (value === null) {
-    return null;
-  }
-
-  const parsed = Number.parseFloat(value);
-
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const writeStoredWindowScale = (scale: number): void => {
-  window.localStorage.setItem(WINDOW_SCALE_STORAGE_KEY, scale.toFixed(4));
-};
-
-const getViewportBoundedMaxScale = (state: WindowResizeState): number => {
-  const availableWidth = window.innerWidth - (runtimeState.ui.windowResizeLimits.viewportPaddingPx * 2);
-  const availableHeight = window.innerHeight - (runtimeState.ui.windowResizeLimits.viewportPaddingPx * 2);
-
-  const widthBound = availableWidth / state.baseWidthPx;
-  const heightBound = availableHeight / state.baseHeightPx;
-
-  return Math.min(runtimeState.ui.windowResizeLimits.maxScale, widthBound, heightBound);
-};
-
-const clampWindowScale = (state: WindowResizeState, scale: number): number => {
-  const maxScale = getViewportBoundedMaxScale(state);
-  const minScale = Math.min(runtimeState.ui.windowResizeLimits.minScale, maxScale);
-
-  return clamp(scale, minScale, maxScale);
-};
-
-const applyWindowScale = (nextScale: number, persist: boolean): void => {
-  if (windowResizeState === null) {
-    return;
-  }
-
-  const boundedScale = clampWindowScale(windowResizeState, nextScale);
-  windowResizeState.scale = boundedScale;
-
-  appShellElement.style.setProperty("--ui-scale", boundedScale.toString());
-
-  if (persist) {
-    writeStoredWindowScale(boundedScale);
-  }
-};
-
-const initializeWindowResizeState = (): void => {
-  const bounds = appWindowElement.getBoundingClientRect();
-  const measuredWidthPx = Math.round(bounds.width);
-  const measuredHeightPx = Math.round(bounds.height);
-
-  if (measuredWidthPx <= 0 || measuredHeightPx <= 0) {
-    return;
-  }
-
-  const contentSafeHeight = Math.max(measuredHeightPx, runtimeState.ui.windowBaseSize.minHeightPx);
-  const widthFromMeasuredHeight = contentSafeHeight * runtimeState.ui.fixedWindowAspectRatio;
-  const baseWidthPx = Math.round(
-    Math.max(measuredWidthPx, widthFromMeasuredHeight, runtimeState.ui.windowBaseSize.minWidthPx),
-  );
-  const baseHeightPx = Math.round(baseWidthPx / runtimeState.ui.fixedWindowAspectRatio);
-
-  windowResizeState = {
-    baseWidthPx,
-    baseHeightPx,
-    aspectRatio: runtimeState.ui.fixedWindowAspectRatio,
-    scale: runtimeState.ui.windowResizeLimits.defaultScale,
-  };
-
-  appShellElement.style.setProperty("--app-base-width", baseWidthPx.toString());
-  appShellElement.style.setProperty("--app-base-height", baseHeightPx.toString());
-  appShellElement.dataset.resizeReady = "true";
-
-  const restoredScale = readStoredWindowScale() ?? runtimeState.ui.windowResizeLimits.defaultScale;
-  applyWindowScale(restoredScale, false);
-};
-
-const finishResizeDrag = (): void => {
-  if (windowResizeDragState === null || windowResizeState === null) {
-    return;
-  }
-
-  try {
-    if (resizeHandleElement.hasPointerCapture(windowResizeDragState.pointerId)) {
-      resizeHandleElement.releasePointerCapture(windowResizeDragState.pointerId);
-    }
-  } catch {
-    // Release failures are non-fatal here; cleanup still runs in finally.
-  } finally {
-    resizeHandleElement.removeEventListener("pointermove", updateResizeDrag);
-    windowResizeDragState = null;
-    document.body.style.userSelect = "";
-    writeStoredWindowScale(windowResizeState.scale);
-  }
-};
-
-const beginResizeDrag = (event: PointerEvent): void => {
-  if (event.button !== 0 || windowResizeState === null) {
-    return;
-  }
-
-  event.preventDefault();
-
-  windowResizeDragState = {
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    startWidthPx: windowResizeState.baseWidthPx * windowResizeState.scale,
-    startHeightPx: windowResizeState.baseHeightPx * windowResizeState.scale,
-  };
-
-  resizeHandleElement.addEventListener("pointermove", updateResizeDrag);
-  resizeHandleElement.setPointerCapture(event.pointerId);
-  document.body.style.userSelect = "none";
-};
-
-const updateResizeDrag = (event: PointerEvent): void => {
-  if (windowResizeDragState === null || windowResizeState === null) {
-    return;
-  }
-
-  if (event.pointerId !== windowResizeDragState.pointerId) {
-    return;
-  }
-
-  const deltaX = event.clientX - windowResizeDragState.startX;
-  const deltaY = event.clientY - windowResizeDragState.startY;
-
-  const widthScale = Math.max(1, windowResizeDragState.startWidthPx + deltaX)
-    / windowResizeState.baseWidthPx;
-  const equivalentWidthFromHeight =
-    Math.max(1, windowResizeDragState.startHeightPx + deltaY)
-    * windowResizeState.aspectRatio;
-  const heightScale = equivalentWidthFromHeight / windowResizeState.baseWidthPx;
-
-  const nextScale = (widthScale + heightScale) / 2;
-  applyWindowScale(nextScale, false);
 };
 
 const setPlasmaWarningVisible = (isVisible: boolean): void => {
@@ -758,7 +615,7 @@ const initializeEmojiPackSettings = (): void => {
     button.className = "btn settings-pack-btn btn-secondary u-shadow-physical";
     button.dataset.packId = pack.id;
     button.setAttribute("role", "radio");
-    button.setAttribute("aria-label", `Use ${pack.name} emoji pack`);
+    button.setAttribute("aria-label", `Use ${pack.name} icon pack`);
 
     const icon = document.createElement("span");
     icon.className = "settings-pack-icon u-shadow-physical";
@@ -794,6 +651,27 @@ const initializeAnimationSpeedSettings = (): void => {
   settingsAnimationSpeedInput.value = pendingAnimationSpeed.toString();
 };
 
+const initializeMuteButtonStates = (): void => {
+  const musicIsOn = !soundManager.getMusicMuted() && soundManager.isMusicPlaying();
+  const soundMuted = soundManager.getSoundMuted();
+
+  setMusicToggleButtonState(musicIsOn);
+
+  muteSoundButton.setAttribute("aria-pressed", String(soundMuted));
+  muteSoundButton.setAttribute("aria-label", soundMuted ? "Unmute sound effects" : "Mute sound effects");
+  muteSoundButton.setAttribute("title", soundMuted ? "Unmute sound effects" : "Mute sound effects");
+};
+
+const setMusicToggleButtonState = (musicIsOn: boolean): void => {
+  muteMusicButton.setAttribute("aria-pressed", String(musicIsOn));
+  muteMusicButton.setAttribute("aria-label", musicIsOn ? "Pause music" : "Play music");
+  muteMusicButton.setAttribute("title", musicIsOn ? "Pause music" : "Play music");
+  muteMusicButton.dataset.muted = String(!musicIsOn);
+  muteMusicIconOn.hidden = !musicIsOn;
+  muteMusicIconOff.hidden = musicIsOn;
+  muteMusicStateText.textContent = musicIsOn ? "ON" : "OFF";
+};
+
 const readStoredPlayerName = (): string | null => {
   const value = window.localStorage.getItem(PLAYER_NAME_STORAGE_KEY);
 
@@ -807,13 +685,6 @@ const readStoredPlayerName = (): string | null => {
 
 const writeStoredPlayerName = (name: string): void => {
   window.localStorage.setItem(PLAYER_NAME_STORAGE_KEY, name);
-};
-
-const sanitizePlayerName = (value: string): string => {
-  return value
-    .replace(/\s+/gu, " ")
-    .trim()
-    .slice(0, 20);
 };
 
 const closePlayerNamePrompt = (resolvedName?: string): void => {
@@ -908,19 +779,19 @@ const formatLeaderboardTimestampGmt = (createdAt: string): string => {
 };
 
 const createLeaderboardEntryKey = (entry: LeaderboardScoreEntry): string => {
-  return [
+  return JSON.stringify([
     entry.playerName,
-    entry.timeMs.toString(),
-    entry.attempts.toString(),
+    entry.timeMs,
+    entry.attempts,
     entry.difficultyId,
     entry.difficultyLabel,
     entry.emojiSetId,
     entry.emojiSetLabel,
-    entry.scoreMultiplier.toString(),
-    entry.scoreValue.toString(),
-    String(entry.isAutoDemo),
+    entry.scoreMultiplier,
+    entry.scoreValue,
+    entry.isAutoDemo,
     entry.createdAt,
-  ].join("|");
+  ]);
 };
 
 type LeaderboardSubmissionIdentity = Pick<
@@ -940,18 +811,18 @@ type LeaderboardSubmissionIdentity = Pick<
 const createLeaderboardSubmissionIdentity = (
   value: LeaderboardSubmissionIdentity,
 ): string => {
-  return [
+  return JSON.stringify([
     value.playerName,
-    value.timeMs.toString(),
-    value.attempts.toString(),
+    value.timeMs,
+    value.attempts,
     value.difficultyId,
     value.difficultyLabel,
     value.emojiSetId,
     value.emojiSetLabel,
-    value.scoreMultiplier.toString(),
-    value.scoreValue.toString(),
-    String(value.isAutoDemo),
-  ].join("|");
+    value.scoreMultiplier,
+    value.scoreValue,
+    value.isAutoDemo,
+  ]);
 };
 
 const resolveLastSubmittedLeaderboardEntryKey = (
@@ -1120,20 +991,25 @@ const resetActiveEffects = (): void => {
   clearWinSequence();
 };
 
+/** Full cleanup for starting or restarting a game session. */
+const resetForNewGame = (): void => {
+  debugFlipAllTiles = false;
+  resetActiveEffects();
+  boardView.resetBackFaceCache();
+  debugBoardView.resetBackFaceCache();
+};
+
 const showLeaderboardFrame = (): void => {
   resetActiveEffects();
   stopHudTimer();
   closeDebugMenu();
 
-  menuFrame.hidden = true;
-  leaderboardFrame.hidden = false;
-  settingsFrame.hidden = true;
-  gameFrame.hidden = true;
-  debugTilesFrame.hidden = true;
+  setActiveFrame("leaderboard");
   topbarMenuLabel.textContent = "High Scores";
   topbarMenuLabel.hidden = false;
   menuBottomRepo.hidden = false;
   statusMessageElement.hidden = true;
+  audioUnlockNoticeElement.hidden = true;
   leaderboardBackButton.hidden = false;
   setDifficultySelection("");
   session = { mode: "menu" };
@@ -1153,35 +1029,6 @@ const isDebugTilesSession = (
   return value.mode === "debug-tiles";
 };
 
-const resolveTileMultiplierForTileCount = (tileCount: number): number => {
-  if (tileCount < 2) {
-    return 1;
-  }
-
-  const maxMultiplier = Math.max(1, Math.floor(tileCount / 2));
-  return clampTileMultiplier(Math.min(selectedTileMultiplier, maxMultiplier));
-};
-
-const computeTileLayout = (difficulty: DifficultyConfig): TileLayout => {
-  const tileCount = difficulty.rows * difficulty.columns;
-  const effectiveMultiplier = resolveTileMultiplierForTileCount(tileCount);
-  const multiSetCopies = effectiveMultiplier * 2;
-  const multiSetCount = Math.floor(tileCount / multiSetCopies);
-  const remainderTiles = tileCount - (multiSetCount * multiSetCopies);
-  const pairSetCount = Math.floor(remainderTiles / 2);
-
-  return {
-    tileCount,
-    multiSetCount,
-    pairSetCount,
-    multiSetCopies,
-  };
-};
-
-const getDifficultyById = (id: string): DifficultyConfig | null => {
-  return DIFFICULTIES.find((difficulty) => difficulty.id === id) ?? null;
-};
-
 const getDefaultDifficulty = (): DifficultyConfig => {
   const difficulty = getDifficultyById(DEFAULT_DIFFICULTY_ID);
 
@@ -1199,7 +1046,7 @@ const createDeckForDifficulty = (difficulty: DifficultyConfig): string[] => {
     multiSetCount,
     pairSetCount,
     multiSetCopies,
-  } = computeTileLayout(difficulty);
+  } = computeTileLayout(difficulty, selectedTileMultiplier);
   const totalSetCount = multiSetCount + pairSetCount;
   const copiesPerIcon = [
     ...Array.from({ length: multiSetCount }, () => multiSetCopies),
@@ -1218,7 +1065,8 @@ const setDifficultySelection = (selectedId: string): void => {
 };
 
 const stopHudTimer = (): void => {
-  timerIntervalGeneration += 1;
+  timerAbortController?.abort();
+  timerAbortController = null;
 
   if (timerIntervalId !== null) {
     window.clearInterval(timerIntervalId);
@@ -1227,17 +1075,19 @@ const stopHudTimer = (): void => {
 };
 
 const cancelAutoDemo = (): void => {
-  autoDemoGeneration += 1;
+  autoDemoAbortController?.abort();
+  autoDemoAbortController = null;
 };
 
 const startHudTimer = (): void => {
   stopHudTimer();
 
-  const generation = timerIntervalGeneration;
+  timerAbortController = new AbortController();
+  const { signal } = timerAbortController;
   const gameplayTiming = getGameplayTiming();
 
   timerIntervalId = window.setInterval(() => {
-    if (generation !== timerIntervalGeneration || !hasActiveGame(session)) {
+    if (signal.aborted || !hasActiveGame(session)) {
       return;
     }
 
@@ -1250,11 +1100,7 @@ const showMenuFrame = (): void => {
   stopHudTimer();
   closeDebugMenu();
 
-  menuFrame.hidden = false;
-  leaderboardFrame.hidden = true;
-  settingsFrame.hidden = true;
-  gameFrame.hidden = true;
-  debugTilesFrame.hidden = true;
+  setActiveFrame("menu");
   topbarMenuLabel.textContent = "Select a difficulty";
   topbarMenuLabel.hidden = false;
   menuBottomRepo.hidden = false;
@@ -1263,21 +1109,47 @@ const showMenuFrame = (): void => {
   uiView.setStatus("Select difficulty.");
   setDifficultySelection("");
   session = { mode: "menu" };
+  void soundManager.playBackgroundMusic();
+  updateAudioUnlockNotice();
+};
+
+const initializeMenuMusicAutoplayRecovery = (): void => {
+  const removeRecoveryListeners = (): void => {
+    document.removeEventListener("pointerdown", handleGestureAttempt);
+    document.removeEventListener("keydown", handleGestureAttempt);
+    document.removeEventListener("touchstart", handleGestureAttempt);
+  };
+
+  const tryStartMenuMusic = async (): Promise<void> => {
+    await soundManager.playBackgroundMusic();
+    updateAudioUnlockNotice();
+
+    if (soundManager.isMusicPlaying() || soundManager.getMusicMuted()) {
+      removeRecoveryListeners();
+    }
+  };
+
+  const handleGestureAttempt = (): void => {
+    void tryStartMenuMusic();
+  };
+
+  document.addEventListener("pointerdown", handleGestureAttempt);
+  document.addEventListener("keydown", handleGestureAttempt);
+  document.addEventListener("touchstart", handleGestureAttempt, { passive: true });
+  updateAudioUnlockNotice();
+  void tryStartMenuMusic();
 };
 
 const showGameFrame = (): void => {
   startHudTimer();
   closeDebugMenu();
 
-  menuFrame.hidden = true;
-  leaderboardFrame.hidden = true;
-  settingsFrame.hidden = true;
-  gameFrame.hidden = false;
-  debugTilesFrame.hidden = true;
+  setActiveFrame("game");
   topbarMenuLabel.textContent = "MEMORYBLOX";
   topbarMenuLabel.hidden = false;
   menuBottomRepo.hidden = true;
   statusMessageElement.hidden = false;
+  audioUnlockNoticeElement.hidden = true;
   leaderboardBackButton.hidden = true;
 };
 
@@ -1285,37 +1157,28 @@ const showDebugTilesFrame = (): void => {
   startHudTimer();
   closeDebugMenu();
 
-  menuFrame.hidden = true;
-  leaderboardFrame.hidden = true;
-  settingsFrame.hidden = true;
-  gameFrame.hidden = true;
-  debugTilesFrame.hidden = false;
+  setActiveFrame("debugTiles");
   topbarMenuLabel.textContent = "Debug: Tiles";
   topbarMenuLabel.hidden = false;
   menuBottomRepo.hidden = true;
   statusMessageElement.hidden = false;
+  audioUnlockNoticeElement.hidden = true;
   leaderboardBackButton.hidden = true;
 };
 
 const showSettingsFrame = (): void => {
-  winFxController.clear();
-  cancelAutoDemo();
-  clearMismatchResolveTimeout();
-  clearWinSequence();
+  resetActiveEffects();
   stopHudTimer();
   closeDebugMenu();
 
-  menuFrame.hidden = true;
-  leaderboardFrame.hidden = true;
-  settingsFrame.hidden = false;
-  gameFrame.hidden = true;
-  debugTilesFrame.hidden = true;
+  setActiveFrame("settings");
   topbarMenuLabel.textContent = "Settings";
   topbarMenuLabel.hidden = false;
   menuBottomRepo.hidden = false;
   statusMessageElement.hidden = true;
+  audioUnlockNoticeElement.hidden = true;
   leaderboardBackButton.hidden = true;
-  uiView.setStatus("Select an emoji pack.");
+  uiView.setStatus("Select an icon pack.");
   setDifficultySelection("");
   session = { mode: "menu" };
   pendingEmojiPackId = selectedEmojiPackId;
@@ -1325,6 +1188,7 @@ const showSettingsFrame = (): void => {
 };
 
 const openDebugMenu = (): void => {
+  debugFlipTilesButton.disabled = !hasActiveGame(session);
   debugMenuPanel.hidden = false;
   debugMenuButton.setAttribute("aria-expanded", "true");
 };
@@ -1348,12 +1212,7 @@ const getDifficultyStatusMessage = (difficulty: DifficultyConfig): string => {
 };
 
 const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
-  winFxController.clear();
-  cancelAutoDemo();
-  clearMismatchResolveTimeout();
-  clearWinSequence();
-  boardView.resetBackFaceCache();
-  debugBoardView.resetBackFaceCache();
+  resetForNewGame();
   session = {
     mode: "game",
     difficulty,
@@ -1362,6 +1221,7 @@ const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
     tileMultiplier: selectedTileMultiplier,
     scoreCategory: "standard",
     isAutoDemoScore: false,
+    usedFlipTiles: false,
     gameplay: createGameplayEngine({
       rows: difficulty.rows,
       columns: difficulty.columns,
@@ -1372,15 +1232,12 @@ const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
   setDifficultySelection(difficulty.id);
   uiView.setStatus(getDifficultyStatusMessage(difficulty));
   render();
+  void soundManager.playBackgroundMusic();
+  void soundManager.playNewGame();
 };
 
 const startDebugTilesMode = (): void => {
-  winFxController.clear();
-  cancelAutoDemo();
-  clearMismatchResolveTimeout();
-  clearWinSequence();
-  boardView.resetBackFaceCache();
-  debugBoardView.resetBackFaceCache();
+  resetForNewGame();
   session = {
     mode: "debug-tiles",
     difficulty: DEBUG_TILES_DIFFICULTY,
@@ -1389,6 +1246,7 @@ const startDebugTilesMode = (): void => {
     tileMultiplier: selectedTileMultiplier,
     scoreCategory: "debug",
     isAutoDemoScore: false,
+    usedFlipTiles: false,
     gameplay: createGameplayEngine({
       rows: DEBUG_TILES_DIFFICULTY.rows,
       columns: DEBUG_TILES_DIFFICULTY.columns,
@@ -1399,6 +1257,52 @@ const startDebugTilesMode = (): void => {
   setDifficultySelection("");
   uiView.setStatus("Debug Tiles: match the pair to test tile visuals.");
   render();
+  void soundManager.playBackgroundMusic();
+  void soundManager.playNewGame();
+};
+
+/**
+ * Launches a Hard (5×10) debug game board populated exclusively from the on-disk
+ * OpenMoji SVG import library. All 193 imported tokens are candidates; 25 are picked
+ * at random and paired to fill the 50-tile grid. Scored as "debug" to avoid
+ * leaderboard impact.
+ */
+const startDebugSvgImportsMode = (): void => {
+  const svgHardDifficulty: DifficultyConfig = {
+    id: "hard",
+    label: "Hard",
+    rows: 5,
+    columns: 10,
+    scoreMultiplier: 2.4,
+  };
+  const uniqueIconCount =
+    (svgHardDifficulty.rows * svgHardDifficulty.columns) / MIN_COPIES_PER_ICON;
+  const shuffledTokens = shuffle([...OPENMOJI_IMPORTED_ICON_TOKENS]);
+  const pickedTokens = shuffledTokens.slice(0, uniqueIconCount);
+  const deck = shuffle([...pickedTokens, ...pickedTokens]);
+
+  resetForNewGame();
+  session = {
+    mode: "game",
+    difficulty: svgHardDifficulty,
+    emojiSetId: selectedEmojiPackId,
+    emojiSetLabel: getEmojiPackLabel(selectedEmojiPackId),
+    tileMultiplier: selectedTileMultiplier,
+    scoreCategory: "debug",
+    isAutoDemoScore: false,
+    usedFlipTiles: false,
+    gameplay: createGameplayEngine({
+      rows: svgHardDifficulty.rows,
+      columns: svgHardDifficulty.columns,
+      deck,
+    }),
+  };
+  showGameFrame();
+  setDifficultySelection(svgHardDifficulty.id);
+  uiView.setStatus("Debug SVG Imports: Hard board with SVG icons only.");
+  render();
+  void soundManager.playBackgroundMusic();
+  void soundManager.playNewGame();
 };
 
 const markSessionAsDebugScored = (): void => {
@@ -1424,10 +1328,7 @@ const setDebugNearWinState = (): void => {
     return;
   }
 
-  clearMismatchResolveTimeout();
-  cancelAutoDemo();
-  winFxController.clear();
-  clearWinSequence();
+  resetActiveEffects();
   markSessionAsDebugScored();
 
   const nearWinState = session.gameplay.prepareNearWinState();
@@ -1493,16 +1394,24 @@ const handleTileSelect = (
 
   render();
 
+  if (selectionResult.type === "first") {
+    void soundManager.playTileFlip();
+    uiView.setStatus("Pick another tile.");
+    return;
+  }
+
   if (selectionResult.type === "mismatch") {
+    void soundManager.playTileMismatch();
     uiView.setStatus("No match. Try again.");
 
-    const mismatchGeneration = mismatchResolveGeneration;
+    mismatchAbortController = new AbortController();
+    const { signal: mismatchSignal } = mismatchAbortController;
     const mismatchGameplay = gameplay;
     mismatchResolveTimeoutId = window.setTimeout(() => {
       mismatchResolveTimeoutId = null;
 
       if (
-        mismatchGeneration !== mismatchResolveGeneration
+        mismatchSignal.aborted
         || !hasActiveGame(session)
         || session.gameplay !== mismatchGameplay
       ) {
@@ -1522,6 +1431,7 @@ const handleTileSelect = (
 
   if (selectionResult.type === "match") {
     const activeBoardView = session.mode === "debug-tiles" ? debugBoardView : boardView;
+    void soundManager.playTileMatch();
 
     if (selectionResult.won) {
       const winningSession = session;
@@ -1549,29 +1459,30 @@ const handleTileSelect = (
 
         const elapsedTimeMs = winningGameplay.getElapsedTimeMs();
         const attempts = winningGameplay.getAttempts();
-        const scoreResult = computeLeaderboardScoreResult(
-          session.difficulty,
-          session.mode,
-          session.scoreCategory,
-          isAutoDemoWin,
-          session.tileMultiplier,
-          elapsedTimeMs,
+        const scoreResult = computeGameScoreResult({
+          difficulty: session.difficulty,
+          sessionMode: session.mode,
+          scoreCategory: session.scoreCategory,
+          isAutoDemoScore: isAutoDemoWin,
+          tileMultiplier: session.tileMultiplier,
+          timeMs: elapsedTimeMs,
           attempts,
-        );
+          usedFlipTiles: session.usedFlipTiles,
+        }, leaderboardRuntimeConfig.scoring);
 
         uiView.setStatus("You win!");
-        void submitWinToLeaderboard(
+        void submitWinToLeaderboard({
           playerName,
-          session.difficulty,
-          session.mode,
-          session.emojiSetId,
-          session.emojiSetLabel,
-          session.scoreCategory,
-          isAutoDemoWin,
-          session.tileMultiplier,
-          elapsedTimeMs,
+          difficulty: session.difficulty,
+          sessionMode: session.mode,
+          emojiSetId: session.emojiSetId,
+          emojiSetLabel: session.emojiSetLabel,
+          scoreCategory: session.scoreCategory,
+          isAutoDemoScore: isAutoDemoWin,
+          tileMultiplier: session.tileMultiplier,
+          timeMs: elapsedTimeMs,
           attempts,
-        );
+        });
         playWinSequenceWithText(
           `Congratulations ${playerName}!\nYour score was ${scoreResult.scoreValue.toLocaleString()}`,
         );
@@ -1599,10 +1510,19 @@ const render = (): void => {
 
   const presentation = createGamePresentationModel(session.gameplay);
 
+  // Debug Flip Tiles: override all non-matched tiles to "revealed" so the
+  // player can visually inspect the board for icon duplications.
+  const renderTiles = debugFlipAllTiles
+    ? presentation.boardTiles.map((tile) => ({
+      ...tile,
+      status: tile.status === "matched" ? tile.status : "revealed" as const,
+    }))
+    : presentation.boardTiles;
+
   if (session.mode === "debug-tiles") {
-    debugBoardView.render(presentation.boardTiles, presentation.columns);
+    debugBoardView.render(renderTiles, presentation.columns);
   } else {
-    boardView.render(presentation.boardTiles, presentation.columns);
+    boardView.render(renderTiles, presentation.columns);
   }
 
   uiView.setAttempts(presentation.attempts);
@@ -1620,13 +1540,13 @@ const debugBoardView = new BoardView(debugTilesBoardElement, handleTileSelect);
 
 const runAutoMatchPair = (
   pair: [number, number],
-  generation: number,
+  signal: AbortSignal,
   gameplay: GameplayEngine,
 ): void => {
   const gameplayTiming = getGameplayTiming();
 
   if (
-    generation !== autoDemoGeneration
+    signal.aborted
     || !hasActiveGame(session)
     || session.gameplay !== gameplay
   ) {
@@ -1637,7 +1557,7 @@ const runAutoMatchPair = (
 
   window.setTimeout(() => {
     if (
-      generation !== autoDemoGeneration
+      signal.aborted
       || !hasActiveGame(session)
       || session.gameplay !== gameplay
     ) {
@@ -1648,10 +1568,10 @@ const runAutoMatchPair = (
   }, scaleByAnimationSpeed(gameplayTiming.autoMatchSecondSelectionDelayMs));
 };
 
-const runAutoMatchDemoStep = (remainingPairs: number, generation: number): void => {
+const runAutoMatchDemoStep = (remainingPairs: number, signal: AbortSignal): void => {
   const gameplayTiming = getGameplayTiming();
 
-  if (generation !== autoDemoGeneration || !hasActiveGame(session)) {
+  if (signal.aborted || !hasActiveGame(session)) {
     return;
   }
 
@@ -1668,10 +1588,10 @@ const runAutoMatchDemoStep = (remainingPairs: number, generation: number): void 
   }
 
   uiView.setStatus("Demo running...");
-  runAutoMatchPair(pair, generation, session.gameplay);
+  runAutoMatchPair(pair, signal, session.gameplay);
 
   window.setTimeout(() => {
-    if (generation !== autoDemoGeneration || !hasActiveGame(session)) {
+    if (signal.aborted || !hasActiveGame(session)) {
       return;
     }
 
@@ -1679,7 +1599,7 @@ const runAutoMatchDemoStep = (remainingPairs: number, generation: number): void 
       return;
     }
 
-    runAutoMatchDemoStep(remainingPairs - 1, generation);
+    runAutoMatchDemoStep(remainingPairs - 1, signal);
   }, scaleByAnimationSpeed(
     gameplayTiming.autoMatchSecondSelectionDelayMs + gameplayTiming.autoMatchBetweenPairsDelayMs,
   ));
@@ -1694,9 +1614,10 @@ const runAutoMatchDemo = (pairCount?: number): void => {
   markSessionAsDebugScored();
   session.isAutoDemoScore = true;
   cancelAutoDemo();
-  const generation = autoDemoGeneration;
+  autoDemoAbortController = new AbortController();
+  const { signal } = autoDemoAbortController;
   const targetPairCount = pairCount ?? session.gameplay.getRemainingUnmatchedPairCount();
-  runAutoMatchDemoStep(targetPairCount, generation);
+  runAutoMatchDemoStep(targetPairCount, signal);
 };
 
 const startDemoFromMenu = (): void => {
@@ -1814,7 +1735,7 @@ const enforceEmojiPackParity = (): void => {
     return;
   }
 
-  const message = "[MEMORYBLOX] Emoji pack count is odd; keep it even to preserve the 2-column Settings grid.";
+  const message = "[MEMORYBLOX] Icon pack count is odd; keep it even to preserve the 2-column Settings grid.";
 
   if (runtimeState.ui.emojiPackParityMode === "warn") {
     console.warn(message);
@@ -1889,6 +1810,59 @@ debugWinButton.addEventListener("click", () => {
 debugTilesButton.addEventListener("click", () => {
   closeDebugMenu();
   startDebugTilesMode();
+});
+
+debugSvgImportsButton.addEventListener("click", () => {
+  closeDebugMenu();
+  startDebugSvgImportsMode();
+});
+
+debugFlipTilesButton.addEventListener("click", () => {
+  closeDebugMenu();
+
+  if (!hasActiveGame(session)) {
+    return;
+  }
+
+  debugFlipAllTiles = !debugFlipAllTiles;
+
+  if (debugFlipAllTiles) {
+    session.usedFlipTiles = true;
+  }
+
+  markSessionAsDebugScored();
+  uiView.setStatus(
+    debugFlipAllTiles
+      ? "Debug Flip Tiles: all tiles revealed. Click again to hide."
+      : "Debug Flip Tiles off.",
+  );
+  render();
+});
+
+muteMusicButton.addEventListener("click", () => {
+  const isOn = muteMusicButton.getAttribute("aria-pressed") === "true";
+  const nextIsOn = !isOn;
+
+  setMusicToggleButtonState(nextIsOn);
+
+  if (nextIsOn) {
+    soundManager.setMusicMuted(false);
+    void soundManager.playBackgroundMusic();
+  } else {
+    soundManager.setMusicMuted(true);
+    soundManager.stopBackgroundMusic();
+  }
+
+  updateAudioUnlockNotice();
+});
+
+muteSoundButton.addEventListener("click", () => {
+  const isPressed = muteSoundButton.getAttribute("aria-pressed") === "true";
+  const newState = !isPressed;
+  muteSoundButton.setAttribute("aria-pressed", String(newState));
+  muteSoundButton.setAttribute("aria-label", newState ? "Unmute sound effects" : "Mute sound effects");
+  muteSoundButton.setAttribute("title", newState ? "Unmute sound effects" : "Mute sound effects");
+  soundManager.setSoundMuted(newState);
 });
 
 menuSettingsButton.addEventListener("click", () => {
@@ -1991,17 +1965,17 @@ document.addEventListener("keydown", (event) => {
   closeDebugMenu();
 });
 
-resizeHandleElement.addEventListener("pointerdown", beginResizeDrag);
-resizeHandleElement.addEventListener("pointerup", finishResizeDrag);
-resizeHandleElement.addEventListener("pointercancel", finishResizeDrag);
-
-window.addEventListener("resize", () => {
-  if (windowResizeState === null) {
-    return;
-  }
-
-  applyWindowScale(windowResizeState.scale, false);
-});
+const windowResizeController = new WindowResizeController(
+  appShellElement,
+  appWindowElement,
+  resizeHandleElement,
+  () => ({
+    fixedWindowAspectRatio: runtimeState.ui.fixedWindowAspectRatio,
+    windowBaseSize: runtimeState.ui.windowBaseSize,
+    windowResizeLimits: runtimeState.ui.windowResizeLimits,
+  }),
+);
+windowResizeController.attach();
 
 enableHorizontalWheelScroll(topbarActionsElement);
 enableSliderWheelScroll(settingsTileMultiplierInput);
@@ -2010,18 +1984,21 @@ enableSliderWheelScroll(settingsAnimationSpeedInput);
 const bootstrap = async (): Promise<void> => {
   validateUniquePackIcons();
   validateMinPackIconCount();
+  await soundManager.initialize();
   await loadRuntimeConfig();
   void checkPlasmaTextureAvailability();
   enforceEmojiPackParity();
   initializeEmojiPackSettings();
   initializeTileMultiplierSettings();
   initializeAnimationSpeedSettings();
+  initializeMuteButtonStates();
+  initializeMenuMusicAutoplayRecovery();
   await initializeDropShadow();
   showMenuFrame();
   render();
 
   window.requestAnimationFrame(() => {
-    initializeWindowResizeState();
+    windowResizeController.initialize();
   });
 };
 

@@ -7,6 +7,8 @@ import {
   enableHorizontalWheelScroll,
   enableSliderWheelScroll,
   formatElapsedTime,
+  requireElement,
+  sanitizePlayerName,
   shuffle,
 } from "../src/utils.ts";
 
@@ -67,6 +69,24 @@ describe("clamp", () => {
 
   test("clamps -Infinity to min", () => {
     expect(clamp(-Infinity, 0, 10)).toBe(0);
+  });
+});
+
+describe("requireElement", () => {
+  test("returns element when selector exists", () => {
+    document.body.innerHTML = "<div id='required-el'></div>";
+
+    const element = requireElement<HTMLDivElement>("#required-el");
+
+    expect(element.id).toBe("required-el");
+  });
+
+  test("throws when selector does not exist", () => {
+    document.body.innerHTML = "";
+
+    expect(() => requireElement<HTMLDivElement>("#missing-el")).toThrow(
+      "Required element not found: #missing-el",
+    );
   });
 });
 
@@ -329,5 +349,28 @@ describe("enableHorizontalWheelScroll", () => {
     fireWheel(el, 20);
 
     expect(el.scrollLeft).toBe(50);
+  });
+});
+
+describe("sanitizePlayerName", () => {
+  test("trims leading and trailing whitespace", () => {
+    expect(sanitizePlayerName("  Alice  ")).toBe("Alice");
+  });
+
+  test("collapses internal whitespace runs to a single space", () => {
+    expect(sanitizePlayerName("Alice   Bob")).toBe("Alice Bob");
+  });
+
+  test("truncates to 20 characters", () => {
+    expect(sanitizePlayerName("A".repeat(25))).toBe("A".repeat(20));
+  });
+
+  test("returns empty string for blank input", () => {
+    expect(sanitizePlayerName("")).toBe("");
+    expect(sanitizePlayerName("   ")).toBe("");
+  });
+
+  test("returns value unchanged when already clean and within limit", () => {
+    expect(sanitizePlayerName("Player One")).toBe("Player One");
   });
 });

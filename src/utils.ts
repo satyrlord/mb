@@ -1,5 +1,15 @@
 export type RandomSource = () => number;
 
+export const requireElement = <T extends Element>(selector: string): T => {
+  const element = document.querySelector<T>(selector);
+
+  if (element === null) {
+    throw new Error(`Required element not found: ${selector}`);
+  }
+
+  return element;
+};
+
 export const shuffle = <T>(items: T[], random: RandomSource = Math.random): T[] => {
   const result = [...items];
 
@@ -117,4 +127,24 @@ export const enableHorizontalWheelScroll = (element: HTMLElement): void => {
     element.scrollLeft += dominantDelta;
     event.preventDefault();
   }, { passive: false });
+};
+
+/**
+ * Sanitize a player name: collapse internal whitespace runs, trim, and
+ * limit the result to 20 characters.
+ *
+ * @param value - Raw input string from the player name prompt.
+ * @returns A trimmed, whitespace-collapsed string of at most 20 characters.
+ */
+export const sanitizePlayerName = (value: string): string => {
+  return value
+    .replace(/\s+/gu, " ")
+    .trim()
+    .slice(0, 20);
+};
+
+export const utilsTesting = {
+  resetNegativeElapsedTimeWarning: (): void => {
+    negativeElapsedTimeWarningShown = false;
+  },
 };
