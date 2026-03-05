@@ -390,6 +390,22 @@ export class WinFxController {
     return palette[Math.floor(Math.random() * palette.length)] ?? WinFxController.FALLBACK_COLOR;
   }
 
+  /**
+   * Picks a random color from `palette`, falling back to a safe default white when the
+   * palette is empty or when random selection yields an undefined value.
+   */
+  private static readonly FALLBACK_COLOR = "#ffffff" as const;
+
+  private static pickRandomColor(palette: readonly string[]): string {
+    if (palette.length === 0) {
+      return WinFxController.FALLBACK_COLOR;
+    }
+    // Use nullish coalescing to guard against undefined elements in sparse arrays.
+    // This ensures we always return a valid color string, falling back to FALLBACK_COLOR
+    // if the randomly selected index returns undefined.
+    return palette[Math.floor(Math.random() * palette.length)] ?? WinFxController.FALLBACK_COLOR;
+  }
+
   private pickShapeClass(): "circle" | "square" | "diamond" | "star" {
     const shapeClassIndex = Math.floor(Math.random() * WinFxController.SHAPE_CLASS_OPTIONS.length);
     return WinFxController.SHAPE_CLASS_OPTIONS[shapeClassIndex]
