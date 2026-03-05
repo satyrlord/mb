@@ -5,4 +5,5 @@ artifacts/
 coverage/
 .playwright-mcp/
 .vscode/
-.github/
+.github/skills/
+.github/copilot-instructions.md
