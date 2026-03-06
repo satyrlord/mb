@@ -69,6 +69,14 @@ import {
 import {
   LeaderboardUiController,
 } from "./leaderboard-ui.js";
+import {
+  type HdMode,
+  detectDeviceType,
+  readStoredHdMode,
+  writeHdMode,
+  updateHdToggleButton as updateHdToggleButtonState,
+  applyHdMode as applyHdModeState,
+} from "./hd-mode-controller.js";
 
 interface AppRuntimeState {
   ui: UiRuntimeConfig;
@@ -89,7 +97,12 @@ const runtimeState: AppRuntimeState = {
 /** When true, render() overrides all tile statuses to "revealed" without matching them. */
 let debugFlipAllTiles = false;
 
-let orientationMode: OrientationMode = readStoredOrientationMode();
+const detectedDeviceType = detectDeviceType(navigator.userAgent, {
+  maxTouchPoints: navigator.maxTouchPoints,
+  platform: navigator.platform,
+});
+let orientationMode: OrientationMode = readStoredOrientationMode(detectedDeviceType);
+let hdMode: HdMode = readStoredHdMode(detectedDeviceType);
 
 interface ActiveGameSession {
   mode: "game" | "debug-tiles";
@@ -136,9 +149,13 @@ const debugFlipTilesButton = requireElement<HTMLButtonElement>("#debugFlipTilesB
 const muteMusicButton = requireElement<HTMLButtonElement>("#muteMusicButton");
 const muteMusicIconOn = requireElement<HTMLElement>("#muteMusicIconOn");
 const muteMusicIconOff = requireElement<HTMLElement>("#muteMusicIconOff");
-const muteMusicStateText = requireElement<HTMLElement>("#muteMusicStateText");
+
 const muteSoundButton = requireElement<HTMLButtonElement>("#muteSoundButton");
+const muteSoundIconOn = requireElement<HTMLElement>("#muteSoundIconOn");
+const muteSoundIconOff = requireElement<HTMLElement>("#muteSoundIconOff");
 const menuButton = requireElement<HTMLButtonElement>("#menuButton");
+const hdToggleButton = requireElement<HTMLButtonElement>("#hdToggleButton");
+
 const orientationToggleButton = requireElement<HTMLButtonElement>("#orientationToggleButton");
 const orientationLandscapeIcon = requireElement<SVGSVGElement>("#orientationLandscapeIcon");
 const orientationPortraitIcon = requireElement<SVGSVGElement>("#orientationPortraitIcon");
@@ -218,10 +235,13 @@ let shadowConfig: ShadowConfig = DEFAULT_SHADOW_CONFIG;
 let leaderboardRuntimeConfig: LeaderboardRuntimeConfig = DEFAULT_LEADERBOARD_RUNTIME_CONFIG;
 
 const winFxController = new WinFxController({
-  appWindowElement,
-  winFxLayerElement,
-  winFxParticlesElement,
-  winFxTextElement,
+  elements: {
+    appWindowElement,
+    winFxLayerElement,
+    winFxParticlesElement,
+    winFxTextElement,
+  },
+  isHdOn: hdMode === "on",
 });
 const soundManager = new SoundManager();
 const audioUiController = new AudioUiController({
@@ -231,8 +251,10 @@ const audioUiController = new AudioUiController({
     muteMusicButton,
     muteMusicIconOn,
     muteMusicIconOff,
-    muteMusicStateText,
+
     muteSoundButton,
+    muteSoundIconOn,
+    muteSoundIconOff,
   },
   soundManager,
 });
@@ -824,6 +846,15 @@ const updateOrientationToggleButton = (): void => {
   updateOrientationToggleButtonState(orientationToggleElements, orientationMode);
 };
 
+const updateHdToggleButton = (): void => {
+  updateHdToggleButtonState(hdToggleButton, hdMode);
+};
+
+const applyHdMode = (): void => {
+  applyHdModeState(appShellElement, hdMode);
+  winFxController.setHdMode(hdMode === "on");
+};
+
 const applyOrientationBoardLayout = (): void => {
   applyOrientationBoardLayoutState(
     appShellElement,
@@ -1051,6 +1082,13 @@ orientationToggleButton.addEventListener("click", () => {
   windowResizeController.reinitialize();
 });
 
+hdToggleButton.addEventListener("click", () => {
+  hdMode = hdMode === "on" ? "off" : "on";
+  writeHdMode(hdMode);
+  updateHdToggleButton();
+  applyHdMode();
+});
+
 enableHorizontalWheelScroll(topbarActionsElement);
 enableSliderWheelScroll(settingsTileMultiplierInput);
 enableSliderWheelScroll(settingsAnimationSpeedInput);
@@ -1058,6 +1096,7 @@ enableSliderWheelScroll(settingsAnimationSpeedInput);
 const bootstrap = async (): Promise<void> => {
   validateUniquePackIcons();
   validateMinPackIconCount();
+
   await soundManager.initialize();
   await loadRuntimeConfig();
   applyOrientationBoardLayout();
@@ -1069,6 +1108,8 @@ const bootstrap = async (): Promise<void> => {
   audioUiController.initializeMenuMusicAutoplayRecovery();
   await initializeDropShadow();
   updateOrientationToggleButton();
+  applyHdMode();
+  updateHdToggleButton();
   showMenuFrame();
   render();
 

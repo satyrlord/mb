@@ -68,6 +68,7 @@ export interface UiRuntimeConfig {
 export interface WinFxOptions {
   textDisplayDurationMs: number;
   maxParticles: number;
+  maxParticlesLow: number;
   particleDelayJitterMs: number;
   centerFinaleDelayMs: number;
   centerFinaleWaves: number;
@@ -158,6 +159,7 @@ export const DEFAULT_WIN_FX_RUNTIME_CONFIG: WinFxRuntimeConfig = {
   options: {
     textDisplayDurationMs: 1000,
     maxParticles: 500,
+    maxParticlesLow: 150,
     particleDelayJitterMs: 180,
     centerFinaleDelayMs: 730,
     centerFinaleWaves: 3,
@@ -378,6 +380,7 @@ export const loadWinFxRuntimeConfig = async (): Promise<WinFxRuntimeConfig> => {
     options: {
       textDisplayDurationMs: Math.max(1, cfg.integer("winFx.textDisplayDurationMs", defaultOptions.textDisplayDurationMs)),
       maxParticles: Math.max(1, cfg.integer("winFx.maxParticles", defaultOptions.maxParticles)),
+      maxParticlesLow: Math.max(1, cfg.integer("winFx.maxParticlesLow", defaultOptions.maxParticlesLow)),
       particleDelayJitterMs: Math.max(0, cfg.integer("winFx.particleDelayJitterMs", defaultOptions.particleDelayJitterMs)),
       centerFinaleDelayMs: Math.max(0, cfg.integer("winFx.centerFinaleDelayMs", defaultOptions.centerFinaleDelayMs)),
       centerFinaleWaves: Math.max(1, cfg.integer("winFx.centerFinaleWaves", defaultOptions.centerFinaleWaves)),

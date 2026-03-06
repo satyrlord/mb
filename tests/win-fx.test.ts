@@ -36,10 +36,12 @@ const createController = (): {
   board.getBoundingClientRect = () => createMockDomRect(0, 0, 200, 120);
 
   const controller = new WinFxController({
-    appWindowElement: app,
-    winFxLayerElement: layer,
-    winFxParticlesElement: particles,
-    winFxTextElement: text,
+    elements: {
+      appWindowElement: app,
+      winFxLayerElement: layer,
+      winFxParticlesElement: particles,
+      winFxTextElement: text,
+    },
   });
 
   controller.configureRuntime({
@@ -47,6 +49,7 @@ const createController = (): {
       // Use production defaults for values that aren't test-specific.
       textDisplayDurationMs: DEFAULT_WIN_FX_RUNTIME_CONFIG.options.textDisplayDurationMs,
       maxParticles: DEFAULT_WIN_FX_RUNTIME_CONFIG.options.maxParticles,
+      maxParticlesLow: DEFAULT_WIN_FX_RUNTIME_CONFIG.options.maxParticlesLow,
       // Override timing/count values to keep tests fast and deterministic.
       particleDelayJitterMs: 0,
       centerFinaleDelayMs: 0,
@@ -221,6 +224,7 @@ describe("WinFxController", () => {
       options: {
         textDisplayDurationMs: 1000,
         maxParticles: 500,
+        maxParticlesLow: 500,
         particleDelayJitterMs: 0,
         centerFinaleDelayMs: 0,
         centerFinaleWaves: 1,
@@ -269,6 +273,7 @@ describe("WinFxController", () => {
       options: {
         textDisplayDurationMs: 1000,
         maxParticles: 500,
+        maxParticlesLow: 500,
         particleDelayJitterMs: 0,
         centerFinaleDelayMs: 0,
         centerFinaleWaves: 1,
@@ -343,6 +348,7 @@ describe("WinFxController", () => {
       options: {
         textDisplayDurationMs: 1000,
         maxParticles: 500,
+        maxParticlesLow: 500,
         particleDelayJitterMs: 0,
         centerFinaleDelayMs: 0,
         centerFinaleWaves: 1,
@@ -409,6 +415,7 @@ describe("WinFxController", () => {
       options: {
         textDisplayDurationMs: 1,
         maxParticles: 500,
+        maxParticlesLow: 500,
         particleDelayJitterMs: 0,
         centerFinaleDelayMs: 0,
         centerFinaleWaves: 1,
@@ -468,6 +475,7 @@ describe("WinFxController", () => {
       options: {
         textDisplayDurationMs: 1000,
         maxParticles: 5,
+        maxParticlesLow: 5,
         particleDelayJitterMs: 0,
         centerFinaleDelayMs: 0,
         centerFinaleWaves: 1,
@@ -488,6 +496,75 @@ describe("WinFxController", () => {
 
     // Total requested is 10 + 10 + 30 = 50, but limit is 5
     expect(particlesElement.childElementCount).toBeLessThanOrEqual(5);
+
+    vi.runAllTimers();
+  });
+
+  test("uses maxParticlesLow when HD mode is off", () => {
+    vi.useFakeTimers();
+    const { controller, particlesElement } = createController();
+
+    controller.setHdMode(false);
+    controller.configureRuntime({
+      options: {
+        textDisplayDurationMs: 1000,
+        maxParticles: 50,
+        maxParticlesLow: 4,
+        particleDelayJitterMs: 0,
+        centerFinaleDelayMs: 0,
+        centerFinaleWaves: 1,
+        centerFinaleWaveDelayMs: 1,
+        centerFinaleCount: 10,
+        confettiRainDelayMs: 0,
+        confettiRainCount: 10,
+        confettiRainSpreadMs: 1,
+        fireworkBursts: 1,
+        colors: ["#ffffff"],
+      },
+      textOptions: ["WIN!"],
+      rainColors: ["#00ff00"],
+    });
+
+    controller.play();
+    vi.advanceTimersByTime(1100);
+
+    expect(particlesElement.childElementCount).toBeLessThanOrEqual(4);
+
+    vi.runAllTimers();
+  });
+
+  test("uses maxParticles (not maxParticlesLow) when HD mode is on", () => {
+    vi.useFakeTimers();
+    const { controller, particlesElement } = createController();
+
+    controller.setHdMode(true);
+    controller.configureRuntime({
+      options: {
+        textDisplayDurationMs: 1000,
+        maxParticles: 50,
+        maxParticlesLow: 2,
+        particleDelayJitterMs: 0,
+        centerFinaleDelayMs: 0,
+        centerFinaleWaves: 1,
+        centerFinaleWaveDelayMs: 1,
+        centerFinaleCount: 10,
+        confettiRainDelayMs: 0,
+        confettiRainCount: 10,
+        confettiRainSpreadMs: 1,
+        fireworkBursts: 1,
+        colors: ["#ffffff"],
+      },
+      textOptions: ["WIN!"],
+      rainColors: ["#00ff00"],
+    });
+
+    controller.play();
+    vi.advanceTimersByTime(1100);
+
+    // Should create more particles than maxParticlesLow allows,
+    // proving the controller uses maxParticles when HD is on.
+    expect(particlesElement.childElementCount).toBeGreaterThan(2);
+    expect(particlesElement.childElementCount).toBeLessThanOrEqual(50);
 
     vi.runAllTimers();
   });
@@ -521,6 +598,7 @@ describe("WinFxController", () => {
       options: {
         textDisplayDurationMs: 1000,
         maxParticles: 500,
+        maxParticlesLow: 500,
         particleDelayJitterMs: 0,
         centerFinaleDelayMs: 0,
         centerFinaleWaves: 1,
@@ -714,6 +792,7 @@ describe("WinFxController", () => {
       options: {
         textDisplayDurationMs: 1000,
         maxParticles: 8,
+        maxParticlesLow: 8,
         particleDelayJitterMs: 0,
         centerFinaleDelayMs: 0,
         centerFinaleWaves: 1,

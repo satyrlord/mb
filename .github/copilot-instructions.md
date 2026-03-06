@@ -17,6 +17,7 @@ of a classic Windows 9x game called 'Memory Blocks'
 - Bootstrap-adjacent UI orchestration extracted into dedicated controllers for audio UI, leaderboard UI, orientation, player-name prompt, and win sequence flow
 - Global leaderboard support with SQLite persistence
 - Orientation toggle (landscape / portrait mode) with score bonus
+- HD mode toggle (reduces particles and disables plasma animations on low-end devices)
 - Win celebration particle effects
 - Browser entry via `index.html` + compiled `dist/index.js`
 - GitHub Pages deployment workflow in `.github/workflows/pages.yml`
@@ -93,6 +94,7 @@ npm run build
 - `src/win-fx.ts`: win celebration particle effects
 - `src/win-sequence-controller.ts`: win animation sequence orchestration
 - `src/orientation-controller.ts`: orientation mode state, toggle, and layout helpers
+- `src/hd-mode-controller.ts`: HD mode state, device detection, toggle, and data-attribute helpers
 - `src/player-name-prompt.ts`: player name modal prompt and localStorage persistence
 - `src/window-resize.ts`: window resize handle controller
 - `src/utils.ts`: shared helper utilities
@@ -115,7 +117,11 @@ npm run build
   pack grid layout.
 14. When cleaning up or refactoring features, run and follow
   `docs/dead-surface-audit.md` to remove dead/unnecessary code surfaces.
-15. When debugging, use the local VSCode browser if possible. Try to avoid opening external browsers unless absolutely necessary.  
+15. When debugging, use the local VSCode browser if possible. Try to avoid opening external browsers unless absolutely necessary.
+16. Before starting a major refactoring, review the documentation in `docs/`
+  to understand existing contracts, architecture notes, and style rules.
+17. After completing a major refactoring, update the affected documentation
+  in `docs/` to reflect the new state.
 
 ## Deployment Notes
 

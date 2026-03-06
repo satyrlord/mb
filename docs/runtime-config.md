@@ -2,11 +2,13 @@
 
 ## Latest Update (2026-03-06)
 
+- Added `winFx.maxParticlesLow` config key for HD-off / mobile particle limit.
+- Corrected `config/win-fx.cfg` key list to match current implementation.
 - Runtime key behavior in this document was revalidated against current
   loaders and tests.
-- No new config keys were added; existing key contracts remain active.
 - Existing UI config keys are now consumed through dedicated controllers for
-  orientation, leaderboard UI, player-name prompt, and win-sequence flow.
+  orientation, HD mode, leaderboard UI, player-name prompt, and win-sequence
+  flow.
 - Project quality workflow now requires running the quality gate and scanning
   VS Code Problems before commit/push.
 - Coverage policy is enforced at the per-row/per-file table-cell level
@@ -107,19 +109,20 @@ shadow configuration defined in code.
 
 ### Numeric keys
 
-- `winFx.durationMs`
-- `winFx.maxTilePieces`
-- `winFx.wavesPerTile`
-- `winFx.waveDelayMs`
-- `winFx.sparksPerTile`
-- `winFx.particleDelayJitterMs`
-- `winFx.centerFinaleDelayMs`
-- `winFx.centerFinaleWaves`
-- `winFx.centerFinaleWaveDelayMs`
-- `winFx.centerFinaleCount`
-- `winFx.confettiRainDelayMs`
-- `winFx.confettiRainCount`
-- `winFx.confettiRainSpreadMs`
+- `winFx.textDisplayDurationMs`: duration (ms) the win text overlay remains
+  visible.
+- `winFx.maxParticles`: global particle cap across all win phases (HD-on).
+- `winFx.maxParticlesLow`: global particle cap when HD mode is off
+  (low-performance / mobile fallback).
+- `winFx.particleDelayJitterMs`: random delay jitter per particle.
+- `winFx.centerFinaleDelayMs`: delay before center finale starts.
+- `winFx.centerFinaleWaves`: number of center finale waves.
+- `winFx.centerFinaleWaveDelayMs`: delay between center finale waves.
+- `winFx.centerFinaleCount`: particles per center finale wave.
+- `winFx.confettiRainDelayMs`: delay before confetti rain starts.
+- `winFx.confettiRainCount`: number of confetti rain pieces.
+- `winFx.confettiRainSpreadMs`: time window over which rain pieces spawn.
+- `winFx.fireworkBursts`: number of post-text firework bursts.
 
 ### List keys (comma-separated)
 

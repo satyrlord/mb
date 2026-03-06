@@ -596,8 +596,7 @@
   animation: none;
 }
 
-.menu-title::before,
-.menu-title::after {
+.menu-title::before {
   content: attr(data-title);
   position: absolute;
   inset: 0;
@@ -716,6 +715,37 @@
   animation-iteration-count: infinite;
   animation-direction: var(--plasma-main-direction, normal), normal;
   mix-blend-mode: normal;
+}
+
+/* ── HD-off overrides: disable plasma animations, use solid fallback ── */
+[data-hd-mode="off"] .menu-title::before {
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: var(--color-menu-title);
+  -webkit-text-fill-color: var(--color-menu-title);
+  filter: none;
+  animation: none;
+  will-change: auto;
+  opacity: 1;
+}
+
+[data-hd-mode="off"] .plasma-surface {
+  background-image: none;
+  animation: none;
+}
+
+[data-hd-mode="off"] .plasma-surface::before,
+[data-hd-mode="off"] .plasma-surface::after {
+  display: none;
+}
+
+[data-hd-mode="off"] .tile-front.plasma-surface {
+  background: var(--color-tile-front-bg);
+}
+
+[data-hd-mode="off"] .tile-back.plasma-surface {
+  background: var(--color-tile-back-bg);
 }
 
 @keyframes menu-title-plasma-flow {

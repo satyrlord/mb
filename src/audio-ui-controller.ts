@@ -1,13 +1,22 @@
 import type { SoundManager } from "./sound-manager.js";
 
+const setElementHidden = (element: Element, hidden: boolean): void => {
+  if (hidden) {
+    element.setAttribute("hidden", "");
+    return;
+  }
+  element.removeAttribute("hidden");
+};
+
 interface AudioUiElements {
   audioUnlockNotice: HTMLElement;
   menuFrame: HTMLElement;
   muteMusicButton: HTMLButtonElement;
   muteMusicIconOn: HTMLElement;
   muteMusicIconOff: HTMLElement;
-  muteMusicStateText: HTMLElement;
   muteSoundButton: HTMLButtonElement;
+  muteSoundIconOn: HTMLElement;
+  muteSoundIconOff: HTMLElement;
 }
 
 interface AudioUiControllerDeps {
@@ -41,20 +50,26 @@ export class AudioUiController {
 
     this.setMusicToggleButtonState(musicIsOn);
 
-    this.elements.muteSoundButton.setAttribute("aria-pressed", String(soundMuted));
-    this.elements.muteSoundButton.setAttribute("aria-label", soundMuted ? "Unmute sound effects" : "Mute sound effects");
-    this.elements.muteSoundButton.setAttribute("title", soundMuted ? "Unmute sound effects" : "Mute sound effects");
+    this.setSoundToggleButtonState(soundMuted);
+  }
+
+  private setSoundToggleButtonState(muted: boolean): void {
+    const { muteSoundButton, muteSoundIconOn, muteSoundIconOff } = this.elements;
+    muteSoundButton.setAttribute("aria-pressed", String(muted));
+    muteSoundButton.setAttribute("aria-label", muted ? "Unmute sound effects" : "Mute sound effects");
+    muteSoundButton.setAttribute("title", muted ? "Unmute sound effects" : "Mute sound effects");
+    setElementHidden(muteSoundIconOn, muted);
+    setElementHidden(muteSoundIconOff, !muted);
   }
 
   private setMusicToggleButtonState(musicIsOn: boolean): void {
-    const { muteMusicButton, muteMusicIconOn, muteMusicIconOff, muteMusicStateText } = this.elements;
+    const { muteMusicButton, muteMusicIconOn, muteMusicIconOff } = this.elements;
     muteMusicButton.setAttribute("aria-pressed", String(musicIsOn));
-    muteMusicButton.setAttribute("aria-label", musicIsOn ? "Pause music" : "Play music");
-    muteMusicButton.setAttribute("title", musicIsOn ? "Pause music" : "Play music");
+    muteMusicButton.setAttribute("aria-label", musicIsOn ? "Stop music" : "Start music");
+    muteMusicButton.setAttribute("title", musicIsOn ? "Stop music" : "Start music");
     muteMusicButton.dataset.muted = String(!musicIsOn);
-    muteMusicIconOn.hidden = !musicIsOn;
-    muteMusicIconOff.hidden = musicIsOn;
-    muteMusicStateText.textContent = musicIsOn ? "ON" : "OFF";
+    setElementHidden(muteMusicIconOn, !musicIsOn);
+    setElementHidden(muteMusicIconOff, musicIsOn);
   }
 
   initializeMenuMusicAutoplayRecovery(): void {
@@ -66,6 +81,7 @@ export class AudioUiController {
 
     const tryStartMenuMusic = async (): Promise<void> => {
       await this.soundManager.playBackgroundMusic();
+      this.initializeMuteButtonStates();
       this.updateAudioUnlockNotice();
 
       if (this.soundManager.isMusicPlaying() || this.soundManager.getMusicMuted()) {
@@ -105,9 +121,7 @@ export class AudioUiController {
     this.elements.muteSoundButton.addEventListener("click", () => {
       const isPressed = this.elements.muteSoundButton.getAttribute("aria-pressed") === "true";
       const newState = !isPressed;
-      this.elements.muteSoundButton.setAttribute("aria-pressed", String(newState));
-      this.elements.muteSoundButton.setAttribute("aria-label", newState ? "Unmute sound effects" : "Mute sound effects");
-      this.elements.muteSoundButton.setAttribute("title", newState ? "Unmute sound effects" : "Mute sound effects");
+      this.setSoundToggleButtonState(newState);
       this.soundManager.setSoundMuted(newState);
     });
   }

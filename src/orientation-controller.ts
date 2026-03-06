@@ -6,9 +6,16 @@ export type OrientationMode = "landscape" | "portrait";
 
 const STORAGE_KEY = "memoryblox-orientation-mode";
 
-export const readStoredOrientationMode = (): OrientationMode => {
+export const readStoredOrientationMode = (
+  deviceType: "mobile" | "desktop" = "desktop",
+): OrientationMode => {
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "portrait" ? "portrait" : "landscape";
+
+  if (stored === "portrait" || stored === "landscape") {
+    return stored;
+  }
+
+  return deviceType === "mobile" ? "portrait" : "landscape";
 };
 
 export const writeOrientationMode = (mode: OrientationMode): void => {

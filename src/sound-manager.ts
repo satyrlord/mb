@@ -215,7 +215,7 @@ const discoverAudioFilesInDirectory = async (directory: string): Promise<string[
         .filter((value) => AUDIO_FILE_PATTERN.test(value));
 
       if (filtered.length > 0) {
-        console.log(`[MEMORYBLOX] ${directory}: discovered ${filtered.length} audio file(s) via ${method.label}.`);
+        console.info(`[MEMORYBLOX] ${directory}: discovered ${filtered.length} audio file(s) via ${method.label}.`);
         return Array.from(new Set(filtered));
       }
     } catch {

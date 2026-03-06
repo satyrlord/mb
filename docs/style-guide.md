@@ -100,6 +100,8 @@ This guide defines visual and styling rules for the game UI.
   `clip-path:inset(0)`) live on `.plasma-surface` in `styles.css`.
 - The animated texture layers (`::before` glow, `::after` flares) live in
   `styles.winfx.css`; keep motion rules there, not in `styles.css`.
+- The `.menu-title` uses only a single `::before` overlay for the plasma text
+  effect. The `::after` layer was removed to simplify rendering.
 - Brightness is set per target via `background-color` + `background-blend-mode:
   multiply` on `.{target}.plasma-surface` rules:
   - Tile front face (`?` symbol): `#808080` → 50% brightness.
@@ -125,3 +127,18 @@ This guide defines visual and styling rules for the game UI.
   then game canvas fade-out, then win animation layer.
 - Keep win-animation-heavy CSS in `styles.winfx.css`, imported separately from
   `styles.css`, to keep core UI styling maintainable and motion rules isolated.
+
+## HD Mode Rules
+
+- HD mode is toggled via the top-bar HD button and persisted in localStorage.
+- Default state is device-aware: **on** for desktop, **off** for mobile/tablet.
+- When HD mode is off (`[data-hd-mode="off"]`):
+  - Plasma animations are disabled (solid color fallbacks used).
+  - The `.menu-title::before` overlay uses a flat color instead of animated
+    plasma gradient.
+  - Tile front/back surfaces use static `--color-tile-front-bg` /
+    `--color-tile-back-bg` backgrounds.
+  - Win celebration particle count is capped at `winFx.maxParticlesLow`.
+- HD-off overrides live in `styles.winfx.css` alongside plasma definitions.
+- All HD-off selectors use the `[data-hd-mode="off"]` attribute selector
+  on the app shell element.

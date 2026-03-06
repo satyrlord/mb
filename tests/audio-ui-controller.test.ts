@@ -23,8 +23,9 @@ const createElements = () => ({
   muteMusicButton: document.createElement("button"),
   muteMusicIconOn: document.createElement("span"),
   muteMusicIconOff: document.createElement("span"),
-  muteMusicStateText: document.createElement("span"),
   muteSoundButton: document.createElement("button"),
+  muteSoundIconOn: document.createElement("span"),
+  muteSoundIconOff: document.createElement("span"),
 });
 
 const createController = (
@@ -130,12 +131,11 @@ describe("music toggle button state", () => {
     controller.initializeMuteButtonStates();
 
     expect(elements.muteMusicButton.getAttribute("aria-pressed")).toBe("true");
-    expect(elements.muteMusicButton.getAttribute("aria-label")).toBe("Pause music");
-    expect(elements.muteMusicButton.getAttribute("title")).toBe("Pause music");
+    expect(elements.muteMusicButton.getAttribute("aria-label")).toBe("Stop music");
+    expect(elements.muteMusicButton.getAttribute("title")).toBe("Stop music");
     expect(elements.muteMusicButton.dataset.muted).toBe("false");
     expect(elements.muteMusicIconOn.hidden).toBe(false);
     expect(elements.muteMusicIconOff.hidden).toBe(true);
-    expect(elements.muteMusicStateText.textContent).toBe("ON");
   });
 
   it("sets full aria attributes and icons for music OFF via initializeMuteButtonStates", () => {
@@ -148,12 +148,11 @@ describe("music toggle button state", () => {
     controller.initializeMuteButtonStates();
 
     expect(elements.muteMusicButton.getAttribute("aria-pressed")).toBe("false");
-    expect(elements.muteMusicButton.getAttribute("aria-label")).toBe("Play music");
-    expect(elements.muteMusicButton.getAttribute("title")).toBe("Play music");
+    expect(elements.muteMusicButton.getAttribute("aria-label")).toBe("Start music");
+    expect(elements.muteMusicButton.getAttribute("title")).toBe("Start music");
     expect(elements.muteMusicButton.dataset.muted).toBe("true");
     expect(elements.muteMusicIconOn.hidden).toBe(true);
     expect(elements.muteMusicIconOff.hidden).toBe(false);
-    expect(elements.muteMusicStateText.textContent).toBe("OFF");
   });
 });
 
@@ -193,6 +192,19 @@ describe("initializeMuteButtonStates", () => {
 
     expect(elements.muteSoundButton.getAttribute("aria-pressed")).toBe("true");
     expect(elements.muteSoundButton.getAttribute("aria-label")).toBe("Unmute sound effects");
+    expect(elements.muteSoundIconOn.hidden).toBe(true);
+    expect(elements.muteSoundIconOff.hidden).toBe(false);
+  });
+
+  it("sets hidden attribute on sound icons when sound is unmuted", () => {
+    const soundManager = createMockSoundManager();
+    soundManager.getSoundMuted.mockReturnValue(false);
+    const { controller, elements } = createController({ soundManager });
+
+    controller.initializeMuteButtonStates();
+
+    expect(elements.muteSoundIconOn.hasAttribute("hidden")).toBe(false);
+    expect(elements.muteSoundIconOff.hasAttribute("hidden")).toBe(true);
   });
 });
 
@@ -209,6 +221,10 @@ describe("bindMuteButtonListeners", () => {
     expect(soundManager.setMusicMuted).toHaveBeenCalledWith(false);
     expect(soundManager.playBackgroundMusic).toHaveBeenCalled();
     expect(elements.muteMusicButton.getAttribute("aria-pressed")).toBe("true");
+    expect(elements.muteMusicButton.getAttribute("aria-label")).toBe("Stop music");
+    expect(elements.muteMusicButton.getAttribute("title")).toBe("Stop music");
+    expect(elements.muteMusicIconOn.hidden).toBe(false);
+    expect(elements.muteMusicIconOff.hidden).toBe(true);
   });
 
   it("toggles music OFF when clicking the music button that is ON", () => {
@@ -221,6 +237,10 @@ describe("bindMuteButtonListeners", () => {
     expect(soundManager.setMusicMuted).toHaveBeenCalledWith(true);
     expect(soundManager.stopBackgroundMusic).toHaveBeenCalled();
     expect(elements.muteMusicButton.getAttribute("aria-pressed")).toBe("false");
+    expect(elements.muteMusicButton.getAttribute("aria-label")).toBe("Start music");
+    expect(elements.muteMusicButton.getAttribute("title")).toBe("Start music");
+    expect(elements.muteMusicIconOn.hidden).toBe(true);
+    expect(elements.muteMusicIconOff.hidden).toBe(false);
   });
 
   it("toggles sound mute when clicking the sound button", () => {
@@ -233,6 +253,8 @@ describe("bindMuteButtonListeners", () => {
     expect(soundManager.setSoundMuted).toHaveBeenCalledWith(true);
     expect(elements.muteSoundButton.getAttribute("aria-pressed")).toBe("true");
     expect(elements.muteSoundButton.getAttribute("aria-label")).toBe("Unmute sound effects");
+    expect(elements.muteSoundIconOn.hidden).toBe(true);
+    expect(elements.muteSoundIconOff.hidden).toBe(false);
   });
 
   it("unmutes sound when clicking the sound button that is pressed", () => {
@@ -245,6 +267,8 @@ describe("bindMuteButtonListeners", () => {
     expect(soundManager.setSoundMuted).toHaveBeenCalledWith(false);
     expect(elements.muteSoundButton.getAttribute("aria-pressed")).toBe("false");
     expect(elements.muteSoundButton.getAttribute("aria-label")).toBe("Mute sound effects");
+    expect(elements.muteSoundIconOn.hidden).toBe(false);
+    expect(elements.muteSoundIconOff.hidden).toBe(true);
   });
 });
 
@@ -321,5 +345,119 @@ describe("initializeMenuMusicAutoplayRecovery", () => {
     await vi.waitFor(() => {
       expect(soundManager.playBackgroundMusic).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+// ── SVG icon hidden attribute toggling ───────────────────────────────
+// Regression: inline SVG elements are SVGElement, not HTMLElement.
+// The .hidden IDL property does not reliably set the HTML hidden attribute
+// on SVGs, so the controller must use setAttribute/removeAttribute.
+
+const createSvgElements = () => ({
+  audioUnlockNotice: document.createElement("div"),
+  menuFrame: document.createElement("div"),
+  muteMusicButton: document.createElement("button"),
+  muteMusicIconOn: document.createElementNS("http://www.w3.org/2000/svg", "svg") as unknown as HTMLElement,
+  muteMusicIconOff: document.createElementNS("http://www.w3.org/2000/svg", "svg") as unknown as HTMLElement,
+  muteSoundButton: document.createElement("button"),
+  muteSoundIconOn: document.createElementNS("http://www.w3.org/2000/svg", "svg") as unknown as HTMLElement,
+  muteSoundIconOff: document.createElementNS("http://www.w3.org/2000/svg", "svg") as unknown as HTMLElement,
+});
+
+const createSvgController = (
+  overrides?: Partial<{ soundManager: MockSoundManager }>,
+) => {
+  const elements = createSvgElements();
+  const soundManager = overrides?.soundManager ?? createMockSoundManager();
+
+  for (const el of Object.values(elements)) {
+    document.body.append(el);
+  }
+
+  const controller = new AudioUiController({
+    elements,
+    soundManager: soundManager as unknown as import("../src/sound-manager.ts").SoundManager,
+  });
+
+  return { controller, elements, soundManager };
+};
+
+describe("SVG icon hidden attribute toggling", () => {
+  it("sets hidden attribute on SVG sound icon when sound is muted", () => {
+    const soundManager = createMockSoundManager();
+    soundManager.getSoundMuted.mockReturnValue(true);
+    const { controller, elements } = createSvgController({ soundManager });
+
+    controller.initializeMuteButtonStates();
+
+    expect(elements.muteSoundIconOn.hasAttribute("hidden")).toBe(true);
+    expect(elements.muteSoundIconOff.hasAttribute("hidden")).toBe(false);
+  });
+
+  it("removes hidden attribute on SVG sound icon when sound is unmuted", () => {
+    const soundManager = createMockSoundManager();
+    soundManager.getSoundMuted.mockReturnValue(false);
+    const { controller, elements } = createSvgController({ soundManager });
+
+    controller.initializeMuteButtonStates();
+
+    expect(elements.muteSoundIconOn.hasAttribute("hidden")).toBe(false);
+    expect(elements.muteSoundIconOff.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("sets hidden attribute on SVG music icon when music is off", () => {
+    const soundManager = createMockSoundManager();
+    soundManager.getMusicMuted.mockReturnValue(true);
+    soundManager.isMusicPlaying.mockReturnValue(false);
+    const { controller, elements } = createSvgController({ soundManager });
+
+    controller.initializeMuteButtonStates();
+
+    expect(elements.muteMusicIconOn.hasAttribute("hidden")).toBe(true);
+    expect(elements.muteMusicIconOff.hasAttribute("hidden")).toBe(false);
+  });
+
+  it("removes hidden attribute on SVG music icon when music is on", () => {
+    const soundManager = createMockSoundManager();
+    soundManager.getMusicMuted.mockReturnValue(false);
+    soundManager.isMusicPlaying.mockReturnValue(true);
+    const { controller, elements } = createSvgController({ soundManager });
+
+    controller.initializeMuteButtonStates();
+
+    expect(elements.muteMusicIconOn.hasAttribute("hidden")).toBe(false);
+    expect(elements.muteMusicIconOff.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("toggles hidden attribute on SVG icons when clicking sound button", () => {
+    const { controller, elements } = createSvgController();
+    controller.bindMuteButtonListeners();
+    elements.muteSoundButton.setAttribute("aria-pressed", "false");
+
+    elements.muteSoundButton.click();
+
+    expect(elements.muteSoundIconOn.hasAttribute("hidden")).toBe(true);
+    expect(elements.muteSoundIconOff.hasAttribute("hidden")).toBe(false);
+
+    elements.muteSoundButton.click();
+
+    expect(elements.muteSoundIconOn.hasAttribute("hidden")).toBe(false);
+    expect(elements.muteSoundIconOff.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("toggles hidden attribute on SVG icons when clicking music button", () => {
+    const { controller, elements } = createSvgController();
+    controller.bindMuteButtonListeners();
+    elements.muteMusicButton.setAttribute("aria-pressed", "false");
+
+    elements.muteMusicButton.click();
+
+    expect(elements.muteMusicIconOn.hasAttribute("hidden")).toBe(false);
+    expect(elements.muteMusicIconOff.hasAttribute("hidden")).toBe(true);
+
+    elements.muteMusicButton.click();
+
+    expect(elements.muteMusicIconOn.hasAttribute("hidden")).toBe(true);
+    expect(elements.muteMusicIconOff.hasAttribute("hidden")).toBe(false);
   });
 });

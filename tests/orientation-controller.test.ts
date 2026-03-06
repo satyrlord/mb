@@ -57,6 +57,23 @@ describe("orientation-controller", () => {
       localStorage.setItem(STORAGE_KEY, "landscape");
       expect(readStoredOrientationMode()).toBe("landscape");
     });
+
+    it("returns 'portrait' default for mobile when nothing is stored", () => {
+      expect(readStoredOrientationMode("mobile")).toBe("portrait");
+    });
+
+    it("returns 'landscape' default for desktop when nothing is stored", () => {
+      expect(readStoredOrientationMode("desktop")).toBe("landscape");
+    });
+
+    it("preserves legacy behavior when deviceType is omitted", () => {
+      expect(readStoredOrientationMode(undefined)).toBe("landscape");
+    });
+
+    it("returns stored value over device-aware default", () => {
+      localStorage.setItem(STORAGE_KEY, "landscape");
+      expect(readStoredOrientationMode("mobile")).toBe("landscape");
+    });
   });
 
   describe("writeOrientationMode", () => {

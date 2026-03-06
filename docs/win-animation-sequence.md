@@ -213,9 +213,11 @@ Actions at cleanup:
 
 ## Global Particle Limit
 
-A hard cap (configurable via `winFx.maxParticles`) is enforced
-across all phases. Each phase checks the running count before
-creating new elements and stops early if the limit is reached.
+A hard cap is enforced across all phases. When HD mode is on,
+`winFx.maxParticles` is used; when HD mode is off,
+`winFx.maxParticlesLow` is used instead. Each phase checks the
+running count before creating new elements and stops early if
+the limit is reached.
 
 ## Particle Count Summary
 
@@ -237,7 +239,9 @@ insertion over time and avoid a heavy layout spike.
 Runtime-configurable values (`config/win-fx.cfg`):
 
 - `winFx.textDisplayDurationMs` — Win text visibility duration before fireworks
-- `winFx.maxParticles` — Global particle cap across all phases
+- `winFx.maxParticles` — Global particle cap across all phases (HD-on)
+- `winFx.maxParticlesLow` — Global particle cap when HD mode is off
+  (low-performance / mobile fallback)
 - `winFx.particleDelayJitterMs` — Random delay jitter per particle
 - `winFx.centerFinaleDelayMs` — Delay before center finale starts
 - `winFx.centerFinaleWaves` — Number of center finale waves

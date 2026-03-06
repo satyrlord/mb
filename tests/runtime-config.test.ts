@@ -332,6 +332,7 @@ describe("runtime config loaders", () => {
       createMockTextResponse([
         "winFx.textDisplayDurationMs=777",
         "winFx.maxParticles=300",
+        "winFx.maxParticlesLow=200",
         "winFx.particleDelayJitterMs=10",
         "winFx.centerFinaleDelayMs=11",
         "winFx.centerFinaleWaves=2",
@@ -351,10 +352,42 @@ describe("runtime config loaders", () => {
 
     expect(loaded.options.textDisplayDurationMs).toBe(777);
     expect(loaded.options.maxParticles).toBe(300);
+    expect(loaded.options.maxParticlesLow).toBe(200);
     expect(loaded.options.fireworkBursts).toBe(4);
     expect(loaded.options.colors).toEqual(["#010203", "#111213"]);
     expect(loaded.textOptions).toEqual(["A", "B"]);
     expect(loaded.rainColors).toEqual(["#abc", "#def"]);
+  });
+
+  test("loadWinFxRuntimeConfig falls back to default maxParticlesLow when the key is absent", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "winFx.textDisplayDurationMs=777",
+        "winFx.maxParticles=300",
+      ].join("\n")),
+    );
+
+    const loaded = await loadWinFxRuntimeConfig();
+
+    expect(loaded.options.maxParticlesLow).toBe(
+      DEFAULT_WIN_FX_RUNTIME_CONFIG.options.maxParticlesLow,
+    );
+  });
+
+  test("loadWinFxRuntimeConfig falls back to default maxParticlesLow when the key is invalid", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      createMockTextResponse([
+        "winFx.textDisplayDurationMs=777",
+        "winFx.maxParticles=300",
+        "winFx.maxParticlesLow=not-a-number",
+      ].join("\n")),
+    );
+
+    const loaded = await loadWinFxRuntimeConfig();
+
+    expect(loaded.options.maxParticlesLow).toBe(
+      DEFAULT_WIN_FX_RUNTIME_CONFIG.options.maxParticlesLow,
+    );
   });
 
   test("loadWinFxRuntimeConfig falls back to defaults on non-ok response", async () => {

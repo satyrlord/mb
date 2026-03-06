@@ -13,6 +13,11 @@ interface WinFxElements {
   winFxTextElement: HTMLElement;
 }
 
+interface WinFxConstructorOptions {
+  elements: WinFxElements;
+  isHdOn?: boolean;
+}
+
 /**
  * Selects a random win text from configured options.
  *
@@ -162,11 +167,14 @@ export class WinFxController {
     rainColors: [...DEFAULT_WIN_FX_RUNTIME_CONFIG.rainColors],
   };
 
-  public constructor(elements: WinFxElements) {
-    this.appWindowElement = elements.appWindowElement;
-    this.winFxLayerElement = elements.winFxLayerElement;
-    this.winFxParticlesElement = elements.winFxParticlesElement;
-    this.winFxTextElement = elements.winFxTextElement;
+  private isHdOn: boolean;
+
+  public constructor(options: WinFxConstructorOptions) {
+    this.appWindowElement = options.elements.appWindowElement;
+    this.winFxLayerElement = options.elements.winFxLayerElement;
+    this.winFxParticlesElement = options.elements.winFxParticlesElement;
+    this.winFxTextElement = options.elements.winFxTextElement;
+    this.isHdOn = options.isHdOn ?? true;
   }
 
   public clear(): void {
@@ -221,6 +229,10 @@ export class WinFxController {
     };
   }
 
+  public setHdMode(hdOn: boolean): void {
+    this.isHdOn = hdOn;
+  }
+
   public play(
     onFinished?: () => void,
     textOverride?: string,
@@ -253,7 +265,8 @@ export class WinFxController {
 
     // Allocate per-phase particle budgets up front so later phases are not
     // starved by earlier ones when maxParticles is low.
-    const maxParticles = winFx.maxParticles;
+    const maxParticles = this.isHdOn ? winFx.maxParticles : winFx.maxParticlesLow;
+    const maxParticlesKey = this.isHdOn ? "winFx.maxParticles" : "winFx.maxParticlesLow";
     const fireworkBurstSize = WinFxController.FIREWORK_SPARKS_PER_BURST
       + WinFxController.FIREWORK_CORE_PER_BURST;
     const requiredCenterPieces = winFx.centerFinaleWaves * winFx.centerFinaleCount;
@@ -283,7 +296,7 @@ export class WinFxController {
       + requiredConfettiPieces + requiredShimmerPieces + requiredEmberPieces;
     if (totalRequired > maxParticles) {
       console.warn(
-        "[MEMORYBLOX] winFx.maxParticles is lower than requested celebration pieces; confetti may be reduced to preserve center finale and fireworks.",
+        `[MEMORYBLOX] ${maxParticlesKey} is lower than requested celebration pieces; confetti may be reduced to preserve center finale and fireworks.`,
       );
     }
 
