@@ -1,7 +1,9 @@
 # Win Animation Sequence
 
 Full timeline of the MEMORYBLOX win celebration animation as
-orchestrated by `WinFxController.play()` in `src/win-fx.ts`.
+orchestrated by `WinSequenceController.play()` in `src/win-sequence-controller.ts`,
+which performs the board fade handoff and then delegates the particle/text
+celebration to `WinFxController.play()` in `src/win-fx.ts`.
 
 All timings shown at **1x animation speed**. Divide by the speed
 multiplier for 2x / 3x values.
@@ -18,26 +20,52 @@ multiplier for 2x / 3x values.
 ```text
 T                                    Event
 ---                                  --------------------------
-0                                    Win text appears (bounce-in + glow pulse)
-0                                    Win sound starts (same tick as text)
-0                                    Screen flash (gold overlay)
-0                                    Vignette overlay appears
-confettiRainDelayMs                  Phase 1 — Confetti rain
-confettiRainDelayMs + centerFinaleDelayMs  Phase 2 — Center finale bouquet
-confettiRainDelayMs + centerFinaleDelayMs + CHROMA_DELAY_MS  Chroma aberration
-textDisplayDurationMs                Phase 3 — Firework bursts begin (post-text)
-textDisplayDurationMs                Phase 4 — Shimmer dust spawns
-textDisplayDurationMs + APP_SHAKE_DELAY_MS  App shake
-textDisplayDurationMs                Particles pulse
-textDisplayDurationMs + 200          Phase 5 — Rising embers spawn
-max(winSoundDurationMs, firework window)  Cleanup — particles removed, classes reset
+0                                    Matched-pair pause + disappear window begins
+matchedDisappearPauseMs +
+matchedDisappearDurationMs            Active game canvas fades out
+matchedDisappearPauseMs +
+matchedDisappearDurationMs +
+winCanvasFadeDurationMs              Win text appears (bounce-in + glow pulse)
+matchedDisappearPauseMs +
+matchedDisappearDurationMs +
+winCanvasFadeDurationMs              Win sound starts (same tick as text when available)
+matchedDisappearPauseMs +
+matchedDisappearDurationMs +
+winCanvasFadeDurationMs              Screen flash (gold overlay)
+matchedDisappearPauseMs +
+matchedDisappearDurationMs +
+winCanvasFadeDurationMs              Vignette overlay appears
+celebrationStart + confettiRainDelayMs  Phase 1 — Confetti rain
+celebrationStart + confettiRainDelayMs +
+centerFinaleDelayMs                  Phase 2 — Center finale bouquet
+celebrationStart + confettiRainDelayMs +
+centerFinaleDelayMs + CHROMA_DELAY_MS  Chroma aberration
+celebrationStart + textDisplayDurationMs  Phase 3 — Firework bursts begin (post-text)
+celebrationStart + textDisplayDurationMs  Phase 4 — Shimmer dust spawns
+celebrationStart + textDisplayDurationMs + APP_SHAKE_DELAY_MS  App shake
+celebrationStart + textDisplayDurationMs  Particles pulse
+celebrationStart + textDisplayDurationMs + 200  Phase 5 — Rising embers spawn
+max(winSoundDurationMs, firework window)
+after celebrationStart               Cleanup — particles removed, classes reset
 ```
 
 ---
 
 ## Phase Details
 
-### Phase 0 — Text + Sound (T = 0)
+### Pre-Celebration Handoff
+
+Before any particle/text effect starts, `WinSequenceController` waits for the
+matched-pair disappearance window to complete, then fades out the active game
+canvas (`gameFrame` or `debugTilesFrame`) using the runtime-configured
+`gameplay.winCanvasFadeDurationMs` value.
+
+- **Tile animation window**: `matchedDisappearPauseMs + matchedDisappearDurationMs`
+- **Canvas fade**: `winCanvasFadeDurationMs`
+- **Abort behavior**: the sequence is cancelled if the active game changes or
+  the controller is cleared during either timeout stage.
+
+### Phase 0 — Text + Sound (celebrationStart)
 
 - **Win text display** — Duration: `textDisplayDurationMs`;
   `win-fx-title-display` (bounce-in: scale 0.3 → 1.08 → 0.96 →
@@ -47,9 +75,14 @@ max(winSoundDurationMs, firework window)  Cleanup — particles removed, classes
 - **Win sound** — Duration: WAV/asset duration;
   Started by `soundManager.playWin()` callback
 
-`index.ts` starts win text and win sound on the same tick. The text
-duration is passed into `WinFxController.play(...)` and written to
+`WinSequenceController` starts win text and win sound on the same tick after
+the canvas-fade handoff completes. The sound callback passes the resolved sound
+duration into `WinFxController.play(...)`, which writes it to
 `--win-fx-text-duration`.
+
+If no win sound is available, `WinSequenceController` still starts the visual
+celebration through the fallback path so the user does not lose the win text or
+particles.
 
 ### Phase 1 — Confetti Rain
 
@@ -165,7 +198,7 @@ These effects use CSS classes on existing container elements
 ### Cleanup
 
 Computed as `max(winSoundDurationMs, firework window,
-phase-start window + CLEANUP_BUFFER_MS)`.
+phase-start window + CLEANUP_BUFFER_MS)` after the celebration handoff begins.
 
 Actions at cleanup:
 
@@ -174,7 +207,7 @@ Actions at cleanup:
 3. Remove screen-level effect classes (`win-fx-flash-active`,
    `win-fx-vignette-active`, `win-fx-shake-active`,
    `win-fx-chroma-active`, `win-fx-particles-pulse-active`)
-4. Fire `onFinished` callback (shows menu)
+4. Fire `onFinished` callback (typically shows the menu)
 
 ---
 

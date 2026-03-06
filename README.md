@@ -5,12 +5,18 @@ using HTML, CSS, and TypeScript. Try it now at <https://satyrlord.github.io/mb/>
 
 ## Update Log
 
+### 2026-03-06
+
+- Bootstrap responsibilities were split into focused controllers:
+  `audio-ui-controller`, `leaderboard-ui`, `orientation-controller`,
+  `player-name-prompt`, and `win-sequence-controller`.
+- Current verified test state: 34 test files, 621 tests passing.
+
 ### 2026-03-05
 
 - GitHub Pages deployment now includes `icon/`, `sound/`, and `music/`
   asset directories so OpenMoji SVG icon packs and audio files are served.
 - Fixed 160 stale `dev/mb/` path prefixes in `artifacts/generated-icon-assets.json`.
-- Current verified test state: 24 test files, 395 tests passing.
 
 ### 2026-02-24
 
@@ -171,14 +177,23 @@ src/session-score.ts       Session score flag normalization
 src/difficulty.ts          Difficulty presets (Easy, Normal, Hard)
 src/tile-layout.ts         Tile multiplier and set distribution logic
 src/leaderboard.ts         Leaderboard scoring, storage, and runtime config
+src/leaderboard-ui.ts      Leaderboard rendering, refresh, and
+                           score submission UI flow
+src/leaderboard-view.ts    Leaderboard entry keys and timestamp formatting helpers
 src/runtime-config.ts      UI/win-fx runtime config loading
 src/shadow-config.ts       Shadow preset loading
 src/win-fx.ts              Win celebration particle effects
+src/win-sequence-controller.ts  Win canvas fade + celebration orchestration
 src/flag-emoji.ts          Flag emoji CDN URL and country name helpers
 src/cfg.ts                 Shared cfg-file parsing utilities
 src/sound-engine.ts        Web Audio API core engine (dual-layer)
 src/sound-manager.ts       High-level game sound controller
 src/audio-loader.ts        Audio asset loading and caching
+src/audio-ui-controller.ts Audio mute UI state and autoplay recovery
+src/orientation-controller.ts Orientation mode state and layout helpers
+src/player-name-prompt.ts  Player name modal prompt and localStorage persistence
+src/settings-controller.ts Settings UI controller
+src/debug-controller.ts    Debug menu and debug-mode controller
 src/window-resize.ts       Window resize handle controller
 config/                    Global runtime configuration files
 icon/                      OpenMoji SVG assets and pack catalog
@@ -194,10 +209,12 @@ styles.winfx.css           Win animation styling (isolated)
 
 Display view classes (`UiView`, `BoardView`) are scoped to output only.
 They **do not** wire or accept interactive event handlers in their
-constructor parameters. All event wiring — restart, tile select, resize,
-keyboard — is the exclusive responsibility of the bootstrap layer
-(`src/index.ts`). This boundary is intentional: do not pass event
-callbacks into display views; wire them at the bootstrap level instead.
+constructor parameters. All event wiring remains owned by the bootstrap
+layer (`src/index.ts`), which may delegate cohesive subsystems to focused
+controllers (`AudioUiController`, `LeaderboardUiController`,
+`PlayerNamePrompt`, `WinSequenceController`, and orientation helpers).
+This boundary is intentional: do not pass event callbacks into display
+views; wire them at the bootstrap/controller layer instead.
 
 ## Credits
 

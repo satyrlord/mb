@@ -31,17 +31,9 @@ import {
 import {
   computeGameScoreResult,
   DEFAULT_LEADERBOARD_RUNTIME_CONFIG,
-  LeaderboardClient,
   loadLeaderboardRuntimeConfig,
   type LeaderboardRuntimeConfig,
-  type LeaderboardScoreEntry,
 } from "./leaderboard.js";
-import {
-  createLeaderboardEntryKey,
-  formatLeaderboardTimestampGmt,
-  resolveLastSubmittedLeaderboardEntryKey,
-  resolveMostRecentLeaderboardEntryKey,
-} from "./leaderboard-view.js";
 import { normalizeScoreFlagsForPlayerSelection } from "./session-score.js";
 import {
   computeTileLayout,
@@ -53,16 +45,29 @@ import {
   enableSliderWheelScroll,
   formatElapsedTime,
   requireElement,
-  sanitizePlayerName,
 } from "./utils.js";
 import { WinFxController } from "./win-fx.js";
 import { SoundManager } from "./sound-manager.js";
+import { AudioUiController } from "./audio-ui-controller.js";
+import { WinSequenceController } from "./win-sequence-controller.js";
 import { WindowResizeController } from "./window-resize.js";
 import { SettingsController } from "./settings-controller.js";
 import { DebugController } from "./debug-controller.js";
-const PLAYER_NAME_STORAGE_KEY = "memoryblox-player-name";
-const ORIENTATION_MODE_STORAGE_KEY = "memoryblox-orientation-mode";
-type OrientationMode = "landscape" | "portrait";
+import {
+  type OrientationMode,
+  readStoredOrientationMode,
+  writeOrientationMode,
+  getEffectiveDifficulty,
+  updateOrientationToggleButton as updateOrientationToggleButtonState,
+  applyOrientationBoardLayout as applyOrientationBoardLayoutState,
+  getOrientationAwareResizeConfig as computeOrientationResizeConfig,
+} from "./orientation-controller.js";
+import {
+  PlayerNamePrompt,
+} from "./player-name-prompt.js";
+import {
+  LeaderboardUiController,
+} from "./leaderboard-ui.js";
 
 interface AppRuntimeState {
   ui: UiRuntimeConfig;
@@ -82,11 +87,6 @@ const runtimeState: AppRuntimeState = {
 
 /** When true, render() overrides all tile statuses to "revealed" without matching them. */
 let debugFlipAllTiles = false;
-
-const readStoredOrientationMode = (): OrientationMode => {
-  const stored = window.localStorage.getItem(ORIENTATION_MODE_STORAGE_KEY);
-  return stored === "portrait" ? "portrait" : "landscape";
-};
 
 let orientationMode: OrientationMode = readStoredOrientationMode();
 
@@ -205,33 +205,16 @@ let timerAbortController: AbortController | null = null;
 let autoDemoAbortController: AbortController | null = null;
 let mismatchResolveTimeoutId: number | null = null;
 let mismatchAbortController: AbortController | null = null;
-let winSequenceTimeoutId: number | null = null;
-let winSequenceAbortController: AbortController | null = null;
 
 /**
- * Runtime configuration and leaderboard persistence state.
+ * Runtime configuration state.
  *
- * `shadowConfig` and `leaderboardRuntimeConfig` are loaded once during
- * bootstrap and may be reloaded via `loadRuntimeConfig()`.
- * `leaderboardClient` is reconstructed whenever the leaderboard config
- * changes. `leaderboardEntries` caches the most recently fetched scores.
+ * `shadowConfig` is loaded once during bootstrap and may be reloaded
+ * via `loadRuntimeConfig()`.
  */
 let shadowConfig: ShadowConfig = DEFAULT_SHADOW_CONFIG;
 let leaderboardRuntimeConfig: LeaderboardRuntimeConfig = DEFAULT_LEADERBOARD_RUNTIME_CONFIG;
-let leaderboardClient = new LeaderboardClient(DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
-let leaderboardEntries: LeaderboardScoreEntry[] = [];
-let lastSubmittedLeaderboardEntryKey: string | null = null;
 
-/**
- * Name-prompt modal state.
- *
- * The prompt is shown once per win. `pendingNamePromptResolve` holds the
- * Promise resolver; `pendingNamePromptCleanup` removes event listeners
- * when the prompt closes. Both reset to `null` via `closePlayerNamePrompt()`.
- */
-let pendingNamePromptResolve: ((name: string) => void) | null = null;
-let pendingNamePromptCleanup: (() => void) | null = null;
-const emojiPacks = getEmojiPacks();
 const winFxController = new WinFxController({
   appWindowElement,
   winFxLayerElement,
@@ -239,16 +222,49 @@ const winFxController = new WinFxController({
   winFxTextElement,
 });
 const soundManager = new SoundManager();
-
-const updateAudioUnlockNotice = (): void => {
-  const shouldShow = !menuFrame.hidden
-    && soundManager.hasMusicTracks()
-    && !soundManager.getMusicMuted()
-    && !soundManager.isMusicPlaying()
-    && !soundManager.isAudioContextRunning();
-
-  audioUnlockNoticeElement.hidden = !shouldShow;
-};
+const audioUiController = new AudioUiController({
+  elements: {
+    audioUnlockNotice: audioUnlockNoticeElement,
+    menuFrame,
+    muteMusicButton,
+    muteMusicIconOn,
+    muteMusicIconOff,
+    muteMusicStateText,
+    muteSoundButton,
+  },
+  soundManager,
+});
+const winSequenceController = new WinSequenceController({
+  elements: { gameFrame, debugTilesFrame },
+  soundManager,
+  winFxController,
+  getGameplayTiming: () => runtimeState.ui.gameplayTiming,
+  scaleByAnimationSpeed: (ms) => scaleByAnimationSpeed(ms),
+  hasActiveGame: () => hasActiveGame(session),
+  getActiveGameMode: () => hasActiveGame(session) ? session.mode : null,
+  showMenuFrame: () => showMenuFrame(),
+});
+const emojiPacks = getEmojiPacks();
+const playerNamePrompt = new PlayerNamePrompt({
+  elements: {
+    overlay: namePromptOverlayElement,
+    input: namePromptInputElement,
+    okButton: namePromptOkButton,
+  },
+  getFadeOutMs: () => runtimeState.ui.namePromptFadeOutMs,
+});
+const leaderboardUi = new LeaderboardUiController(
+  {
+    elements: {
+      statusElement: leaderboardStatusElement,
+      tableWrapElement: leaderboardTableWrapElement,
+      listElement: leaderboardListElement,
+    },
+    getVisibleRowCount: () => runtimeState.ui.leaderboardVisibleRowCount,
+    setStatus: (message: string) => uiView.setStatus(message),
+  },
+  DEFAULT_LEADERBOARD_RUNTIME_CONFIG,
+);
 
 const applySelectedAnimationSpeed = (speed: number): void => {
   document.documentElement.style.setProperty("--animation-speed", speed.toString());
@@ -274,170 +290,6 @@ const clearMismatchResolveTimeout = (): void => {
   if (mismatchResolveTimeoutId !== null) {
     window.clearTimeout(mismatchResolveTimeoutId);
     mismatchResolveTimeoutId = null;
-  }
-};
-
-const clearWinSequence = (): void => {
-  winSequenceAbortController?.abort();
-  winSequenceAbortController = null;
-
-  if (winSequenceTimeoutId !== null) {
-    window.clearTimeout(winSequenceTimeoutId);
-    winSequenceTimeoutId = null;
-  }
-
-  gameFrame.classList.remove("game-canvas-win-fade-out");
-  debugTilesFrame.classList.remove("game-canvas-win-fade-out");
-};
-
-const getActiveGameCanvasFrame = (): HTMLElement | null => {
-  if (!hasActiveGame(session)) {
-    return null;
-  }
-
-  return session.mode === "debug-tiles"
-    ? debugTilesFrame
-    : gameFrame;
-};
-
-const getScaledMatchedDisappearDuration = (): number => {
-  const gameplayTiming = getGameplayTiming();
-  const baseDuration = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? gameplayTiming.reducedMotionMatchedDisappearDurationMs
-    : gameplayTiming.matchedDisappearDurationMs;
-
-  return scaleByAnimationSpeed(baseDuration);
-};
-
-const playWinSequenceWithText = (textOverride?: string): void => {
-  clearWinSequence();
-
-  winSequenceAbortController = new AbortController();
-  const { signal } = winSequenceAbortController;
-  const gameplayTiming = getGameplayTiming();
-  const tileAnimationDuration = scaleByAnimationSpeed(gameplayTiming.matchedDisappearPauseMs)
-    + getScaledMatchedDisappearDuration();
-  const fadeDuration = scaleByAnimationSpeed(gameplayTiming.winCanvasFadeDurationMs);
-
-  winSequenceTimeoutId = window.setTimeout(() => {
-    if (signal.aborted || !hasActiveGame(session)) {
-      return;
-    }
-
-    const activeFrame = getActiveGameCanvasFrame();
-
-    if (activeFrame !== null) {
-      activeFrame.classList.add("game-canvas-win-fade-out");
-    }
-
-    winSequenceTimeoutId = window.setTimeout(() => {
-      winSequenceTimeoutId = null;
-
-      if (signal.aborted || !hasActiveGame(session)) {
-        return;
-      }
-
-      void (async () => {
-        let startedWithSound = false;
-        const winSoundDurationMs = await soundManager.playWin((durationMs) => {
-          if (signal.aborted || !hasActiveGame(session)) {
-            return;
-          }
-
-          startedWithSound = true;
-          winFxController.play(() => {
-            showMenuFrame();
-          }, textOverride, durationMs);
-        });
-
-        if (startedWithSound || signal.aborted || !hasActiveGame(session)) {
-          return;
-        }
-
-        // Fallback path when no win SFX is available: still show celebration text.
-        winFxController.play(() => {
-          showMenuFrame();
-        }, textOverride, winSoundDurationMs ?? undefined);
-      })();
-    }, fadeDuration);
-  }, tileAnimationDuration);
-};
-
-interface SubmitWinToLeaderboardInput {
-  playerName: string;
-  difficulty: DifficultyConfig;
-  sessionMode: ActiveGameSession["mode"];
-  emojiSetId: EmojiPackId;
-  emojiSetLabel: string;
-  scoreCategory: "standard" | "debug";
-  isAutoDemoScore: boolean;
-  tileMultiplier: number;
-  timeMs: number;
-  attempts: number;
-  usedFlipTiles: boolean;
-  isPortraitMode: boolean;
-}
-
-const submitWinToLeaderboard = async (
-  input: SubmitWinToLeaderboardInput,
-): Promise<void> => {
-  const {
-    playerName,
-    difficulty,
-    sessionMode,
-    emojiSetId,
-    emojiSetLabel,
-    scoreCategory,
-    isAutoDemoScore,
-    tileMultiplier,
-    timeMs,
-    attempts,
-    usedFlipTiles,
-    isPortraitMode,
-  } = input;
-  const leaderboardAvailable = isLeaderboardEnabled();
-
-  try {
-    const scoreResult = computeGameScoreResult({
-      difficulty,
-      sessionMode,
-      scoreCategory,
-      isAutoDemoScore,
-      tileMultiplier,
-      timeMs,
-      attempts,
-      usedFlipTiles,
-      isPortraitMode,
-    }, leaderboardRuntimeConfig.scoring);
-    const submittedScore = {
-      playerName,
-      timeMs,
-      attempts,
-      difficultyId: scoreResult.difficultyId,
-      difficultyLabel: scoreResult.difficultyLabel,
-      emojiSetId,
-      emojiSetLabel,
-      scoreMultiplier: scoreResult.scoreMultiplier,
-      scoreValue: scoreResult.scoreValue,
-      isAutoDemo: isAutoDemoScore,
-    };
-
-    await leaderboardClient.submitScore(submittedScore);
-
-    if (leaderboardAvailable) {
-      await refreshLeaderboard();
-      lastSubmittedLeaderboardEntryKey = resolveLastSubmittedLeaderboardEntryKey(
-        leaderboardEntries,
-        submittedScore,
-      );
-      uiView.setStatus("You win! Score saved to local high scores.");
-      return;
-    }
-
-    uiView.setStatus("You win! Score not saved (high scores disabled).");
-  } catch (error: unknown) {
-    console.warn("[MEMORYBLOX] Leaderboard submission failed:", error);
-    uiView.setStatus("You win! Leaderboard submit failed.");
   }
 };
 
@@ -489,226 +341,11 @@ const checkPlasmaTextureAvailability = async (): Promise<void> => {
   setPlasmaWarningVisible(false);
 };
 
-const initializeMuteButtonStates = (): void => {
-  const musicIsOn = !soundManager.getMusicMuted() && soundManager.isMusicPlaying();
-  const soundMuted = soundManager.getSoundMuted();
-
-  setMusicToggleButtonState(musicIsOn);
-
-  muteSoundButton.setAttribute("aria-pressed", String(soundMuted));
-  muteSoundButton.setAttribute("aria-label", soundMuted ? "Unmute sound effects" : "Mute sound effects");
-  muteSoundButton.setAttribute("title", soundMuted ? "Unmute sound effects" : "Mute sound effects");
-};
-
-const setMusicToggleButtonState = (musicIsOn: boolean): void => {
-  muteMusicButton.setAttribute("aria-pressed", String(musicIsOn));
-  muteMusicButton.setAttribute("aria-label", musicIsOn ? "Pause music" : "Play music");
-  muteMusicButton.setAttribute("title", musicIsOn ? "Pause music" : "Play music");
-  muteMusicButton.dataset.muted = String(!musicIsOn);
-  muteMusicIconOn.hidden = !musicIsOn;
-  muteMusicIconOff.hidden = musicIsOn;
-  muteMusicStateText.textContent = musicIsOn ? "ON" : "OFF";
-};
-
-const readStoredPlayerName = (): string | null => {
-  const value = window.localStorage.getItem(PLAYER_NAME_STORAGE_KEY);
-
-  if (value === null) {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const writeStoredPlayerName = (name: string): void => {
-  window.localStorage.setItem(PLAYER_NAME_STORAGE_KEY, name);
-};
-
-const closePlayerNamePrompt = (resolvedName?: string): void => {
-  pendingNamePromptCleanup?.();
-  pendingNamePromptCleanup = null;
-
-  if (pendingNamePromptResolve !== null) {
-    const fallbackName = readStoredPlayerName() ?? "Player";
-    pendingNamePromptResolve(resolvedName ?? fallbackName);
-    pendingNamePromptResolve = null;
-  }
-
-  namePromptOverlayElement.classList.remove("is-hiding");
-  namePromptOverlayElement.hidden = true;
-  namePromptOverlayElement.setAttribute("aria-hidden", "true");
-  namePromptInputElement.disabled = false;
-  namePromptOkButton.disabled = false;
-};
-
-const promptForPlayerNameInUi = (): Promise<string> => {
-  closePlayerNamePrompt();
-
-  const storedName = readStoredPlayerName();
-  namePromptInputElement.value = storedName ?? "";
-  namePromptInputElement.disabled = false;
-  namePromptOkButton.disabled = false;
-  namePromptOverlayElement.hidden = false;
-  namePromptOverlayElement.setAttribute("aria-hidden", "false");
-  namePromptOverlayElement.classList.remove("is-hiding");
-
-  return new Promise<string>((resolve) => {
-    pendingNamePromptResolve = resolve;
-
-    const submit = (): void => {
-      const sanitizedName = sanitizePlayerName(namePromptInputElement.value);
-      const resolvedName = sanitizedName.length > 0
-        ? sanitizedName
-        : (storedName ?? "Player");
-
-      writeStoredPlayerName(resolvedName);
-      namePromptInputElement.disabled = true;
-      namePromptOkButton.disabled = true;
-      namePromptOverlayElement.classList.add("is-hiding");
-
-      window.setTimeout(() => {
-        closePlayerNamePrompt(resolvedName);
-      }, runtimeState.ui.namePromptFadeOutMs);
-    };
-
-    const onInputKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Enter") {
-        return;
-      }
-
-      event.preventDefault();
-      submit();
-    };
-
-    const onOkClick = (): void => {
-      submit();
-    };
-
-    pendingNamePromptCleanup = () => {
-      namePromptInputElement.removeEventListener("keydown", onInputKeyDown);
-      namePromptOkButton.removeEventListener("click", onOkClick);
-    };
-
-    namePromptInputElement.addEventListener("keydown", onInputKeyDown);
-    namePromptOkButton.addEventListener("click", onOkClick);
-
-    window.setTimeout(() => {
-      if (pendingNamePromptResolve === resolve) {
-        namePromptInputElement.focus();
-        namePromptInputElement.select();
-      }
-    }, 0);
-  });
-};
-
-const isLeaderboardEnabled = (): boolean => {
-  return leaderboardClient.isEnabled();
-};
-
-const getLeaderboardStatusText = (): string => {
-  if (!isLeaderboardEnabled()) {
-    return "High scores are disabled.";
-  }
-
-  if (leaderboardEntries.length === 0) {
-    return "No scores yet. Be the first!";
-  }
-
-  return "Sorted by highest score, then most recent time.";
-};
-
-const createLeaderboardListRow = (
-  entry: LeaderboardScoreEntry,
-  index: number,
-  isRecent: boolean,
-): HTMLTableRowElement => {
-  const row = document.createElement("tr");
-  row.className = "leaderboard-row";
-
-  if (isRecent) {
-    row.classList.add("leaderboard-row-recent");
-  }
-
-  const rankCell = document.createElement("td");
-  rankCell.className = "leaderboard-cell leaderboard-cell-rank u-shadow-physical";
-  rankCell.textContent = String(Math.min(index + 1, runtimeState.ui.leaderboardVisibleRowCount));
-
-  const playerCell = document.createElement("td");
-  playerCell.className = "leaderboard-cell leaderboard-cell-player u-shadow-physical";
-  playerCell.textContent = entry.playerName;
-
-  if (entry.isAutoDemo || entry.difficultyLabel.toLowerCase() === "debug") {
-    const suffix: string[] = [];
-    if (entry.difficultyLabel.toLowerCase() === "debug") {
-      suffix.push("debug");
-    }
-    if (entry.isAutoDemo) {
-      suffix.push("auto");
-    }
-    playerCell.textContent = `${entry.playerName} (${suffix.join(", ")})`;
-  }
-
-  const scoreCell = document.createElement("td");
-  scoreCell.className = "leaderboard-cell leaderboard-cell-score u-shadow-physical";
-  scoreCell.textContent = entry.scoreValue.toString();
-
-  const difficultyCell = document.createElement("td");
-  difficultyCell.className = "leaderboard-cell u-shadow-physical";
-  difficultyCell.textContent = entry.difficultyLabel;
-
-  const emojiSetCell = document.createElement("td");
-  emojiSetCell.className = "leaderboard-cell u-shadow-physical";
-  emojiSetCell.textContent = entry.emojiSetLabel;
-
-  const timeCell = document.createElement("td");
-  timeCell.className = "leaderboard-cell leaderboard-cell-time u-shadow-physical";
-  timeCell.textContent = formatLeaderboardTimestampGmt(entry.createdAt);
-
-  row.append(rankCell, playerCell, scoreCell, difficultyCell, emojiSetCell, timeCell);
-  return row;
-};
-
-const renderLeaderboard = (): void => {
-  leaderboardStatusElement.textContent = getLeaderboardStatusText();
-
-  if (!isLeaderboardEnabled()) {
-    leaderboardListElement.replaceChildren();
-    leaderboardTableWrapElement.hidden = true;
-    return;
-  }
-
-  const cappedEntries = leaderboardEntries.slice(0, runtimeState.ui.leaderboardVisibleRowCount);
-  const hasSubmittedEntryInView =
-    lastSubmittedLeaderboardEntryKey !== null
-    && cappedEntries.some((entry) => createLeaderboardEntryKey(entry) === lastSubmittedLeaderboardEntryKey);
-  const recentLeaderboardEntryKey = hasSubmittedEntryInView
-    ? lastSubmittedLeaderboardEntryKey
-    : lastSubmittedLeaderboardEntryKey === null
-      ? resolveMostRecentLeaderboardEntryKey(cappedEntries)
-      : null;
-  const rows: HTMLTableRowElement[] = cappedEntries.map((entry, index) =>
-    createLeaderboardListRow(
-      entry,
-      index,
-      recentLeaderboardEntryKey !== null && createLeaderboardEntryKey(entry) === recentLeaderboardEntryKey,
-    ),
-  );
-
-  leaderboardTableWrapElement.hidden = false;
-  leaderboardListElement.replaceChildren(...rows);
-};
-
-const refreshLeaderboard = async (): Promise<void> => {
-  leaderboardEntries = await leaderboardClient.fetchTopScores();
-  renderLeaderboard();
-};
-
 const resetActiveEffects = (): void => {
   winFxController.clear();
   cancelAutoDemo();
   clearMismatchResolveTimeout();
-  clearWinSequence();
+  winSequenceController.clear();
 };
 
 /** Full cleanup for starting or restarting a game session. */
@@ -763,7 +400,7 @@ const showLeaderboardFrame = (): void => {
   });
   setDifficultySelection("");
   session = { mode: "menu" };
-  void refreshLeaderboard().catch(() => {
+  void leaderboardUi.refresh().catch(() => {
     // Silently ignore — leaderboard display is best-effort.
   });
   uiView.setStatus("Showing local high scores.");
@@ -788,13 +425,6 @@ const getDefaultDifficulty = (): DifficultyConfig => {
     );
   }
 
-  return difficulty;
-};
-
-const getEffectiveDifficulty = (difficulty: DifficultyConfig): DifficultyConfig => {
-  if (orientationMode === "portrait") {
-    return { ...difficulty, rows: difficulty.columns, columns: difficulty.rows };
-  }
   return difficulty;
 };
 
@@ -869,34 +499,7 @@ const showMenuFrame = (): void => {
   setDifficultySelection("");
   session = { mode: "menu" };
   void soundManager.playBackgroundMusic();
-  updateAudioUnlockNotice();
-};
-
-const initializeMenuMusicAutoplayRecovery = (): void => {
-  const removeRecoveryListeners = (): void => {
-    document.removeEventListener("pointerdown", handleGestureAttempt);
-    document.removeEventListener("keydown", handleGestureAttempt);
-    document.removeEventListener("touchstart", handleGestureAttempt);
-  };
-
-  const tryStartMenuMusic = async (): Promise<void> => {
-    await soundManager.playBackgroundMusic();
-    updateAudioUnlockNotice();
-
-    if (soundManager.isMusicPlaying() || soundManager.getMusicMuted()) {
-      removeRecoveryListeners();
-    }
-  };
-
-  const handleGestureAttempt = (): void => {
-    void tryStartMenuMusic();
-  };
-
-  document.addEventListener("pointerdown", handleGestureAttempt);
-  document.addEventListener("keydown", handleGestureAttempt);
-  document.addEventListener("touchstart", handleGestureAttempt, { passive: true });
-  updateAudioUnlockNotice();
-  void tryStartMenuMusic();
+  audioUiController.updateAudioUnlockNotice();
 };
 
 const showGameFrame = (): void => {
@@ -967,7 +570,7 @@ const computeIdealTileSize = (
 const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
   resetForNewGame();
   const packId = settingsController.getSelectedEmojiPackId();
-  const effectiveDifficulty = getEffectiveDifficulty(difficulty);
+  const effectiveDifficulty = getEffectiveDifficulty(difficulty, orientationMode);
   session = {
     mode: "game",
     difficulty,
@@ -1097,7 +700,7 @@ const handleTileSelect = (
 
       void (async () => {
         const isAutoDemoWin = selectionSource === "demo";
-        const playerName = isAutoDemoWin ? "Demo" : await promptForPlayerNameInUi();
+        const playerName = isAutoDemoWin ? "Demo" : await playerNamePrompt.prompt();
 
         if (
           !hasActiveGame(session)
@@ -1125,10 +728,10 @@ const handleTileSelect = (
           attempts,
           usedFlipTiles: session.usedFlipTiles,
           isPortraitMode: session.isPortraitMode,
-        }, leaderboardRuntimeConfig.scoring);
+        }, leaderboardUi.getScoringConfig());
 
         uiView.setStatus("You win!");
-        void submitWinToLeaderboard({
+        void leaderboardUi.submitWin({
           playerName,
           difficulty: session.difficulty,
           sessionMode: session.mode,
@@ -1142,7 +745,7 @@ const handleTileSelect = (
           usedFlipTiles: session.usedFlipTiles,
           isPortraitMode: session.isPortraitMode,
         });
-        playWinSequenceWithText(
+        winSequenceController.play(
           `Congratulations ${playerName}!\nYour score was ${scoreResult.scoreValue.toLocaleString()}`,
         );
       })();
@@ -1197,19 +800,23 @@ const uiView = new UiView(
 const boardView = new BoardView(boardElement, handleTileSelect);
 const debugBoardView = new BoardView(debugTilesBoardElement, handleTileSelect);
 
+const orientationToggleElements = {
+  button: orientationToggleButton,
+  landscapeIcon: orientationLandscapeIcon,
+  portraitIcon: orientationPortraitIcon,
+};
+
 const updateOrientationToggleButton = (): void => {
-  const isPortrait = orientationMode === "portrait";
-  const label = isPortrait ? "Switch to landscape mode" : "Switch to portrait mode";
-  orientationToggleButton.setAttribute("aria-label", label);
-  orientationToggleButton.setAttribute("title", label);
-  orientationLandscapeIcon.hidden = isPortrait;
-  orientationPortraitIcon.hidden = !isPortrait;
+  updateOrientationToggleButtonState(orientationToggleElements, orientationMode);
 };
 
 const applyOrientationBoardLayout = (): void => {
-  appShellElement.dataset.orientation = orientationMode;
-  boardView.setLayoutConfig(runtimeState.ui.boardLayout);
-  debugBoardView.setLayoutConfig(runtimeState.ui.boardLayout);
+  applyOrientationBoardLayoutState(
+    appShellElement,
+    [boardView, debugBoardView],
+    runtimeState.ui.boardLayout,
+    orientationMode,
+  );
 };
 
 const loadRuntimeConfig = async (): Promise<void> => {
@@ -1264,8 +871,8 @@ const loadRuntimeConfig = async (): Promise<void> => {
     ...leaderboardConfig,
     scoring: { ...leaderboardConfig.scoring },
   };
-  leaderboardClient = new LeaderboardClient(leaderboardRuntimeConfig);
-  renderLeaderboard();
+  leaderboardUi.updateRuntimeConfig(leaderboardRuntimeConfig);
+  leaderboardUi.render();
 };
 
 const enforceEmojiPackParity = (): void => {
@@ -1383,31 +990,7 @@ menuButton.addEventListener("click", () => {
 });
 
 
-muteMusicButton.addEventListener("click", () => {
-  const isOn = muteMusicButton.getAttribute("aria-pressed") === "true";
-  const nextIsOn = !isOn;
-
-  setMusicToggleButtonState(nextIsOn);
-
-  if (nextIsOn) {
-    soundManager.setMusicMuted(false);
-    void soundManager.playBackgroundMusic();
-  } else {
-    soundManager.setMusicMuted(true);
-    soundManager.stopBackgroundMusic();
-  }
-
-  updateAudioUnlockNotice();
-});
-
-muteSoundButton.addEventListener("click", () => {
-  const isPressed = muteSoundButton.getAttribute("aria-pressed") === "true";
-  const newState = !isPressed;
-  muteSoundButton.setAttribute("aria-pressed", String(newState));
-  muteSoundButton.setAttribute("aria-label", newState ? "Unmute sound effects" : "Mute sound effects");
-  muteSoundButton.setAttribute("title", newState ? "Unmute sound effects" : "Mute sound effects");
-  soundManager.setSoundMuted(newState);
-});
+audioUiController.bindMuteButtonListeners();
 
 menuSettingsButton.addEventListener("click", () => {
   showSettingsFrame();
@@ -1422,36 +1005,25 @@ leaderboardBackButton.addEventListener("click", () => {
 });
 
 
-const getOrientationAwareResizeConfig = (): {
-  fixedWindowAspectRatio: number;
-  windowBaseSize: { minWidthPx: number; minHeightPx: number };
-  windowResizeLimits: typeof runtimeState.ui.windowResizeLimits;
-} => {
-  const isPortrait = orientationMode === "portrait";
-  const baseAspect = runtimeState.ui.fixedWindowAspectRatio;
-  return {
-    fixedWindowAspectRatio: isPortrait ? 1 / baseAspect : baseAspect,
-    windowBaseSize: isPortrait
-      ? {
-        minWidthPx: runtimeState.ui.windowBaseSize.minHeightPx,
-        minHeightPx: runtimeState.ui.windowBaseSize.minWidthPx,
-      }
-      : runtimeState.ui.windowBaseSize,
+const getCurrentOrientationResizeConfig = () => {
+  return computeOrientationResizeConfig(orientationMode, {
+    fixedWindowAspectRatio: runtimeState.ui.fixedWindowAspectRatio,
+    windowBaseSize: runtimeState.ui.windowBaseSize,
     windowResizeLimits: runtimeState.ui.windowResizeLimits,
-  };
+  });
 };
 
 const windowResizeController = new WindowResizeController(
   appShellElement,
   appWindowElement,
   resizeHandleElement,
-  getOrientationAwareResizeConfig,
+  getCurrentOrientationResizeConfig,
 );
 windowResizeController.attach();
 
 orientationToggleButton.addEventListener("click", () => {
   orientationMode = orientationMode === "landscape" ? "portrait" : "landscape";
-  window.localStorage.setItem(ORIENTATION_MODE_STORAGE_KEY, orientationMode);
+  writeOrientationMode(orientationMode);
   updateOrientationToggleButton();
   applyOrientationBoardLayout();
   windowResizeController.reinitialize();
@@ -1471,8 +1043,8 @@ const bootstrap = async (): Promise<void> => {
   enforceEmojiPackParity();
   settingsController.initialize();
   debugController.bindEventListeners();
-  initializeMuteButtonStates();
-  initializeMenuMusicAutoplayRecovery();
+  audioUiController.initializeMuteButtonStates();
+  audioUiController.initializeMenuMusicAutoplayRecovery();
   await initializeDropShadow();
   updateOrientationToggleButton();
   showMenuFrame();

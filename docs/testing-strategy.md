@@ -1,15 +1,19 @@
 # Testing Strategy
 
-## Latest Update (2026-03-05)
+## Latest Update (2026-03-06)
 
-- Test suite expanded to 24 test files, 395 tests passing.
+- Test suite expanded to 34 test files, 621 tests passing.
 - Coverage metrics updated to reflect the full source module set.
 - Quality gate now explicitly includes a VS Code Problems scan after
   `npm run test` and `npm run test:coverage`.
 - Coverage policy is enforced per reported table cell: each file/row metric
   must be at least 90% for Statements, Branches, Functions, and Lines.
-- Targeted branch tests were added to strengthen edge-path coverage for
-  game flow, sound engine behavior, win-fx fallbacks, and test helpers.
+- Dedicated controller tests now cover `audio-ui-controller`,
+  `leaderboard-ui`, `orientation-controller`, `player-name-prompt`, and
+  `win-sequence-controller`.
+- Targeted integration coverage now includes `tests/win-flow.integration.test.ts`
+  and `tests/index-win-flow.integration.test.ts` for extracted win flow and the
+  real bootstrap path.
 
 ## Test Runner
 
@@ -47,38 +51,35 @@ environment never loads the full HTML page or triggers the complete
 page lifecycle, so this module cannot be meaningfully exercised in the
 current unit-test setup.
 
-**Planned mitigation:** Add integration or end-to-end tests (for example
-via Playwright) that run against a real browser environment. Until then
-the module is excluded to avoid misleading coverage gaps in the report.
+**Current mitigation:** Keep `src/index.ts` excluded from unit-test coverage,
+but cover high-value bootstrap flows with targeted integration tests
+(`tests/index-win-flow.integration.test.ts`). Full browser E2E coverage remains
+future work.
 
 ## Coverage Metrics
 
 Current test coverage (all metrics at 90%+):
 
-- Statements: 97.55%
-- Branches: 94.92%
-- Functions: 98.60%
-- Lines: 97.55%
-- Test Files: 24/24 passing
-- Tests: 395 tests passing
+- Statements: 97.84%
+- Branches: 96.02%
+- Functions: 99.00%
+- Lines: 97.84%
+- Test Files: 34/34 passing
+- Tests: 621 tests passing
 
 ### Per-File Coverage
 
-All source files (`src/`) meet or exceed 90% coverage:
+All source files (`src/`) meet or exceed 90% coverage.
 
-- 100% coverage: `difficulty.ts`, `game.ts`, `icon-assets.ts`,
-  `openmoji-imports.ts`, `presentation.ts`, `session-score.ts`,
-  `tile-layout.ts`, `ui.ts`
-- 99%+ coverage: `icons.ts` (99.18%)
-- 98%+ coverage: `audio-loader.ts` (98.07%), `win-fx.ts` (98.54%)
-- 96%+ coverage: `flag-emoji.ts` (96.19%), `runtime-config.ts` (97.12%),
-  `sound-engine.ts` (96.60%), `leaderboard.ts` (95.96%),
-  `window-resize.ts` (95.97%)
-- 95%+ coverage: `board.ts` (95.20%), `gameplay.ts` (95.55%),
-  `sound-manager.ts` (95.41%)
-- 91%+ coverage: `cfg.ts` (91.80%), `utils.ts` (93.58%)
-- `shadow-config.ts`: 100% statements/functions, 95.45% branches
-- `test-helpers.ts`: 100% across all metrics
+- Recently extracted controller modules are fully or near-fully covered:
+  `audio-ui-controller.ts` (100%), `leaderboard-ui.ts` (100%),
+  `orientation-controller.ts` (100%), `player-name-prompt.ts` (100%),
+  `win-sequence-controller.ts` (98.78%).
+- Core gameplay and infrastructure modules remain at or above the project
+  threshold, including `board.ts`, `gameplay.ts`, `leaderboard.ts`,
+  `runtime-config.ts`, `sound-engine.ts`, `sound-manager.ts`,
+  `utils.ts`, and `window-resize.ts`.
+- `test-helpers.ts` remains 100% across all metrics.
 
 ## Conventions
 
@@ -89,6 +90,9 @@ All source files (`src/`) meet or exceed 90% coverage:
   `afterEach`.
 - Prefer deterministic mocks over `Math.random()` in particle/animation
   tests.
+- Prefer asserting controller behavior through public methods instead of
+  reaching into internal helpers. If a helper becomes `private`, update tests
+  to verify the same behavior through the owning public API.
 - After major code review or bug fixes, add tests to cover the edge cases
   fixed and verify coverage targets remain above 90%.
 

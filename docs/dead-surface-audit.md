@@ -1,11 +1,13 @@
 # Dead Surface Audit Checklist
 
-## Latest Update (2026-02-24)
+## Latest Update (2026-03-06)
 
 - Audit workflow now explicitly pairs surface cleanup with the full quality
   gate and a VS Code Problems scan.
 - Coverage acceptance requires every reported table cell to remain at or above
   90% after cleanup/refactor changes.
+- Controller extractions must remove superseded bootstrap helpers and update
+  tests that were reaching into internals that have since become private.
 
 Use this checklist when reviewing for dead or unnecessary code surfaces.
 Focus on reachability and ownership, not only lint/compile success.
@@ -29,6 +31,10 @@ Focus on reachability and ownership, not only lint/compile success.
 - Find init/bootstrap functions that are no longer called.
 - Flag constants that only feed removed features.
 - Check for fallback branches that can never execute.
+- When moving logic out of `src/index.ts`, remove duplicated helper logic from
+  the bootstrap file rather than leaving dead wrappers behind.
+- Re-check tests after visibility changes (`public` to `private`) so they cover
+  the same behavior through supported public entry points.
 
 ## 4) CSS Surface
 

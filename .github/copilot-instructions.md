@@ -14,6 +14,7 @@ of a classic Windows 9x game called 'Memory Blocks'
 - Timer, attempt counter, restart flow, and win message
 - Settings page with pack selection, tile multiplier, and animation speed
 - Web Audio-based sound engine with centralized sound manager and loader
+- Bootstrap-adjacent UI orchestration extracted into dedicated controllers for audio UI, leaderboard UI, orientation, player-name prompt, and win sequence flow
 - Global leaderboard support with SQLite persistence
 - Orientation toggle (landscape / portrait mode) with score bonus
 - Win celebration particle effects
@@ -79,6 +80,7 @@ npm run build
 - `src/presentation.ts`: game presentation model for views
 - `src/session-score.ts`: session score flag normalization
 - `src/leaderboard.ts`: leaderboard scoring, storage, and runtime config
+- `src/leaderboard-ui.ts`: leaderboard UI rendering, submission, and refresh
 - `src/leaderboard-view.ts`: leaderboard entry key/identity helpers and timestamp formatting
 - `src/runtime-config.ts`: UI/win-fx runtime config loading
 - `src/shadow-config.ts`: shadow preset loading
@@ -87,7 +89,11 @@ npm run build
 - `src/sound-engine.ts`: Web Audio API core engine (dual-layer)
 - `src/sound-manager.ts`: high-level game sound controller
 - `src/audio-loader.ts`: audio asset loading and caching
+- `src/audio-ui-controller.ts`: mute button state, music autoplay recovery, unlock notice
 - `src/win-fx.ts`: win celebration particle effects
+- `src/win-sequence-controller.ts`: win animation sequence orchestration
+- `src/orientation-controller.ts`: orientation mode state, toggle, and layout helpers
+- `src/player-name-prompt.ts`: player name modal prompt and localStorage persistence
 - `src/window-resize.ts`: window resize handle controller
 - `src/utils.ts`: shared helper utilities
 

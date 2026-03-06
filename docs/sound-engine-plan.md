@@ -1,12 +1,17 @@
 # Sound Engine Implementation Plan
 
-## Status Update (2026-02-24)
+## Status Update (2026-03-06)
 
 - This plan is now largely implemented in production code (`sound-engine`,
    `sound-manager`, `audio-loader`) and covered by active tests.
 - Today's work focused on edge-path hardening and branch-coverage completion,
    including ducking/mute guards, fallback paths, and non-overlap playback
    invariants.
+- Audio-specific UI responsibilities now live in `audio-ui-controller.ts`
+  instead of being inlined in `src/index.ts`.
+- Win-triggered audio handoff is now coordinated by `win-sequence-controller.ts`,
+  which controls the board fade and delegates the celebration start to
+  `SoundManager` + `WinFxController`.
 - Keep this document as architecture context; treat current source and tests
    as the authoritative implementation behavior.
 
@@ -36,6 +41,8 @@ src/
   sound-engine.ts    # Main sound engine class
   sound-manager.ts   # High-level game sound controller
   audio-loader.ts    # Asset loading and caching
+   audio-ui-controller.ts  # Mute button UI state and autoplay recovery
+   win-sequence-controller.ts  # Win audio/visual handoff orchestration
 ```
 
 ### Key Classes
@@ -221,6 +228,8 @@ class SoundManager {
 3. **Update mute button handlers**
    - Replace TODO comments with SoundManager calls
    - Ensure state syncs between UI and engine
+   - Implemented via `AudioUiController`, which owns mute-button state,
+     labels, and autoplay recovery listeners
 
 4. **Add background music loop**
    - Create or acquire music file
@@ -360,7 +369,7 @@ music/
 
 ### Configuration File
 
-Create `config/sound.cfg`:
+Potential future `config/sound.cfg`:
 
 ```ini
 [volumes]
@@ -418,15 +427,23 @@ fx_newgame=sound/newgame*.wav
    - Current plan: Fixed 2s fade in config file
    - Could add Settings UI slider if requested
 
-3. **What about mobile audio restrictions?**
+## Current Reality Check
+
+- There is currently **no** active `config/sound.cfg` in the project.
+- Runtime sound asset discovery uses generated indexes in `sound/index.json`
+   and `music/index.json` plus `SoundManager` conventions.
+- Treat the configuration-file section above as future design work, not as an
+   implemented contract.
+
+1. **What about mobile audio restrictions?**
    - iOS/Android require user interaction to start AudioContext
    - Plan: Initialize AudioContext on first button click
 
-4. **Do we need audio preloading UI?**
+2. **Do we need audio preloading UI?**
    - Current plan: Silent preload during bootstrap
    - Could add loading indicator if assets are large
 
-5. **Should we support dynamic FX selection?**
+3. **Should we support dynamic FX selection?**
    - Current plan: Random flip sound from pool
    - Could add setting to pick favorite flip sound
 

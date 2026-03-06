@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WindowResizeController, type WindowResizeConfig } from "../src/window-resize.js";
+import { getOrientationAwareResizeConfig, type OrientationMode } from "../src/orientation-controller.js";
 
 const DEFAULT_CONFIG: WindowResizeConfig = {
   fixedWindowAspectRatio: 16 / 10,
@@ -356,5 +357,81 @@ describe("WindowResizeController", () => {
 
     // Second call should have cancelled the frame from the first call
     expect(cancelSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("reinitialize picks up orientation-aware config changes", () => {
+    let orientationMode: OrientationMode = "landscape";
+    const getConfig = (): WindowResizeConfig => {
+      return getOrientationAwareResizeConfig(orientationMode, {
+        fixedWindowAspectRatio: DEFAULT_CONFIG.fixedWindowAspectRatio,
+        windowBaseSize: DEFAULT_CONFIG.windowBaseSize,
+        windowResizeLimits: DEFAULT_CONFIG.windowResizeLimits,
+      });
+    };
+
+    const orientationAwareController = new WindowResizeController(
+      appShell,
+      appWindow,
+      resizeHandle,
+      getConfig,
+    );
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      });
+
+    stubBounds(appWindow, 1024, 640);
+    orientationAwareController.initialize();
+    const landscapeBaseHeight = Number.parseInt(
+      appShell.style.getPropertyValue("--app-base-height"),
+      10,
+    );
+
+    orientationMode = "portrait";
+    orientationAwareController.reinitialize();
+
+    const portraitBaseHeight = Number.parseInt(
+      appShell.style.getPropertyValue("--app-base-height"),
+      10,
+    );
+
+    expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
+    expect(portraitBaseHeight).toBeGreaterThan(landscapeBaseHeight);
+  });
+
+  it("reinitialize preserves base dimensions when orientation is unchanged", () => {
+    const orientationMode: OrientationMode = "landscape";
+    const getConfig = (): WindowResizeConfig => {
+      return getOrientationAwareResizeConfig(orientationMode, {
+        fixedWindowAspectRatio: DEFAULT_CONFIG.fixedWindowAspectRatio,
+        windowBaseSize: DEFAULT_CONFIG.windowBaseSize,
+        windowResizeLimits: DEFAULT_CONFIG.windowResizeLimits,
+      });
+    };
+
+    const orientationAwareController = new WindowResizeController(
+      appShell,
+      appWindow,
+      resizeHandle,
+      getConfig,
+    );
+
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+
+    stubBounds(appWindow, 1024, 640);
+    orientationAwareController.initialize();
+    const initialBaseWidth = appShell.style.getPropertyValue("--app-base-width");
+    const initialBaseHeight = appShell.style.getPropertyValue("--app-base-height");
+
+    orientationAwareController.reinitialize();
+
+    expect(appShell.style.getPropertyValue("--app-base-width")).toBe(initialBaseWidth);
+    expect(appShell.style.getPropertyValue("--app-base-height")).toBe(initialBaseHeight);
   });
 });

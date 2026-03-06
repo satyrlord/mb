@@ -1,10 +1,12 @@
 # Runtime Configuration
 
-## Latest Update (2026-02-24)
+## Latest Update (2026-03-06)
 
 - Runtime key behavior in this document was revalidated against current
   loaders and tests.
-- No new config keys were added today; existing key contracts remain active.
+- No new config keys were added; existing key contracts remain active.
+- Existing UI config keys are now consumed through dedicated controllers for
+  orientation, leaderboard UI, player-name prompt, and win-sequence flow.
 - Project quality workflow now requires running the quality gate and scanning
   VS Code Problems before commit/push.
 - Coverage policy is enforced at the per-row/per-file table-cell level
@@ -34,7 +36,9 @@ This project stores global runtime-tunable values in `config/`.
 - `ui.tileBackOpacity`: tile-back plasma + matched highlight opacity scalar (`0..1`).
 - `ui.appMaxWidthPx`: app window width cap used for the main shell layout.
 - `ui.leaderboardVisibleRowCount`: maximum number of rows shown in High Scores.
+  Consumed by `LeaderboardUiController`.
 - `ui.namePromptFadeOutMs`: fade-out duration for the name prompt after submit.
+  Consumed by `PlayerNamePrompt`.
 - `board.minTileSizePx`: minimum board tile width used in grid columns.
 - `board.targetTileSizePx`: target tile size used for board width calculation.
 - `board.tileGapPx`: horizontal/vertical spacing between tiles.
@@ -75,7 +79,8 @@ This project stores global runtime-tunable values in `config/`.
 - `gameplay.matchedDisappearPauseMs`
 - `gameplay.matchedDisappearDurationMs`
 - `gameplay.reducedMotionMatchedDisappearDurationMs`
-- `gameplay.winCanvasFadeDurationMs`
+- `gameplay.winCanvasFadeDurationMs` — canvas fade duration before
+  `WinSequenceController` hands off to `WinFxController`
 - `gameplay.autoMatchSecondSelectionDelayMs`
 - `gameplay.autoMatchBootDelayMs`
 - `gameplay.autoMatchBetweenPairsDelayMs`
@@ -213,6 +218,9 @@ the same host machine URL.
 - Invalid or missing values fall back to safe defaults.
 - Reload the page after changing config files.
 - Use `docs/dead-surface-audit.md` for dead/unnecessary surface cleanup passes.
+- Orientation mode does not introduce new config keys; instead,
+  `orientation-controller.ts` reinterprets `ui.fixedWindowAspectRatio` and the
+  base window dimensions for portrait mode.
 
 ## Browser Compatibility
 
