@@ -10,7 +10,6 @@ import {
 } from "./leaderboard.js";
 import {
   createLeaderboardEntryKey,
-  formatLeaderboardTimestampGmt,
   resolveLastSubmittedLeaderboardEntryKey,
   resolveMostRecentLeaderboardEntryKey,
 } from "./leaderboard-view.js";
@@ -208,12 +207,12 @@ export class LeaderboardUiController {
     if (entry.isAutoDemo || entry.difficultyLabel.toLowerCase() === "debug") {
       const suffix: string[] = [];
       if (entry.difficultyLabel.toLowerCase() === "debug") {
-        suffix.push("debug");
+        suffix.push("D");
       }
       if (entry.isAutoDemo) {
-        suffix.push("auto");
+        suffix.push("A");
       }
-      playerCell.textContent = `${entry.playerName} (${suffix.join(", ")})`;
+      playerCell.textContent = `${entry.playerName} [${suffix.join(",")}]`;
     }
 
     const scoreCell = document.createElement("td");
@@ -221,18 +220,14 @@ export class LeaderboardUiController {
     scoreCell.textContent = entry.scoreValue.toString();
 
     const difficultyCell = document.createElement("td");
-    difficultyCell.className = "leaderboard-cell u-shadow-physical";
+    difficultyCell.className = "leaderboard-cell leaderboard-cell-difficulty u-shadow-physical";
     difficultyCell.textContent = entry.difficultyLabel;
 
     const emojiSetCell = document.createElement("td");
-    emojiSetCell.className = "leaderboard-cell u-shadow-physical";
+    emojiSetCell.className = "leaderboard-cell leaderboard-cell-tileset u-shadow-physical";
     emojiSetCell.textContent = entry.emojiSetLabel;
 
-    const timeCell = document.createElement("td");
-    timeCell.className = "leaderboard-cell leaderboard-cell-time u-shadow-physical";
-    timeCell.textContent = formatLeaderboardTimestampGmt(entry.createdAt);
-
-    row.append(rankCell, playerCell, scoreCell, difficultyCell, emojiSetCell, timeCell);
+    row.append(rankCell, playerCell, scoreCell, difficultyCell, emojiSetCell);
     return row;
   }
 }

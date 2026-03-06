@@ -194,15 +194,15 @@ describe("LeaderboardUiController", () => {
       await controller.refresh();
 
       const row = deps.elements.listElement.children[0] as HTMLTableRowElement;
-      expect(row.children.length).toBe(6); // rank, player, score, difficulty, emoji, time
+      expect(row.children.length).toBe(5); // rank, player, score, stage, tileset
       expect(row.children[0].textContent).toBe("1"); // rank
       expect(row.children[1].textContent).toBe("TestPlayer"); // player
       expect(row.children[2].textContent).toBe("999"); // score
-      expect(row.children[3].textContent).toBe("Hard"); // difficulty
-      expect(row.children[4].textContent).toBe("Animals"); // emoji set
+      expect(row.children[3].textContent).toBe("Hard"); // stage
+      expect(row.children[4].textContent).toBe("Animals"); // tileset
     });
 
-    it("appends (auto) suffix for auto-demo entries", async () => {
+    it("appends [A] suffix for auto-demo entries", async () => {
       const deps = createMockDeps();
       const controller = new LeaderboardUiController(deps, DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
 
@@ -214,10 +214,10 @@ describe("LeaderboardUiController", () => {
       await controller.refresh();
 
       const row = deps.elements.listElement.children[0] as HTMLTableRowElement;
-      expect(row.children[1].textContent).toBe("Bot (auto)");
+      expect(row.children[1].textContent).toBe("Bot [A]");
     });
 
-    it("appends (debug) suffix for debug difficulty entries", async () => {
+    it("appends [D] suffix for debug difficulty entries", async () => {
       const deps = createMockDeps();
       const controller = new LeaderboardUiController(deps, DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
 
@@ -229,10 +229,10 @@ describe("LeaderboardUiController", () => {
       await controller.refresh();
 
       const row = deps.elements.listElement.children[0] as HTMLTableRowElement;
-      expect(row.children[1].textContent).toBe("Dev (debug)");
+      expect(row.children[1].textContent).toBe("Dev [D]");
     });
 
-    it("appends (debug, auto) suffix for debug auto-demo entries", async () => {
+    it("appends combined suffix for debug auto-demo entries", async () => {
       const deps = createMockDeps();
       const controller = new LeaderboardUiController(deps, DEFAULT_LEADERBOARD_RUNTIME_CONFIG);
 
@@ -244,7 +244,7 @@ describe("LeaderboardUiController", () => {
       await controller.refresh();
 
       const row = deps.elements.listElement.children[0] as HTMLTableRowElement;
-      expect(row.children[1].textContent).toBe("Bot (debug, auto)");
+      expect(row.children[1].textContent).toBe("Bot [D,A]");
     });
 
     it("highlights submitted entry on subsequent render after submitWin", async () => {

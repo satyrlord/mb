@@ -724,11 +724,6 @@ body {
 }
 
 .leaderboard-cell-rank,
-.leaderboard-cell-score {
-  text-align: right;
-}
-
-.leaderboard-cell-rank,
 .leaderboard-table thead th:first-child {
   width: 5ch;
 }
@@ -738,9 +733,19 @@ body {
   width: 7ch;
 }
 
-.leaderboard-cell-time,
-.leaderboard-table thead th:last-child {
-  width: 26ch;
+.leaderboard-cell-player,
+.leaderboard-table thead th:nth-child(2) {
+  width: 38%;
+}
+
+.leaderboard-cell-difficulty,
+.leaderboard-table thead th:nth-child(4) {
+  width: 12ch;
+}
+
+.leaderboard-cell-tileset,
+.leaderboard-table thead th:nth-child(5) {
+  width: 18ch;
 }
 
 .leaderboard-row-recent {

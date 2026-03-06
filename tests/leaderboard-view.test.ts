@@ -3,7 +3,6 @@ import type { LeaderboardScoreEntry } from "../src/leaderboard.ts";
 import {
   createLeaderboardEntryKey,
   createLeaderboardSubmissionIdentity,
-  formatLeaderboardTimestampGmt,
   resolveLastSubmittedLeaderboardEntryKey,
   resolveMostRecentLeaderboardEntryKey,
 } from "../src/leaderboard-view.ts";
@@ -21,18 +20,6 @@ const makeEntry = (overrides: Partial<LeaderboardScoreEntry> = {}): LeaderboardS
   isAutoDemo: false,
   createdAt: "2025-01-15T12:00:00.000Z",
   ...overrides,
-});
-
-describe("formatLeaderboardTimestampGmt", () => {
-  it("formats valid ISO date to UTC string", () => {
-    const result = formatLeaderboardTimestampGmt("2025-01-15T12:00:00.000Z");
-    expect(result).toContain("2025");
-    expect(result).toContain("GMT");
-  });
-
-  it("returns fallback for invalid date", () => {
-    expect(formatLeaderboardTimestampGmt("not-a-date")).toBe("Unknown time (GMT)");
-  });
 });
 
 describe("createLeaderboardEntryKey", () => {

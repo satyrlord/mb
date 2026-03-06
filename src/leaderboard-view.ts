@@ -1,15 +1,5 @@
 import type { LeaderboardScoreEntry } from "./leaderboard.js";
 
-export const formatLeaderboardTimestampGmt = (createdAt: string): string => {
-  const timestamp = new Date(createdAt);
-
-  if (Number.isNaN(timestamp.getTime())) {
-    return "Unknown time (GMT)";
-  }
-
-  return timestamp.toUTCString();
-};
-
 export const createLeaderboardEntryKey = (entry: LeaderboardScoreEntry): string => {
   return JSON.stringify([
     entry.playerName,

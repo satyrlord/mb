@@ -223,6 +223,6 @@ describe("index win flow integration", () => {
 
     const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>("#leaderboardList tr"));
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0]?.children[1]?.textContent).toBe("Index Player (debug)");
+    expect(rows[0]?.children[1]?.textContent).toBe("Index Player [D]");
   });
 });
