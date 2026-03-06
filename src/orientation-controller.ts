@@ -27,9 +27,18 @@ export const getEffectiveDifficulty = (
 
 export interface OrientationToggleElements {
   button: HTMLButtonElement;
-  landscapeIcon: HTMLElement;
-  portraitIcon: HTMLElement;
+  landscapeIcon: SVGElement;
+  portraitIcon: SVGElement;
 }
+
+const setElementHidden = (element: Element, hidden: boolean): void => {
+  if (hidden) {
+    element.setAttribute("hidden", "");
+    return;
+  }
+
+  element.removeAttribute("hidden");
+};
 
 export const updateOrientationToggleButton = (
   elements: OrientationToggleElements,
@@ -39,8 +48,8 @@ export const updateOrientationToggleButton = (
   const label = isPortrait ? "Switch to landscape mode" : "Switch to portrait mode";
   elements.button.setAttribute("aria-label", label);
   elements.button.setAttribute("title", label);
-  elements.landscapeIcon.hidden = isPortrait;
-  elements.portraitIcon.hidden = !isPortrait;
+  setElementHidden(elements.landscapeIcon, !isPortrait);
+  setElementHidden(elements.portraitIcon, isPortrait);
 };
 
 export interface OrientationBoardLayoutTarget {

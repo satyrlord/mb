@@ -17,16 +17,6 @@
           <button id="orientationToggleButton" class="btn btn-secondary btn-icon-only u-shadow-physical" type="button" aria-label="Switch to portrait mode" title="Switch to portrait mode" hidden><span class="btn-icon-lg" aria-hidden="true"><svg id="orientationLandscapeIcon" class="orientation-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="19.5" y1="9" x2="19.5" y2="15"/></svg><svg id="orientationPortraitIcon" class="orientation-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="10" y1="19.5" x2="14" y2="19.5"/></svg></span></button>
           <button id="muteMusicButton" class="btn btn-secondary btn-icon-only u-shadow-physical" type="button" aria-pressed="false" aria-label="Play music" title="Play music"><span class="btn-icon-lg" aria-hidden="true"><svg id="muteMusicIconOn" class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M8 5h3v14H8z"></path><path d="M13 5h3v14h-3z"></path></svg><svg id="muteMusicIconOff" class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l10-7z"></path></svg></span><span id="muteMusicStateText" class="music-toggle-state u-shadow-physical" aria-hidden="true">OFF</span></button>
           <button id="muteSoundButton" class="btn btn-secondary btn-icon-only u-shadow-physical" type="button" aria-label="Mute sound effects" title="Mute sound effects"><span class="btn-icon-lg" aria-hidden="true"><svg class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg></span></button>
-          <div id="debugMenuRoot" class="debug-menu-root">
-            <button id="debugMenuButton" class="btn btn-secondary u-shadow-physical" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="debugMenuPanel"><span class="btn-icon" aria-hidden="true"><svg class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h8"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path><path d="M6 8h12v7a6 6 0 0 1-12 0V8z"></path><path d="M3 13h3"></path><path d="M18 13h3"></path><path d="M7 4 5.5 2.5"></path><path d="M17 4l1.5-1.5"></path></svg></span>Debug</button>
-            <div id="debugMenuPanel" class="debug-menu-panel" role="menu" hidden>
-              <button id="debugDemoButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Demo</button>
-              <button id="debugWinButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Win</button>
-              <button id="debugTilesButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Tiles</button>
-              <button id="debugSvgImportsButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">SVG imports</button>
-              <button id="debugFlipTilesButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Flip Tiles</button>
-            </div>
-          </div>
           <button id="menuButton" class="btn btn-secondary u-shadow-physical" type="button"><span class="btn-icon" aria-hidden="true"><svg class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5 10.5V20h14v-9.5"></path></svg></span>Home</button>
         </div>
       </header>
@@ -185,6 +175,17 @@
         >
           Tap or click to enable menu music.
         </p>
+
+        <div id="debugMenuRoot" class="debug-menu-root debug-menu-root-bottom">
+          <button id="debugMenuButton" class="debug-menu-button debug-label u-shadow-physical" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="debugMenuPanel"><span class="btn-icon" aria-hidden="true"><svg class="btn-icon-svg u-shadow-physical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h8"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path><path d="M6 8h12v7a6 6 0 0 1-12 0V8z"></path><path d="M3 13h3"></path><path d="M18 13h3"></path><path d="M7 4 5.5 2.5"></path><path d="M17 4l1.5-1.5"></path></svg></span>Debug</button>
+          <div id="debugMenuPanel" class="debug-menu-panel" role="menu" hidden>
+            <button id="debugDemoButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Demo</button>
+            <button id="debugWinButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Win</button>
+            <button id="debugTilesButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Tiles</button>
+            <button id="debugSvgImportsButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">SVG imports</button>
+            <button id="debugFlipTilesButton" class="debug-menu-item u-shadow-physical" type="button" role="menuitem">Flip Tiles</button>
+          </div>
+        </div>
 
         <div class="bottombar-stats">
           <p class="stat u-shadow-physical">Time: <span id="timeValue">00:00</span></p>

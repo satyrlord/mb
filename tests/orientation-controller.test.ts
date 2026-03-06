@@ -23,10 +23,14 @@ const createMockDifficulty = (rows: number, columns: number) => ({
   scoreMultiplier: 1,
 });
 
+const createSvgIcon = (): SVGSVGElement => {
+  return document.createElementNS("http://www.w3.org/2000/svg", "svg");
+};
+
 const createToggleElements = (): OrientationToggleElements => ({
   button: document.createElement("button"),
-  landscapeIcon: document.createElement("span"),
-  portraitIcon: document.createElement("span"),
+  landscapeIcon: createSvgIcon(),
+  portraitIcon: createSvgIcon(),
 });
 
 describe("orientation-controller", () => {
@@ -117,8 +121,8 @@ describe("orientation-controller", () => {
 
       expect(elements.button.getAttribute("aria-label")).toBe("Switch to portrait mode");
       expect(elements.button.getAttribute("title")).toBe("Switch to portrait mode");
-      expect(elements.landscapeIcon.hidden).toBe(false);
-      expect(elements.portraitIcon.hidden).toBe(true);
+      expect(elements.landscapeIcon.hasAttribute("hidden")).toBe(true);
+      expect(elements.portraitIcon.hasAttribute("hidden")).toBe(false);
     });
 
     it("sets portrait state correctly", () => {
@@ -127,8 +131,18 @@ describe("orientation-controller", () => {
 
       expect(elements.button.getAttribute("aria-label")).toBe("Switch to landscape mode");
       expect(elements.button.getAttribute("title")).toBe("Switch to landscape mode");
-      expect(elements.landscapeIcon.hidden).toBe(true);
-      expect(elements.portraitIcon.hidden).toBe(false);
+      expect(elements.landscapeIcon.hasAttribute("hidden")).toBe(false);
+      expect(elements.portraitIcon.hasAttribute("hidden")).toBe(true);
+    });
+
+    it("replaces the initial hidden state on inline svg icons", () => {
+      const elements = createToggleElements();
+      elements.portraitIcon.setAttribute("hidden", "");
+
+      updateOrientationToggleButton(elements, "portrait");
+
+      expect(elements.landscapeIcon.hasAttribute("hidden")).toBe(false);
+      expect(elements.portraitIcon.hasAttribute("hidden")).toBe(true);
     });
   });
 

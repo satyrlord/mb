@@ -139,8 +139,8 @@ const muteMusicStateText = requireElement<HTMLElement>("#muteMusicStateText");
 const muteSoundButton = requireElement<HTMLButtonElement>("#muteSoundButton");
 const menuButton = requireElement<HTMLButtonElement>("#menuButton");
 const orientationToggleButton = requireElement<HTMLButtonElement>("#orientationToggleButton");
-const orientationLandscapeIcon = requireElement<HTMLElement>("#orientationLandscapeIcon");
-const orientationPortraitIcon = requireElement<HTMLElement>("#orientationPortraitIcon");
+const orientationLandscapeIcon = requireElement<SVGSVGElement>("#orientationLandscapeIcon");
+const orientationPortraitIcon = requireElement<SVGSVGElement>("#orientationPortraitIcon");
 const menuHighScoresButton = requireElement<HTMLButtonElement>("#menuHighScoresButton");
 const menuSettingsButton = requireElement<HTMLButtonElement>("#menuSettingsButton");
 const leaderboardStatusElement = requireElement<HTMLElement>("#leaderboardStatus");
@@ -366,6 +366,7 @@ const resetForNewGame = (): void => {
 interface FrameLayoutConfig {
   frame: FrameName;
   topbarLabel: string;
+  menuButtonHidden: boolean;
   menuBottomRepoHidden: boolean;
   statusMessageHidden: boolean;
   audioUnlockNoticeHidden: boolean;
@@ -379,6 +380,7 @@ const configureFrame = (cfg: FrameLayoutConfig): void => {
   setActiveFrame(cfg.frame);
   topbarMenuLabel.textContent = cfg.topbarLabel;
   topbarMenuLabel.hidden = false;
+  menuButton.hidden = cfg.menuButtonHidden;
   menuBottomRepo.hidden = cfg.menuBottomRepoHidden;
   statusMessageElement.hidden = cfg.statusMessageHidden;
   audioUnlockNoticeElement.hidden = cfg.audioUnlockNoticeHidden;
@@ -392,6 +394,7 @@ const showLeaderboardFrame = (): void => {
   configureFrame({
     frame: "leaderboard",
     topbarLabel: "High Scores",
+    menuButtonHidden: false,
     menuBottomRepoHidden: false,
     statusMessageHidden: true,
     audioUnlockNoticeHidden: true,
@@ -489,6 +492,7 @@ const showMenuFrame = (): void => {
   configureFrame({
     frame: "menu",
     topbarLabel: "Select a difficulty",
+    menuButtonHidden: true,
     menuBottomRepoHidden: false,
     statusMessageHidden: true,
     audioUnlockNoticeHidden: false,
@@ -507,6 +511,7 @@ const showGameFrame = (): void => {
   configureFrame({
     frame: "game",
     topbarLabel: "MEMORYBLOX",
+    menuButtonHidden: false,
     menuBottomRepoHidden: true,
     statusMessageHidden: false,
     audioUnlockNoticeHidden: true,
@@ -520,6 +525,7 @@ const showDebugTilesFrame = (): void => {
   configureFrame({
     frame: "debugTiles",
     topbarLabel: "Debug: Tiles",
+    menuButtonHidden: false,
     menuBottomRepoHidden: true,
     statusMessageHidden: false,
     audioUnlockNoticeHidden: true,
@@ -534,6 +540,7 @@ const showSettingsFrame = (): void => {
   configureFrame({
     frame: "settings",
     topbarLabel: "Settings",
+    menuButtonHidden: false,
     menuBottomRepoHidden: false,
     statusMessageHidden: true,
     audioUnlockNoticeHidden: true,

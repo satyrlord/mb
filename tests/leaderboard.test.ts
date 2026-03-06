@@ -112,6 +112,12 @@ describe("leaderboard runtime config", () => {
     expect(leaderboardTesting.applyLeaderboardScorePenalty(49)).toBe(5);
     expect(leaderboardTesting.applyLeaderboardScorePenalty(0)).toBe(0);
   });
+
+  test("default debug reduction factors are reduced by another 90%", () => {
+    expect(DEFAULT_LEADERBOARD_RUNTIME_CONFIG.scoring.debugScoreExtraReductionFactor).toBe(0.08);
+    expect(DEFAULT_LEADERBOARD_RUNTIME_CONFIG.scoring.debugWinModeReductionFactor).toBe(0.04);
+    expect(DEFAULT_LEADERBOARD_RUNTIME_CONFIG.scoring.debugTilesModeReductionFactor).toBe(0.02);
+  });
 });
 
 const makeTestClientConfig = (
@@ -772,6 +778,7 @@ describe("computeGameScoreResult", () => {
     }, scoringConfig);
 
     expect(debugTiles.scoreValue).toBeLessThanOrEqual(debugGame.scoreValue);
+    expect(debugGame.scoreValue).toBeGreaterThan(0);
   });
 
   test("uses 1 as base score multiplier when difficulty has 0", () => {

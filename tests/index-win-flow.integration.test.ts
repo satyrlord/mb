@@ -191,8 +191,10 @@ describe("index win flow integration", () => {
     expect(namePromptOkButton).not.toBeNull();
     expect(menuButton).not.toBeNull();
     expect(highScoresButton).not.toBeNull();
+    expect(menuButton!.hidden).toBe(true);
 
     easyButton!.click();
+    expect(menuButton!.hidden).toBe(false);
     debugMenuButton!.click();
     debugWinButton!.click();
 
