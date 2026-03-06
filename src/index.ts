@@ -52,6 +52,7 @@ import { AudioUiController } from "./audio-ui-controller.js";
 import { WinSequenceController } from "./win-sequence-controller.js";
 import { WindowResizeController } from "./window-resize.js";
 import { SettingsController } from "./settings-controller.js";
+import { applyDefaultMenuTextureNow, applyMenuTexture } from "./menu-texture.js";
 import { DebugController } from "./debug-controller.js";
 import {
   type OrientationMode,
@@ -152,6 +153,7 @@ const namePromptInputElement = requireElement<HTMLInputElement>("#namePromptInpu
 const namePromptOkButton = requireElement<HTMLButtonElement>("#namePromptOkButton");
 const difficultyMenu = requireElement<HTMLElement>("#difficultyMenu");
 const menuFrame = requireElement<HTMLElement>("#menuFrame");
+const menuTitleElement = requireElement<HTMLElement>("#menuTitle");
 const leaderboardFrame = requireElement<HTMLElement>("#leaderboardFrame");
 const settingsFrame = requireElement<HTMLElement>("#settingsFrame");
 const settingsPackListElement = requireElement<HTMLElement>("#settingsPackList");
@@ -485,10 +487,15 @@ const startHudTimer = (): void => {
   }, gameplayTiming.uiTimerUpdateIntervalMs);
 };
 
+let easterEggLogoClickCount = 0;
+const EASTER_EGG_LOGO_CLICK_THRESHOLD = 5;
+
 const showMenuFrame = (): void => {
+  easterEggLogoClickCount = 0;
   window.scrollTo(0, 0);
   resetActiveEffects();
   stopHudTimer();
+  applyMenuTexture(menuFrame, settingsController.getSelectedEmojiPackId());
   configureFrame({
     frame: "menu",
     topbarLabel: "Select a difficulty",
@@ -994,6 +1001,14 @@ if (params.get("demo") === "match") {
 menuButton.addEventListener("click", () => {
   debugController.close();
   showMenuFrame();
+});
+
+menuTitleElement.addEventListener("click", () => {
+  easterEggLogoClickCount += 1;
+  if (easterEggLogoClickCount >= EASTER_EGG_LOGO_CLICK_THRESHOLD) {
+    easterEggLogoClickCount = 0;
+    applyDefaultMenuTextureNow(menuFrame);
+  }
 });
 
 

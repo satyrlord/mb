@@ -115,6 +115,7 @@ npm run build
   pack grid layout.
 14. When cleaning up or refactoring features, run and follow
   `docs/dead-surface-audit.md` to remove dead/unnecessary code surfaces.
+15. When debugging, use the local VSCode browser if possible. Try to avoid opening external browsers unless absolutely necessary.  
 
 ## Deployment Notes
 

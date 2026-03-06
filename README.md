@@ -219,5 +219,7 @@ views; wire them at the bootstrap/controller layer instead.
 ## Credits
 
 - Many thanks to the original authors: <https://github.com/IonicaBizau/memory-blocks>
+- Menu texture overlays in `textures/menu-*.svg` are original MEMORYBLOX
+  artwork by Razvan Petrescu: <https://github.com/satyrlord/mb>
 - Plasma/swirl visual inspiration credit: Anthony Osceola
   (<https://codepen.io/Anthony-Osceola/pen/YzMmorG>)

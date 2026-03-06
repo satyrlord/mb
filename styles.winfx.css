@@ -718,27 +718,6 @@
   mix-blend-mode: normal;
 }
 
-.menu-title::after {
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 0;
-  background:
-    radial-gradient(170% 122% at 24% 46%, color-mix(in srgb, var(--color-menu-title) 46%, transparent 54%) 0%, transparent 58%),
-    radial-gradient(170% 122% at 76% 46%, color-mix(in srgb, var(--color-btn-text) 46%, transparent 54%) 0%, transparent 58%);
-  background-size: 119% 108%, 119% 108%;
-  background-position: 20% 48%, 80% 48%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  opacity: 0.52;
-  filter: blur(1.4px) brightness(1.22);
-  animation-name: var(--plasma-sheen-animation, menu-title-plasma-sheen);
-  animation-duration: var(--plasma-sheen-duration, 5000ms);
-  animation-timing-function: var(--plasma-sheen-ease, ease-in-out);
-  animation-iteration-count: infinite;
-  animation-direction: var(--plasma-sheen-direction, normal);
-  mix-blend-mode: normal;
-}
-
 @keyframes menu-title-plasma-flow {
   0% {
     background-position: 20% 25%, 14% 50%, 30% 44%, 50% 56%, 70% 44%, 86% 50%, 50% 50%;
@@ -761,93 +740,6 @@
   }
 }
 
-
-@keyframes menu-title-plasma-sheen {
-  0%,
-  100% {
-    background-position: 20% 48%, 80% 48%;
-    opacity: 0.38;
-  }
-
-  25% {
-    background-position: 14% 44%, 74% 44%;
-    opacity: 0.46;
-  }
-
-  50% {
-    background-position: 34% 42%, 66% 42%;
-    opacity: 0.56;
-  }
-
-  75% {
-    background-position: 26% 44%, 86% 44%;
-    opacity: 0.46;
-  }
-}
-
-@keyframes menu-title-plasma-sheen-scan {
-  0% {
-    background-position: 6% 50%, 66% 50%;
-    opacity: 0.34;
-  }
-
-  50% {
-    background-position: 30% 42%, 90% 42%;
-    opacity: 0.62;
-  }
-
-  100% {
-    background-position: 6% 50%, 66% 50%;
-    opacity: 0.34;
-  }
-}
-
-@keyframes menu-title-plasma-sheen-pulse {
-  0% {
-    background-position: 24% 48%, 76% 48%;
-    opacity: 0.2;
-  }
-
-  25% {
-    background-position: 22% 44%, 78% 44%;
-    opacity: 0.52;
-  }
-
-  50% {
-    background-position: 20% 40%, 80% 40%;
-    opacity: 0.72;
-  }
-
-  75% {
-    background-position: 22% 44%, 78% 44%;
-    opacity: 0.52;
-  }
-
-  100% {
-    background-position: 24% 48%, 76% 48%;
-    opacity: 0.2;
-  }
-}
-
-@keyframes menu-title-plasma-sheen-ripple {
-  0% {
-    background-position: 16% 52%, 84% 52%;
-    background-size: 112% 104%, 116% 106%;
-    opacity: 0.38;
-  }
-
-  50% {
-    background-position: 28% 40%, 72% 40%;
-    background-size: 132% 122%, 136% 124%;
-    opacity: 0.58;
-  }
-
-  100% {
-    background-position: 16% 52%, 84% 52%;
-    background-size: 112% 104%, 116% 106%;
-    opacity: 0.38;
-  }
-}
 
 @keyframes menu-title-texture-hue {
   0% {

@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
+import { DEFAULT_MENU_TEXTURE } from "../src/menu-texture.js";
+
 class MockGainNode {
   public gain = {
     value: 1,
@@ -226,5 +228,38 @@ describe("index win flow integration", () => {
     const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>("#leaderboardList tr"));
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0]?.children[1]?.textContent).toBe("Index Player [D]");
+  });
+
+  it("easter egg: clicking the menu title 5 times resets the texture to default", async () => {
+    await import("../src/index.js");
+    await flushAsyncWork();
+
+    const menuTitleEl = document.querySelector<HTMLElement>("#menuTitle");
+    const menuFrameEl = document.querySelector<HTMLElement>("#menuFrame");
+
+    expect(menuTitleEl).not.toBeNull();
+    expect(menuFrameEl).not.toBeNull();
+
+    // Simulate a pack-specific texture having been applied
+    menuFrameEl!.style.setProperty(
+      "--menu-pack-texture-image",
+      'url("./textures/menu-space-astronomy.png")',
+    );
+    menuFrameEl!.dataset.menuTextureRequestedImagePath = "textures/menu-space-astronomy.png";
+
+    // Four clicks should not trigger the effect
+    for (let i = 0; i < 4; i++) {
+      menuTitleEl!.click();
+    }
+    expect(menuFrameEl!.style.getPropertyValue("--menu-pack-texture-image")).toBe(
+      'url("./textures/menu-space-astronomy.png")',
+    );
+
+    // Fifth click triggers the Easter egg and resets to the default texture
+    menuTitleEl!.click();
+    expect(menuFrameEl!.style.getPropertyValue("--menu-pack-texture-image")).toBe(
+      `url("./${DEFAULT_MENU_TEXTURE.imagePath}")`,
+    );
+    expect(menuFrameEl!.dataset.menuTextureRequestedImagePath).toBe("");
   });
 });
