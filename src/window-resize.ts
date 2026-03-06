@@ -50,6 +50,8 @@ export class WindowResizeController {
 
   private pendingReinitFrame: number | null = null;
 
+  private pendingSettleTimeout: number | null = null;
+
   /** Bound handler kept as a stable reference for add/removeEventListener. */
   private readonly boundUpdateDrag = (e: PointerEvent): void => {
     this.updateResizeDrag(e);
@@ -84,8 +86,18 @@ export class WindowResizeController {
     window.addEventListener("resize", () => {
       if (this.resizeState !== null) {
         this.applyScale(this.resizeState.scale, false);
+      } else {
+        this.initialize();
       }
     });
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => {
+        if (this.resizeState !== null) {
+          this.applyScale(this.resizeState.scale, false);
+        }
+      });
+    }
   }
 
   /**
@@ -123,6 +135,19 @@ export class WindowResizeController {
 
     const restoredScale = this.readStoredScale() ?? config.windowResizeLimits.defaultScale;
     this.applyScale(restoredScale, false);
+
+    // Deferred re-clamp: on mobile browsers, viewport dimensions may
+    // not have settled by the time the first rAF fires. A short delay
+    // re-clamps the scale against the now-stable viewport.
+    if (this.pendingSettleTimeout !== null) {
+      window.clearTimeout(this.pendingSettleTimeout);
+    }
+    this.pendingSettleTimeout = window.setTimeout(() => {
+      this.pendingSettleTimeout = null;
+      if (this.resizeState !== null) {
+        this.applyScale(this.resizeState.scale, false);
+      }
+    }, 200);
   }
 
   /**
@@ -132,6 +157,10 @@ export class WindowResizeController {
   public reinitialize(): void {
     if (this.pendingReinitFrame !== null) {
       window.cancelAnimationFrame(this.pendingReinitFrame);
+    }
+    if (this.pendingSettleTimeout !== null) {
+      window.clearTimeout(this.pendingSettleTimeout);
+      this.pendingSettleTimeout = null;
     }
     this.resizeState = null;
     delete this.appShellElement.dataset.resizeReady;

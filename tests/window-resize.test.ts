@@ -59,6 +59,7 @@ describe("WindowResizeController", () => {
   let controller: WindowResizeController;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     appShell = document.createElement("div");
     appWindow = document.createElement("div");
     resizeHandle = document.createElement("div");
@@ -76,6 +77,7 @@ describe("WindowResizeController", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     localStorage.clear();
   });
@@ -324,7 +326,7 @@ describe("WindowResizeController", () => {
     expect(scaleAfterResize).toBeLessThan(1);
   });
 
-  it("window resize is a no-op if not initialized", () => {
+  it("window resize attempts fallback init when uninitialized", () => {
     controller.attach();
     expect(() => window.dispatchEvent(new Event("resize"))).not.toThrow();
   });
@@ -400,6 +402,68 @@ describe("WindowResizeController", () => {
 
     expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
     expect(portraitBaseHeight).toBeGreaterThan(landscapeBaseHeight);
+  });
+
+  // ── Fallback initialization from resize ────────────────────────────
+
+  it("window resize fallback sets state when dimensions are valid", () => {
+    stubBounds(appWindow, 1024, 640);
+    controller.attach();
+
+    // resizeState is null (no prior initialize call)
+    expect(appShell.dataset.resizeReady).toBeUndefined();
+
+    window.dispatchEvent(new Event("resize"));
+
+    // Fallback init should have set resize state
+    expect(appShell.dataset.resizeReady).toBe("true");
+    expect(appShell.style.getPropertyValue("--ui-scale")).not.toBe("");
+  });
+
+  it("visualViewport resize re-clamps scale when supported", () => {
+    // Provide a minimal visualViewport stub
+    const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
+    const fakeViewport = {
+      width: 1920,
+      height: 1080,
+      addEventListener: (event: string, fn: (...args: unknown[]) => void) => {
+        (listeners[event] ??= []).push(fn);
+      },
+    };
+    Object.defineProperty(window, "visualViewport", {
+      value: fakeViewport,
+      configurable: true,
+    });
+
+    const ctrl = new WindowResizeController(
+      appShell,
+      appWindow,
+      resizeHandle,
+      () => DEFAULT_CONFIG,
+    );
+
+    stubBounds(appWindow, 1024, 640);
+    ctrl.initialize();
+    ctrl.attach();
+
+    // Shrink the viewport and trigger visualViewport resize
+    Object.defineProperty(window, "innerWidth", { value: 500, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 400, configurable: true });
+
+    for (const fn of listeners["resize"] ?? []) {
+      fn();
+    }
+
+    const scaleAfter = Number.parseFloat(
+      appShell.style.getPropertyValue("--ui-scale"),
+    );
+    expect(scaleAfter).toBeLessThan(1);
+
+    // Cleanup
+    Object.defineProperty(window, "visualViewport", {
+      value: undefined,
+      configurable: true,
+    });
   });
 
   it("reinitialize preserves base dimensions when orientation is unchanged", () => {
