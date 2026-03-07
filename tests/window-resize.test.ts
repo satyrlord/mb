@@ -447,6 +447,8 @@ describe("WindowResizeController", () => {
     ctrl.attach();
 
     // Shrink the viewport and trigger visualViewport resize
+    fakeViewport.width = 500;
+    fakeViewport.height = 400;
     Object.defineProperty(window, "innerWidth", { value: 500, configurable: true });
     Object.defineProperty(window, "innerHeight", { value: 400, configurable: true });
 

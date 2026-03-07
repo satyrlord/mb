@@ -196,8 +196,11 @@ export class WindowResizeController {
   private getViewportBoundedMaxScale(state: WindowResizeState): number {
     const config = this.getConfig();
     const padding = config.windowResizeLimits.viewportPaddingPx * 2;
-    const availableWidth = window.innerWidth - padding;
-    const availableHeight = window.innerHeight - padding;
+    // Prefer visualViewport (accurate on mobile even when content inflates
+    // the layout viewport) with window.inner* as fallback.
+    const vp = window.visualViewport;
+    const availableWidth = (vp?.width ?? window.innerWidth) - padding;
+    const availableHeight = (vp?.height ?? window.innerHeight) - padding;
 
     const widthBound = availableWidth / state.baseWidthPx;
     const heightBound = availableHeight / state.baseHeightPx;

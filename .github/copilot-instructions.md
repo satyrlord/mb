@@ -33,13 +33,19 @@ of a classic Windows 9x game called 'Memory Blocks'
 Run these before any commit/push:
 
 ```bash
-npm run validate
+npm run quality:sanity
 ```
 
-Quality gate (run before any commit/push):
+This runs `npm run validate` followed by `npm run test`. For a full quality
+gate that also includes E2E (Playwright) tests:
 
 ```bash
-npm run test
+npm run quality:full
+```
+
+To check test coverage independently:
+
+```bash
 npm run test:coverage
 ```
 
