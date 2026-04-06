@@ -2,17 +2,17 @@ import {
   DEBUG_TILES_DIFFICULTY,
   getDifficultyById,
   type DifficultyConfig,
-} from "./difficulty.js";
+} from "./difficulty";
 import {
   createGameplayEngine,
   type GameplayEngine,
-} from "./gameplay.js";
+} from "./gameplay";
 import {
   MIN_COPIES_PER_ICON,
   OPENMOJI_IMPORTED_ICON_TOKENS,
-} from "./icons.js";
-import type { BoardView } from "./board.js";
-import { shuffle } from "./utils.js";
+} from "./icons";
+import type { BoardView } from "./board";
+import { shuffle } from "./utils";
 
 export interface DebugControllerDeps {
   debugMenuRoot: HTMLElement;

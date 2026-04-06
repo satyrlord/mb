@@ -1,6 +1,6 @@
-import { RUNTIME_CONFIG_PATHS } from "./runtime-config.js";
-import { clamp } from "./utils.js";
-import { loadCfgFile, parseCfgLines, parseCfgNumber } from "./cfg.js";
+import { RUNTIME_CONFIG_PATHS } from "./runtime-config";
+import { clamp } from "./utils";
+import { loadCfgFile, parseCfgLines, parseCfgNumber } from "./cfg";
 
 export interface ShadowConfig {
   leftOffsetPx: number;

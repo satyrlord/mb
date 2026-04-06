@@ -1,6 +1,6 @@
-import type { BoardTileViewModel } from "./board.js";
-import type { GameplayEngine } from "./gameplay.js";
-import { formatElapsedTime } from "./utils.js";
+import type { BoardTileViewModel } from "./board";
+import type { GameplayEngine } from "./gameplay";
+import { formatElapsedTime } from "./utils";
 
 export interface GamePresentationModel {
   boardTiles: BoardTileViewModel[];

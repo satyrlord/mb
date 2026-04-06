@@ -2,9 +2,9 @@ import {
   DEFAULT_EMOJI_PACK_ID,
   getEmojiPacks,
   type EmojiPackId,
-} from "./icons.js";
-import { clampTileMultiplier } from "./tile-layout.js";
-import { clamp } from "./utils.js";
+} from "./icons";
+import { clampTileMultiplier } from "./tile-layout";
+import { clamp } from "./utils";
 
 const EMOJI_PACK_STORAGE_KEY = "memoryblox-emoji-pack";
 const TILE_MULTIPLIER_STORAGE_KEY = "memoryblox-tile-multiplier";

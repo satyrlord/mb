@@ -1,4 +1,4 @@
-import { sanitizePlayerName } from "./utils.js";
+import { sanitizePlayerName } from "./utils";
 
 const PLAYER_NAME_STORAGE_KEY = "memoryblox-player-name";
 

@@ -1,6 +1,6 @@
-import type { DifficultyConfig } from "./difficulty.js";
-import type { BoardLayoutConfig } from "./board.js";
-import type { WindowBaseSize, WindowResizeLimits } from "./runtime-config.js";
+import type { DifficultyConfig } from "./difficulty";
+import type { BoardLayoutConfig } from "./board";
+import type { WindowBaseSize, WindowResizeLimits } from "./runtime-config";
 
 export type OrientationMode = "landscape" | "portrait";
 

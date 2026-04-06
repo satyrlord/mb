@@ -6,6 +6,7 @@ import {
   type DebugControllerDeps,
   type DebugAppSession,
 } from "../src/debug-controller.js";
+import type { GameplayEngine } from "../src/gameplay.ts";
 
 /** Creates a minimal mock session for testing. */
 const createMenuSession = (): DebugAppSession => ({ mode: "menu" });
@@ -14,14 +15,14 @@ const createGameSession = (
   overrides: Partial<DebugAppSession> = {},
 ): DebugAppSession => ({
   mode: "game",
-  difficulty: { id: "easy", label: "Easy", rows: 5, columns: 6 },
+  difficulty: { id: "easy", label: "Easy", rows: 5, columns: 6, scoreMultiplier: 1 },
   emojiSetId: "classic",
   emojiSetLabel: "Classic",
   tileMultiplier: 1,
   scoreCategory: "standard",
   isAutoDemoScore: false,
   usedFlipTiles: false,
-  gameplay: createMockGameplay(),
+  gameplay: createMockGameplay() as unknown as GameplayEngine,
   ...overrides,
 });
 
@@ -32,9 +33,9 @@ const createMockGameplay = () => ({
   getAttempts: vi.fn(() => 0),
   isWon: vi.fn(() => false),
   getRemainingUnmatchedPairCount: vi.fn(() => 5),
-  findFirstUnmatchedPairIndices: vi.fn(() => [0, 1] as [number, number]),
+  findFirstUnmatchedPairIndices: vi.fn(() => [0, 1] as [number, number] | null),
   prepareNearWinState: vi.fn(() => ({
-    remainingPair: [0, 1] as [number, number],
+    remainingPair: [0, 1] as [number, number] | null,
     matchedPairs: [[2, 3], [4, 5]] as [number, number][],
   })),
 });
@@ -75,6 +76,7 @@ const createMockDeps = (
       label: "Easy",
       rows: 5,
       columns: 6,
+      scoreMultiplier: 1,
     }),
     resetForNewGame: vi.fn(),
     resetActiveEffects: vi.fn(),
@@ -95,7 +97,7 @@ const createMockDeps = (
       autoMatchSecondSelectionDelayMs: 50,
       autoMatchBetweenPairsDelayMs: 50,
     }),
-    getBoardView: vi.fn(() => createMockBoardView()),
+    getBoardView: vi.fn(() => createMockBoardView()) as never,
     cancelAutoDemo: vi.fn(),
     getAutoDemoAbortController: () => null,
     setAutoDemoAbortController: vi.fn(),
@@ -253,7 +255,7 @@ describe("DebugController", () => {
       const mockBoardView = createMockBoardView();
       const gameplay = createMockGameplay();
       const deps = createMockDeps({
-        getBoardView: vi.fn(() => mockBoardView),
+        getBoardView: vi.fn(() => mockBoardView) as never,
       });
       deps.setSession(createGameSession({ gameplay: gameplay as never }));
       const ctrl = new DebugController(deps);
@@ -275,7 +277,7 @@ describe("DebugController", () => {
       });
       const mockBoardView = createMockBoardView();
       const deps = createMockDeps({
-        getBoardView: vi.fn(() => mockBoardView),
+        getBoardView: vi.fn(() => mockBoardView) as never,
       });
       deps.setSession(createGameSession({ gameplay: gameplay as never }));
       const ctrl = new DebugController(deps);
@@ -288,7 +290,7 @@ describe("DebugController", () => {
     it("skips render/animate when session is debug-tiles", () => {
       const mockBoardView = createMockBoardView();
       const deps = createMockDeps({
-        getBoardView: vi.fn(() => mockBoardView),
+        getBoardView: vi.fn(() => mockBoardView) as never,
         isDebugTilesSession: () => true,
       });
       deps.setSession(createGameSession({ mode: "debug-tiles" }));

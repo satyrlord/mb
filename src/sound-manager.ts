@@ -1,6 +1,6 @@
-import { AudioLoader } from "./audio-loader.js";
-import { SoundEngine } from "./sound-engine.js";
-import { shuffle } from "./utils.js";
+import { AudioLoader } from "./audio-loader";
+import { SoundEngine } from "./sound-engine";
+import { shuffle } from "./utils";
 
 const MUSIC_MUTE_STORAGE_KEY = "memoryblox-music-muted";
 const SOUND_MUTE_STORAGE_KEY = "memoryblox-sound-muted";

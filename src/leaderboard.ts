@@ -1,5 +1,5 @@
-import { RUNTIME_CONFIG_PATHS } from "./runtime-config.js";
-import { parseCfgBoolean, parseCfgInteger, parseCfgLines, loadCfgFile, createCfgReader } from "./cfg.js";
+import { RUNTIME_CONFIG_PATHS } from "./runtime-config";
+import { parseCfgBoolean, parseCfgInteger, parseCfgLines, loadCfgFile, createCfgReader } from "./cfg";
 
 export interface LeaderboardScoringConfig {
   scorePenaltyFactor: number;

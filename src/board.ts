@@ -1,5 +1,5 @@
-import { getFlagEmojiCountryName, getFlagEmojiSvgUrl } from "./flag-emoji.js";
-import { getIconAssetByToken } from "./icon-assets.js";
+import { getFlagEmojiCountryName, getFlagEmojiSvgUrl } from "./flag-emoji";
+import { getIconAssetByToken } from "./icon-assets";
 
 type TileSelectHandler = (index: number) => void;
 

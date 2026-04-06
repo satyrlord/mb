@@ -1,6 +1,6 @@
-import { clamp } from "./utils.js";
-import { parseCfgInteger, parseCfgLines, parseCfgNumber, loadCfgFile, createCfgReader } from "./cfg.js";
-import type { BoardLayoutConfig } from "./board.js";
+import { clamp } from "./utils";
+import { parseCfgInteger, parseCfgLines, parseCfgNumber, loadCfgFile, createCfgReader } from "./cfg";
+import type { BoardLayoutConfig } from "./board";
 
 export interface WindowBaseSize {
   minWidthPx: number;
@@ -33,7 +33,7 @@ export interface GameplayTimingConfig {
   uiTimerUpdateIntervalMs: number;
 }
 
-export type { BoardLayoutConfig } from "./board.js";
+export type { BoardLayoutConfig } from "./board";
 
 export interface VisualEffectsConfig {
   tileFlipDurationMs: number;

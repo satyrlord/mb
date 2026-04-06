@@ -6,8 +6,8 @@
  * to keep the bootstrap layer focused on wiring and DOM interaction.
  */
 
-import { clamp } from "./utils.js";
-import type { DifficultyConfig } from "./difficulty.js";
+import { clamp } from "./utils";
+import type { DifficultyConfig } from "./difficulty";
 
 export interface TileLayout {
   tileCount: number;

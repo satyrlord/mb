@@ -1,59 +1,59 @@
-import { BoardView } from "./board.js";
+import { BoardView } from "./board";
 import {
   DEFAULT_DIFFICULTY_ID,
   getDifficultyById,
   type DifficultyConfig,
-} from "./difficulty.js";
-import { setFlagEmojiCdnBaseUrl } from "./flag-emoji.js";
+} from "./difficulty";
+import { setFlagEmojiCdnBaseUrl } from "./flag-emoji";
 import {
   createGameplayEngine,
   type GameplayEngine,
-} from "./gameplay.js";
+} from "./gameplay";
 import {
   generateEmojiDeck,
   getEmojiPacks,
   validateMinPackIconCount,
   validateUniquePackIcons,
   type EmojiPackId,
-} from "./icons.js";
-import { createGamePresentationModel } from "./presentation.js";
+} from "./icons";
+import { createGamePresentationModel } from "./presentation";
 import {
   DEFAULT_UI_RUNTIME_CONFIG,
   type UiRuntimeConfig,
   loadUiRuntimeConfig,
   loadWinFxRuntimeConfig,
-} from "./runtime-config.js";
+} from "./runtime-config";
 import {
   DEFAULT_SHADOW_CONFIG,
   type ShadowConfig,
   loadShadowConfig,
-} from "./shadow-config.js";
+} from "./shadow-config";
 import {
   computeGameScoreResult,
   DEFAULT_LEADERBOARD_RUNTIME_CONFIG,
   loadLeaderboardRuntimeConfig,
   type LeaderboardRuntimeConfig,
-} from "./leaderboard.js";
-import { normalizeScoreFlagsForPlayerSelection } from "./session-score.js";
+} from "./leaderboard";
+import { normalizeScoreFlagsForPlayerSelection } from "./session-score";
 import {
   computeTileLayout,
-} from "./tile-layout.js";
-import { UiView } from "./ui.js";
+} from "./tile-layout";
+import { UiView } from "./ui";
 import {
   clamp,
   enableHorizontalWheelScroll,
   enableSliderWheelScroll,
   formatElapsedTime,
   requireElement,
-} from "./utils.js";
-import { WinFxController } from "./win-fx.js";
-import { SoundManager } from "./sound-manager.js";
-import { AudioUiController } from "./audio-ui-controller.js";
-import { WinSequenceController } from "./win-sequence-controller.js";
-import { WindowResizeController } from "./window-resize.js";
-import { SettingsController } from "./settings-controller.js";
-import { applyDefaultMenuTextureNow, applyMenuTexture } from "./menu-texture.js";
-import { DebugController } from "./debug-controller.js";
+} from "./utils";
+import { WinFxController } from "./win-fx";
+import { SoundManager } from "./sound-manager";
+import { AudioUiController } from "./audio-ui-controller";
+import { WinSequenceController } from "./win-sequence-controller";
+import { WindowResizeController } from "./window-resize";
+import { SettingsController } from "./settings-controller";
+import { applyDefaultMenuTextureNow, applyMenuTexture } from "./menu-texture";
+import { DebugController } from "./debug-controller";
 import {
   type OrientationMode,
   readStoredOrientationMode,
@@ -62,13 +62,13 @@ import {
   updateOrientationToggleButton as updateOrientationToggleButtonState,
   applyOrientationBoardLayout as applyOrientationBoardLayoutState,
   getOrientationAwareResizeConfig as computeOrientationResizeConfig,
-} from "./orientation-controller.js";
+} from "./orientation-controller";
 import {
   PlayerNamePrompt,
-} from "./player-name-prompt.js";
+} from "./player-name-prompt";
 import {
   LeaderboardUiController,
-} from "./leaderboard-ui.js";
+} from "./leaderboard-ui";
 import {
   type HdMode,
   detectDeviceType,
@@ -76,7 +76,7 @@ import {
   writeHdMode,
   updateHdToggleButton as updateHdToggleButtonState,
   applyHdMode as applyHdModeState,
-} from "./hd-mode-controller.js";
+} from "./hd-mode-controller";
 
 interface AppRuntimeState {
   ui: UiRuntimeConfig;

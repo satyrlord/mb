@@ -1,4 +1,4 @@
-import type { LeaderboardScoreEntry } from "./leaderboard.js";
+import type { LeaderboardScoreEntry } from "./leaderboard";
 
 export const createLeaderboardEntryKey = (entry: LeaderboardScoreEntry): string => {
   return JSON.stringify([

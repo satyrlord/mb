@@ -1,5 +1,5 @@
-import { clamp } from "./utils.js";
-import type { WindowBaseSize, WindowResizeLimits } from "./runtime-config.js";
+import { clamp } from "./utils";
+import type { WindowBaseSize, WindowResizeLimits } from "./runtime-config";
 
 /** Snapshot of the measured base dimensions, aspect ratio, and current scale. */
 interface WindowResizeState {

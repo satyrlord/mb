@@ -1,8 +1,8 @@
-import { shuffle } from "./utils.js";
+import { shuffle } from "./utils";
 import {
   IMPORTED_OPENMOJI_ICON_TOKENS,
   IMPORTED_OPENMOJI_ICON_TOKEN_SET,
-} from "./openmoji-imports.js";
+} from "./openmoji-imports";
 
 export type EmojiPackId =
   | "space-astronomy"

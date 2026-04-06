@@ -1,10 +1,10 @@
-import { clamp } from "./utils.js";
+import { clamp } from "./utils";
 import {
   DEFAULT_WIN_FX_TEXT,
   DEFAULT_UI_RUNTIME_CONFIG,
   DEFAULT_WIN_FX_RUNTIME_CONFIG,
   type WinFxRuntimeConfig,
-} from "./runtime-config.js";
+} from "./runtime-config";
 
 interface WinFxElements {
   appWindowElement: HTMLElement;

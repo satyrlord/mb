@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+// @ts-expect-error - sqlite-store.mjs is a plain JS runtime file without type declarations
 import { SqliteLeaderboardStore } from "../tools/leaderboard/sqlite-store.mjs";
 
 const createScoreEntry = (overrides: Partial<{

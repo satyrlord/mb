@@ -17,11 +17,11 @@
     "icons:sync": "node ./tools/sync-icon-artifacts.mjs",
     "icons:generate-packs": "tsx ./tools/generate-icon-packs.ts --config ./config/icon-pack-generator.json",
     "leaderboard:server": "node ./tools/leaderboard-server.mjs",
-    "serve:dev-root": "node ./tools/dev-server.mjs",
-    "dev": "concurrently -n TypeScript,WebServer,Leaderboard -c blue,green,magenta \"tsc --watch\" \"npm run serve:dev-root\" \"npm run leaderboard:server\"",
+    "serve:dev-root": "vite --port 8080",
+    "dev": "concurrently -n Vite,Leaderboard -c blue,magenta \"vite\" \"npm run leaderboard:server\"",
     "dev:full": "npm run dev",
-    "serve": "concurrently -k -n WebServer,Leaderboard -c green,magenta \"npm run serve:dev-root\" \"npm run leaderboard:server\"",
-    "build": "npm run artifacts && tsc"
+    "serve": "concurrently -k -n Vite,Leaderboard -c green,magenta \"vite preview --port 8080\" \"npm run leaderboard:server\"",
+    "build": "npm run artifacts && vite build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -33,12 +33,12 @@
     "concurrently": "^9.2.1",
     "eslint": "^10.0.1",
     "globals": "^17.3.0",
-    "http-server": "^14.1.1",
     "jsdom": "^26.1.0",
     "markdownlint-cli": "^0.47.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.0",
+    "vite": "^8.0.2",
     "vitest": "^3.2.4"
   },
   "overrides": {

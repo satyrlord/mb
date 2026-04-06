@@ -11,7 +11,7 @@ import {
   type NearWinPreparationResult,
   type SelectionResult,
   type Tile,
-} from "./game.js";
+} from "./game";
 
 /**
  * Facade interface for game-state operations.

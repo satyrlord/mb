@@ -1,4 +1,4 @@
-import type { EmojiPackId } from "./icons.js";
+import type { EmojiPackId } from "./icons";
 
 export const SUPPORTED_MENU_TEXTURE_EXTENSIONS = [
   ".svg",

@@ -1,4 +1,4 @@
-import type { SoundManager } from "./sound-manager.js";
+import type { SoundManager } from "./sound-manager";
 
 const setElementHidden = (element: Element, hidden: boolean): void => {
   if (hidden) {

@@ -1,6 +1,6 @@
-import type { SoundManager } from "./sound-manager.js";
-import type { WinFxController } from "./win-fx.js";
-import type { UiRuntimeConfig } from "./runtime-config.js";
+import type { SoundManager } from "./sound-manager";
+import type { WinFxController } from "./win-fx";
+import type { UiRuntimeConfig } from "./runtime-config";
 
 interface WinSequenceElements {
   gameFrame: HTMLElement;

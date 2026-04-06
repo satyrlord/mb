@@ -298,7 +298,7 @@ describe("icons", () => {
     const sorted = [...activeTokens].sort((a, b) => a.localeCompare(b));
 
     expect(activeTokens).toEqual(sorted);
-    expect(activeTokens.every((token) => OPENMOJI_IMPORTED_ICON_TOKENS.includes(token))).toBe(true);
+    expect(activeTokens.every((token) => (OPENMOJI_IMPORTED_ICON_TOKENS as readonly string[]).includes(token))).toBe(true);
   });
 
   test("active and inactive imported token sets partition imported tokens", () => {

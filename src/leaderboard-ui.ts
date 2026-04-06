@@ -1,5 +1,5 @@
-import type { EmojiPackId } from "./icons.js";
-import type { DifficultyConfig } from "./difficulty.js";
+import type { EmojiPackId } from "./icons";
+import type { DifficultyConfig } from "./difficulty";
 import {
   computeGameScoreResult,
   LeaderboardClient,
@@ -7,12 +7,12 @@ import {
   type LeaderboardScoreSubmission,
   type LeaderboardScoreEntry,
   type LeaderboardScoringConfig,
-} from "./leaderboard.js";
+} from "./leaderboard";
 import {
   createLeaderboardEntryKey,
   resolveLastSubmittedLeaderboardEntryKey,
   resolveMostRecentLeaderboardEntryKey,
-} from "./leaderboard-view.js";
+} from "./leaderboard-view";
 
 export interface SubmitWinToLeaderboardInput {
   playerName: string;

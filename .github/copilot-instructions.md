@@ -24,9 +24,29 @@ of a classic Windows 9x game called 'Memory Blocks'
 
 ## Tech Stack
 
-- TypeScript (`strict: true`, ES2020, DOM libs)
-- ES modules with Node-style resolution
-- No framework; direct DOM manipulation
+- Vite 8+ (latest) for build
+- DaisyUI 5+ (latest) for front-end
+- Playwright (latest) for testing
+- Istanbul (latest) for code coverage
+
+## Approach
+
+- Think before acting. Read existing files before writing code.
+- Be concise in output but thorough in reasoning.
+- Prefer editing over rewriting whole files.
+- Do not re-read files you have already read unless the file may have changed.
+- Test your code before declaring done.
+- No sycophantic openers or closing fluff.
+- Keep solutions simple and direct. No over-engineering.
+- If unsure: say so. Never guess or invent file paths.
+- User instructions always override this file.
+
+## Efficiency
+
+- Read before writing. Understand the problem before coding.
+- No redundant file reads. Read each file once.
+- One focused coding pass. Avoid write-delete-rewrite cycles.
+- Test once, fix if needed, verify once. No unnecessary iterations.
 
 ## Critical Workflows
 
