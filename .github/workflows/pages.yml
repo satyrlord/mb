@@ -41,12 +41,10 @@ jobs:
 
       - name: Prepare static site
         run: |
-          mkdir -p site/dist site/config site/textures site/icon site/sound site/music
-          cp index.html site/index.html
-          cp styles.css site/styles.css
-          cp styles.winfx.css site/styles.winfx.css
+          mkdir -p site/assets site/config site/textures site/icon site/sound site/music
+          cp dist/index.html site/index.html
+          cp -r dist/assets/. site/assets/
           cp -r config/. site/config/
-          cp -r dist/. site/dist/
           cp -r textures/. site/textures/
           cp -r icon/. site/icon/
           cp -r sound/. site/sound/

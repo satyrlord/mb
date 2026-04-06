@@ -43,7 +43,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run serve:dev-root",
+    command: "vite preview --port 8080",
     url: "http://localhost:8080",
     reuseExistingServer: !process.env.CI,
   },

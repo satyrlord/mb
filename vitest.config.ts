@@ -14,6 +14,7 @@ export default defineConfig({
       "e2e/**",
     ],
     coverage: {
+      provider: "istanbul",
       exclude: [
         "tools/**",
         // Bootstrap entrypoint excluded from unit-test coverage.

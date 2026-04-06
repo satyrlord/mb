@@ -5,7 +5,10 @@
  * Win animation effects are intentionally split into `styles.winfx.css`.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Russo+One&family=Ubuntu:wght@400;500;700&display=swap");
+@import "tailwindcss";
+@plugin "daisyui" {
+  prefix: "dui-";
+}
 
 :root {
   color-scheme: dark;
@@ -1068,7 +1071,7 @@ body {
 .settings-slider {
   width: 100%;
   cursor: pointer;
-  accent-color: var(--color-menu-item-hover, #a0a8b8);
+  color: var(--color-menu-item-hover, #a0a8b8);
 }
 
 .settings-slider-ticks {
