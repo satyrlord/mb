@@ -81,7 +81,13 @@ const loadAppHtml = (): void => {
     throw new Error("Failed to extract app HTML body.");
   }
 
-  document.body.innerHTML = bodyMatch[1].replace(/<script[\s\S]*?<\/script>/giu, "");
+  const template = document.createElement("template");
+  template.innerHTML = bodyMatch[1];
+  template.content.querySelectorAll("script").forEach((scriptElement) => {
+    scriptElement.remove();
+  });
+
+  document.body.innerHTML = template.innerHTML;
 };
 
 const createNotFoundResponse = (): Response => {
