@@ -5,8 +5,8 @@ import {
   SettingsController,
   settingsControllerTesting,
   type SettingsControllerDeps,
-  type AnimationSpeedLimits,
 } from "../src/settings-controller.js";
+import type { AnimationSpeedLimits } from "../src/runtime-config.js";
 import { DEFAULT_EMOJI_PACK_ID } from "../src/icons.js";
 
 const {

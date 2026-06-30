@@ -5,16 +5,11 @@ import {
 } from "./icons";
 import { clampTileMultiplier } from "./tile-layout";
 import { clamp } from "./utils";
+import type { AnimationSpeedLimits } from "./runtime-config";
 
 const EMOJI_PACK_STORAGE_KEY = "memoryblox-emoji-pack";
 const TILE_MULTIPLIER_STORAGE_KEY = "memoryblox-tile-multiplier";
 const ANIMATION_SPEED_STORAGE_KEY = "memoryblox-animation-speed";
-
-export interface AnimationSpeedLimits {
-  minSpeed: number;
-  maxSpeed: number;
-  defaultSpeed: number;
-}
 
 export interface SettingsControllerDeps {
   settingsPackListElement: HTMLElement;

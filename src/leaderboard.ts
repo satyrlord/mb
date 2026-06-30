@@ -51,7 +51,7 @@ interface LeaderboardScoreComputationInput {
   scoreMultiplier: number;
 }
 
-export const LEADERBOARD_SCORE_PENALTY_FACTOR = 0.1;
+const LEADERBOARD_SCORE_PENALTY_FACTOR = 0.1;
 const LEADERBOARD_SCORE_ATTEMPTS_PENALTY_MS = 1500;
 const LEADERBOARD_BASE_SCORE_DIVIDEND = 1_000_000;
 const LEADERBOARD_SCORE_SCALE_FACTOR = 1_000;
@@ -133,7 +133,7 @@ export const applyLeaderboardScorePenalty = (
   return Math.max(0, Math.round(Math.max(0, scoreValue) * scorePenaltyFactor));
 };
 
-export const calculateLeaderboardScore = (
+const calculateLeaderboardScore = (
   input: LeaderboardScoreComputationInput,
   scoringConfig: LeaderboardScoringConfig = DEFAULT_LEADERBOARD_RUNTIME_CONFIG.scoring,
 ): number => {

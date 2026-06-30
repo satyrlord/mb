@@ -643,12 +643,7 @@ export class WinFxController {
     const color = WinFxController.pickRandomColor(colors);
 
     element.style.setProperty("--piece-hue", hue.toString());
-    element.style.setProperty("--piece-color", color);
-    element.style.setProperty("--piece-size", `${size}px`);
-    element.style.setProperty("--piece-x", `${x}px`);
-    element.style.setProperty("--piece-y", `${y}px`);
-    element.style.setProperty("--piece-dx", `${dx}px`);
-    element.style.setProperty("--piece-dy", `${dy}px`);
+    this.applyCommonPieceStyles(element, color, size, x, y, `${dx}px`, `${dy}px`);
     element.style.setProperty("--piece-drift", drift);
     element.style.setProperty("--piece-gravity", gravity);
     element.style.setProperty("--piece-scale-end", endScale);
@@ -739,13 +734,8 @@ export class WinFxController {
     const opacity = 0.62 + ((1 - heavyBias) * 0.34);
     const endScale = 0.34 + ((1 - heavyBias) * 0.22);
 
-    element.style.setProperty("--piece-color", color);
-    element.style.setProperty("--piece-size", `${size}px`);
-    element.style.setProperty("--piece-x", `${x}px`);
-    element.style.setProperty("--piece-y", `${y}px`);
-    element.style.setProperty("--piece-dx", dx);
-    element.style.setProperty("--piece-dy", dy);
     element.style.setProperty("--piece-rot", rotation);
+    this.applyCommonPieceStyles(element, color, size, x, y, dx, dy);
     element.style.setProperty("--piece-delay", `${delay}ms`);
     element.style.setProperty("--piece-fall-duration", `${fallDuration}ms`);
     element.style.setProperty("--piece-opacity", opacity.toFixed(3));
@@ -781,13 +771,9 @@ export class WinFxController {
       Math.random() * this.scaleDuration(WinFxController.SHIMMER_DELAY_JITTER_MS),
     );
 
-    element.style.setProperty("--piece-color", color);
-    element.style.setProperty("--piece-size", `${size}px`);
-    element.style.setProperty("--piece-x", `${x}px`);
-    element.style.setProperty("--piece-y", `${y}px`);
-    element.style.setProperty("--piece-dx", `${dx}px`);
-    element.style.setProperty("--piece-dy", `${dy}px`);
     element.style.setProperty("--piece-delay", `${delay}ms`);
+
+    this.applyCommonPieceStyles(element, color, size, x, y, `${dx}px`, `${dy}px`);
 
     return element;
   }
@@ -813,15 +799,28 @@ export class WinFxController {
       Math.random() * this.scaleDuration(WinFxController.EMBER_DELAY_JITTER_MS),
     );
 
+    element.style.setProperty("--piece-delay", `${delay}ms`);
+
+    this.applyCommonPieceStyles(element, color, size, x, y, `${dx}px`, `${dy}px`);
+
+    return element;
+  }
+
+  private applyCommonPieceStyles(
+    element: HTMLElement,
+    color: string,
+    size: number,
+    x: number,
+    y: number,
+    dxPx: string,
+    dyPx: string,
+  ): void {
     element.style.setProperty("--piece-color", color);
     element.style.setProperty("--piece-size", `${size}px`);
     element.style.setProperty("--piece-x", `${x}px`);
     element.style.setProperty("--piece-y", `${y}px`);
-    element.style.setProperty("--piece-dx", `${dx}px`);
-    element.style.setProperty("--piece-dy", `${dy}px`);
-    element.style.setProperty("--piece-delay", `${delay}ms`);
-
-    return element;
+    element.style.setProperty("--piece-dx", dxPx);
+    element.style.setProperty("--piece-dy", dyPx);
   }
 
   private scaleDuration(durationMs: number): number {

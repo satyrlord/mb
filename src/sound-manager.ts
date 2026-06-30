@@ -296,18 +296,6 @@ export class SoundManager {
     this.initialized = true;
   }
 
-  public isAudioContextRunning(): boolean {
-    const context = this.soundEngine.getAudioContext() as AudioContext & {
-      state?: AudioContextState;
-    };
-
-    if (context.state === undefined) {
-      return true;
-    }
-
-    return context.state === "running";
-  }
-
   public getSoundMuted(): boolean {
     return this.soundEngine.getSoundFXMuted();
   }

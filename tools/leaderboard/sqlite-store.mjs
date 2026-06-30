@@ -295,6 +295,7 @@ export class SqliteLeaderboardStore {
 
     return Number.isNaN(numericValue) ? MIGRATION_INCOMPLETE_FLAG : numericValue;
   }
+  // fallow-ignore-next-line unused-class-member -- resolved via store-factory in leaderboard-server.mjs
   getStorageKind() {
     return "sqlite";
   }
@@ -335,6 +336,7 @@ export class SqliteLeaderboardStore {
     }
   }
 
+  // fallow-ignore-next-line unused-class-member -- resolved via store-factory in leaderboard-server.mjs
   getStorageLocation() {
     return this.databasePath;
   }
@@ -346,6 +348,7 @@ export class SqliteLeaderboardStore {
    * intended for test teardown and graceful process shutdown — production code
    * typically lets the process exit naturally instead.
    */
+  // fallow-ignore-next-line unused-class-member -- documented API for test teardown and graceful shutdown
   close() {
     this.database.close();
   }
@@ -389,6 +392,7 @@ export class SqliteLeaderboardStore {
     return this.readTopEntriesStatement.all(limit).map((row) => mapRowToEntry(row));
   }
 
+  // fallow-ignore-next-line unused-class-member -- resolved via store-factory in leaderboard-server.mjs
   writeEntry(entry) {
     this.#insertEntry(entry);
     this.trimEntriesStatement.run(this.maxStoredEntries);

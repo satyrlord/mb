@@ -142,9 +142,3 @@ export const sanitizePlayerName = (value: string): string => {
     .trim()
     .slice(0, 20);
 };
-
-export const utilsTesting = {
-  resetNegativeElapsedTimeWarning: (): void => {
-    negativeElapsedTimeWarningShown = false;
-  },
-};

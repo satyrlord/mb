@@ -19,7 +19,7 @@ export interface BoardLayoutConfig {
   boardMarginTopPx: number;
 }
 
-export const DEFAULT_BOARD_LAYOUT_CONFIG: BoardLayoutConfig = {
+const DEFAULT_BOARD_LAYOUT_CONFIG: BoardLayoutConfig = {
   minTileSizePx: 44,
   targetTileSizePx: 84,
   tileGapPx: 10,
@@ -33,7 +33,7 @@ export const DEFAULT_BOARD_LAYOUT_CONFIG: BoardLayoutConfig = {
  * CSS `nth-child` selectors and automated tests reference these positional
  * indices (0-based). Do not reorder without updating the CSS and test suite.
  */
-export const TILE_FACE_ORDER = ["right", "top", "front", "back"] as const;
+const TILE_FACE_ORDER = ["right", "top", "front", "back"] as const;
 
 /** Base CSS class applied to every tile face element. */
 const TILE_FACE_BASE_CLASS = "tile-face";

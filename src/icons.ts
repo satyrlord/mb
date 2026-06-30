@@ -586,8 +586,6 @@ export const MIN_COPIES_PER_ICON = 2;
 
 export const OPENMOJI_IMPORTED_ICON_TOKENS = IMPORTED_OPENMOJI_ICON_TOKENS;
 
-export const OPENMOJI_IMPORTED_ICON_COUNT = OPENMOJI_IMPORTED_ICON_TOKENS.length;
-
 export const getActiveOpenmojiIconTokens = (): string[] => {
   const activeTokens = new Set<string>();
 
