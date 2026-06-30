@@ -5,5 +5,4 @@ artifacts/
 coverage/
 .playwright-mcp/
 .vscode/
-.github/skills/
 test-results/
