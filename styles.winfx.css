@@ -608,7 +608,7 @@
 
 /* ── Plasma Surface: reusable animated texture skin ── */
 .plasma-surface {
-  background-image: url("./textures/plasma.png");
+  background-image: url("./textures/plasma.webp");
   background-size: 130%;
   background-position: 30% 35%;
   animation: plasma-bg-drift calc(var(--plasma-bg-drift-duration-ms, 18000ms) / var(--animation-speed, 1)) linear infinite;
@@ -686,7 +686,7 @@
   -webkit-text-fill-color: transparent;
   -webkit-text-stroke: 0;
   background:
-    url("./textures/plasma.png"),
+    url("./textures/plasma.webp"),
     radial-gradient(160% 114% at 12% 48%, color-mix(in srgb, var(--color-menu-title) 94%, white 6%) 0%, transparent 52%),
     radial-gradient(152% 108% at 32% 42%, color-mix(in srgb, var(--color-btn-text) 84%, var(--color-title) 16%) 0%, transparent 50%),
     radial-gradient(160% 116% at 50% 54%, color-mix(in srgb, var(--color-btn-text) 72%, black 28%) 0%, transparent 55%),

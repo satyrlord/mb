@@ -2,6 +2,7 @@
 
 <cite>
 **Referenced Files in This Document**
+- [vite.config.ts](file://vite.config.ts)
 - [icon-assets.ts](file://src/icon-assets.ts)
 - [openmoji-imports.ts](file://src/openmoji-imports.ts)
 - [icons.ts](file://src/icons.ts)
@@ -12,14 +13,22 @@
 - [generate-icon-packs.ts](file://tools/generate-icon-packs.ts)
 - [generate-audio-indexes.mjs](file://tools/generate-audio-indexes.mjs)
 - [audio-formats.json](file://config/audio-formats.json)
-- [vite.config.ts](file://vite.config.ts)
 - [runtime-config.ts](file://src/runtime-config.ts)
 - [index.json](file://sound/index.json)
 - [icon-pack-generator.md](file://docs/icon-pack-generator.md)
 - [emoji-inventory.md](file://docs/emoji-inventory.md)
 - [ICON_SOURCES.md](file://icon/ICON_SOURCES.md)
 - [icon/README.md](file://icon/README.md)
+- [sync-icon-artifacts.mjs](file://tools/sync-icon-artifacts.mjs)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated Build System Integration section to reflect comprehensive icon asset handling system
+- Added detailed coverage of custom Vite plugin with security middleware
+- Enhanced asset bundling documentation with automatic directory copying
+- Updated architecture diagrams to show new icon asset pipeline
+- Added security considerations for path traversal protection
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -29,18 +38,21 @@
 5. [Detailed Component Analysis](#detailed-component-analysis)
 6. [Dependency Analysis](#dependency-analysis)
 7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
-10. [Appendices](#appendices)
+8. [Security Considerations](#security-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
+11. [Appendices](#appendices)
 
 ## Introduction
 This document describes the asset management architecture for the Memory Blox project, focusing on icon and audio asset discovery, loading, cataloging, and runtime switching. The system uses a catalog-based approach with JSON manifests for metadata, supports lazy loading and caching, and integrates with the build system for bundling. It documents the icon asset pipeline from OpenMoji imports through catalog generation to runtime selection, along with validation, fallback strategies, and performance optimizations.
+
+**Updated** Added comprehensive icon asset handling system with custom Vite plugin that serves icons under /mb/icon path, includes security middleware for path traversal protection, and automatically copies icon directory structure to dist/icon during build.
 
 ## Project Structure
 The asset system spans several areas:
 - Icon assets: built-in Unicode glyphs and imported SVGs (OpenMoji), managed via catalogs and generators
 - Audio assets: organized by index manifest and decoded at runtime
-- Build integration: Vite plugin for development and production bundling of icon assets
+- Build integration: Vite plugin for development and production bundling of icon assets with security middleware
 - Runtime configuration: controls UI behavior and asset-related parameters
 
 ```mermaid
@@ -48,6 +60,8 @@ graph TB
 subgraph "Build System"
 Vite["Vite Config<br/>vite.config.ts"]
 Dist["dist/icon/"]
+IconPlugin["Custom Icon Plugin<br/>/mb/icon/*"]
+Security["Security Middleware<br/>Path Traversal Protection"]
 end
 subgraph "Icon Assets"
 SrcIcons["src/icons.ts"]
@@ -56,6 +70,7 @@ SrcIconAssets["src/icon-assets.ts"]
 IconCatalog["icon/icon-pack-catalog.json"]
 GenConfig["config/icon-pack-generator.json"]
 GenScript["tools/generate-icon-packs.ts"]
+SyncScript["tools/sync-icon-artifacts.mjs"]
 end
 subgraph "Audio Assets"
 AudioIndex["sound/index.json"]
@@ -67,10 +82,13 @@ end
 subgraph "Runtime"
 RuntimeCfg["src/runtime-config.ts"]
 end
-Vite --> Dist
+Vite --> IconPlugin
+IconPlugin --> Security
+IconPlugin --> Dist
 SrcIcons --> IconCatalog
 GenScript --> IconCatalog
 GenScript --> SrcOpenmojiImports
+SyncScript --> IconCatalog
 SrcIconAssets --> SrcIcons
 AudioLoader --> SoundEngine
 AudioTool --> AudioIndex
@@ -86,6 +104,7 @@ RuntimeCfg --> SrcIconAssets
 - [icon-pack-catalog.json:1-474](file://icon/icon-pack-catalog.json#L1-L474)
 - [icon-pack-generator.json:1-67](file://config/icon-pack-generator.json#L1-L67)
 - [generate-icon-packs.ts:1-474](file://tools/generate-icon-packs.ts#L1-L474)
+- [sync-icon-artifacts.mjs:1-142](file://tools/sync-icon-artifacts.mjs#L1-L142)
 - [audio-loader.ts:1-118](file://src/audio-loader.ts#L1-L118)
 - [sound-engine.ts:1-110](file://src/sound-engine.ts#L1-L110)
 - [audio-formats.json:1-4](file://config/audio-formats.json#L1-L4)
@@ -98,6 +117,7 @@ RuntimeCfg --> SrcIconAssets
 - [icon-pack-catalog.json:1-474](file://icon/icon-pack-catalog.json#L1-L474)
 - [icon-pack-generator.json:1-67](file://config/icon-pack-generator.json#L1-L67)
 - [generate-icon-packs.ts:1-474](file://tools/generate-icon-packs.ts#L1-L474)
+- [sync-icon-artifacts.mjs:1-142](file://tools/sync-icon-artifacts.mjs#L1-L142)
 - [audio-loader.ts:1-118](file://src/audio-loader.ts#L1-L118)
 - [sound-engine.ts:1-110](file://src/sound-engine.ts#L1-L110)
 - [audio-formats.json:1-4](file://config/audio-formats.json#L1-L4)
@@ -108,14 +128,18 @@ RuntimeCfg --> SrcIconAssets
 - Icon asset definitions and runtime lookup: centralized mapping and dynamic resolution for OpenMoji tokens
 - Icon pack catalog and generation: JSON catalog drives pack composition; generator selects emoji and SVG assets with ratios and priorities
 - Audio loader and sound engine: fetch, decode, cache, and play audio with gain control and muting
-- Build-time bundling: Vite plugin serves and copies icon assets during dev and build
+- **Custom Vite plugin**: comprehensive icon asset handling system with security middleware for path traversal protection and automatic directory copying
 - Runtime configuration: exposes UI and gameplay parameters that influence asset usage and behavior
 
 Key responsibilities:
 - Catalog-based icon discovery and validation
 - Lazy loading and caching for both icons and audio
 - Fallback strategies for missing assets and invalid configurations
+- **Secure development server with path traversal protection**
+- **Automatic asset bundling and distribution**
 - Integration with build system for bundling and development serving
+
+**Updated** Enhanced with custom Vite plugin that provides secure development server functionality and automated asset distribution.
 
 **Section sources**
 - [icon-assets.ts:1-189](file://src/icon-assets.ts#L1-L189)
@@ -128,28 +152,33 @@ Key responsibilities:
 - [runtime-config.ts:1-399](file://src/runtime-config.ts#L1-L399)
 
 ## Architecture Overview
-The asset architecture combines static catalogs, dynamic generators, runtime loaders, and build-time bundling:
+The asset architecture combines static catalogs, dynamic generators, runtime loaders, and build-time bundling with enhanced security:
 
 ```mermaid
 sequenceDiagram
 participant Dev as "Developer"
 participant Tool as "Generator Script<br/>generate-icon-packs.ts"
+participant Sync as "Sync Script<br/>sync-icon-artifacts.mjs"
 participant Cfg as "Generator Config<br/>icon-pack-generator.json"
 participant Cat as "Catalog<br/>icon/icon-pack-catalog.json"
 participant Src as "Sources (OpenMoji)"
 participant FS as "Filesystem"
 participant App as "Game Runtime"
+participant Vite as "Vite Plugin"
 Dev->>Tool : Run generator
 Tool->>Cfg : Read generator config
 Tool->>Cat : Read catalog
 Tool->>Src : Fetch metadata and SVGs
 Src-->>Tool : Metadata and SVGs
 Tool->>FS : Write generated packs, assets, attribution
+Sync->>Cat : Sync from src/icons.ts
+Vite->>FS : Serve /mb/icon/* with security
 App->>App : Load packs and assets at runtime
 ```
 
 **Diagram sources**
 - [generate-icon-packs.ts:351-474](file://tools/generate-icon-packs.ts#L351-L474)
+- [sync-icon-artifacts.mjs:126-142](file://tools/sync-icon-artifacts.mjs#L126-L142)
 - [icon-pack-generator.json:1-67](file://config/icon-pack-generator.json#L1-L67)
 - [icon-pack-catalog.json:1-474](file://icon/icon-pack-catalog.json#L1-L474)
 
@@ -289,21 +318,27 @@ Engine-->>UI : onended callback
 - [audio-formats.json:1-4](file://config/audio-formats.json#L1-L4)
 
 ### Build System Integration and Asset Bundling
-The build system integrates asset handling for development and production:
-- Development middleware serves icon assets with proper MIME types and path traversal protection
-- Build phase recursively copies icon assets into the distribution directory
+**Updated** The build system now features a comprehensive custom Vite plugin that handles icon assets with security middleware and automatic bundling:
+
+- **Development server**: Secure middleware serves icon assets from `/mb/icon/*` with path traversal protection
+- **Security measures**: MIME type enforcement, path normalization, and directory traversal prevention
+- **Build phase**: Recursive copying of icon directory structure to `dist/icon/` during bundle generation
+- **Automatic synchronization**: Asset registry generation and catalog synchronization
 
 ```mermaid
 flowchart TD
-DevStart["Vite Dev Server"] --> Middleware["Serve /mb/icon/*"]
-Middleware --> ServeIcon["Stream icon files"]
-Build["Build"] --> Copy["Copy icon/** to dist/icon/**"]
-ServeIcon --> DevEnd["Browser"]
-Copy --> ProdEnd["Production Bundle"]
+DevStart["Vite Dev Server"] --> IconPlugin["Custom Icon Plugin"]
+IconPlugin --> Security["Security Middleware"]
+Security --> Normalize["Normalize Path"]
+Normalize --> Validate["Validate Directory Access"]
+Validate --> |Valid| ServeIcon["Stream icon files"]
+Validate --> |Invalid| BlockReq["Block Request"]
+Build["Build Process"] --> Copy["Copy icon/** to dist/icon/**"]
+Copy --> DistReady["Production Bundle Ready"]
 ```
 
 **Diagram sources**
-- [vite.config.ts:11-62](file://vite.config.ts#L11-L62)
+- [vite.config.ts:10-62](file://vite.config.ts#L10-L62)
 
 **Section sources**
 - [vite.config.ts:1-80](file://vite.config.ts#L1-L80)
@@ -318,10 +353,11 @@ Runtime configuration influences asset-related behavior:
 - [runtime-config.ts:99-353](file://src/runtime-config.ts#L99-L353)
 
 ## Dependency Analysis
-The asset system exhibits low coupling and high cohesion:
+The asset system exhibits low coupling and high cohesion with enhanced build-time integration:
 - Icon pipeline: generator depends on catalog and sources; outputs are consumed by runtime packs
 - Audio pipeline: loader and engine are loosely coupled; index manifest decouples discovery from runtime
-- Build integration: Vite plugin isolates asset serving and bundling concerns
+- **Custom Vite plugin**: provides isolated asset serving and bundling with security guarantees
+- Build integration: Vite plugin manages asset distribution and development server functionality
 
 ```mermaid
 graph LR
@@ -334,8 +370,9 @@ Packs --> Deck["Deck Generator<br/>icons.ts"]
 Resolver --> Deck
 Loader["AudioLoader"] --> Engine["SoundEngine"]
 Index["sound/index.json"] --> Loader
-Vite["Vite Plugin"] --> Dist["dist/icon/"]
+Vite["Custom Vite Plugin"] --> Dist["dist/icon/"]
 Dist --> Resolver
+Sync["sync-icon-artifacts.mjs"] --> Cat
 ```
 
 **Diagram sources**
@@ -346,7 +383,8 @@ Dist --> Resolver
 - [audio-loader.ts:1-118](file://src/audio-loader.ts#L1-L118)
 - [sound-engine.ts:1-110](file://src/sound-engine.ts#L1-L110)
 - [index.json:1-17](file://sound/index.json#L1-L17)
-- [vite.config.ts:11-62](file://vite.config.ts#L11-L62)
+- [vite.config.ts:10-62](file://vite.config.ts#L10-L62)
+- [sync-icon-artifacts.mjs:126-142](file://tools/sync-icon-artifacts.mjs#L126-L142)
 
 **Section sources**
 - [generate-icon-packs.ts:1-474](file://tools/generate-icon-packs.ts#L1-L474)
@@ -356,42 +394,75 @@ Dist --> Resolver
 - [sound-engine.ts:1-110](file://src/sound-engine.ts#L1-L110)
 - [index.json:1-17](file://sound/index.json#L1-L17)
 - [vite.config.ts:1-80](file://vite.config.ts#L1-L80)
+- [sync-icon-artifacts.mjs:1-142](file://tools/sync-icon-artifacts.mjs#L1-L142)
 
 ## Performance Considerations
 - Lazy loading and caching: both icon and audio systems defer work until needed and reuse decoded/cached buffers
 - Parallel preloading: audio loader supports concurrent loading with partial failure logging
 - Balanced asset ratios: generator maintains emoji/SVG ratios to reduce bundle size while preserving visual diversity
 - Minimizing DOM work: embedded pack definitions enable immediate deck generation without network requests
-- Build-time bundling: Vite plugin avoids runtime asset discovery overhead in production
+- **Optimized build-time bundling**: Vite plugin avoids runtime asset discovery overhead in production
+- **Efficient development server**: Custom middleware provides fast icon asset serving with minimal overhead
 
-[No sources needed since this section provides general guidance]
+**Updated** Enhanced performance through optimized build-time bundling and efficient development server implementation.
+
+## Security Considerations
+**Updated** The custom Vite plugin implements comprehensive security measures:
+
+- **Path traversal protection**: Validates file paths to prevent directory traversal attacks
+- **Method restriction**: Only allows GET and HEAD requests for icon assets
+- **MIME type enforcement**: Sets appropriate content types for SVG files
+- **Directory access control**: Prevents access to parent directories and disallows directory listing
+- **Request normalization**: Strips prefixes and normalizes incoming URLs
+- **File existence verification**: Ensures requested files actually exist before serving
+
+```mermaid
+flowchart TD
+Request["Incoming Request"] --> MethodCheck["Check HTTP Method"]
+MethodCheck --> |GET/HEAD| PathNormalize["Normalize Path"]
+MethodCheck --> |Other| Next["Pass to Next Handler"]
+PathNormalize --> ResolvePath["Resolve Absolute Path"]
+ResolvePath --> SecurityCheck["Security Validation"]
+SecurityCheck --> |Valid| Serve["Serve File"]
+SecurityCheck --> |Invalid| Block["Block Request"]
+```
+
+**Diagram sources**
+- [vite.config.ts:18-39](file://vite.config.ts#L18-L39)
+
+**Section sources**
+- [vite.config.ts:18-39](file://vite.config.ts#L18-L39)
 
 ## Troubleshooting Guide
 Common issues and resolutions:
 - Missing or invalid asset tokens: use resolver checks and fallbacks; validate tokens against imported sets
 - Insufficient icons per pack: ensure minimum counts and re-run generator with adjusted ratios
 - Audio load failures: inspect network errors and decoder exceptions; confirm file extensions and index manifest
-- Build bundling problems: verify Vite plugin configuration and copied asset paths
-- License compliance: maintain accurate attribution CSV entries for imported assets
+- **Build bundling problems**: verify Vite plugin configuration and copied asset paths; check for permission issues
+- **Development server errors**: ensure security middleware is properly configured; verify file permissions
+- **License compliance**: maintain accurate attribution CSV entries for imported assets
+- **Path traversal issues**: check security middleware logs; verify file paths are properly normalized
+
+**Updated** Added troubleshooting guidance for new security middleware and build system components.
 
 **Section sources**
 - [icon-assets.ts:167-188](file://src/icon-assets.ts#L167-L188)
 - [icons.ts:541-580](file://src/icons.ts#L541-L580)
 - [audio-loader.ts:30-88](file://src/audio-loader.ts#L30-L88)
-- [vite.config.ts:11-62](file://vite.config.ts#L11-L62)
+- [vite.config.ts:18-39](file://vite.config.ts#L18-L39)
 - [ICON_SOURCES.md:1-28](file://icon/ICON_SOURCES.md#L1-L28)
 
 ## Conclusion
-The asset management system employs a robust, catalog-driven approach for icons and audio, combining static catalogs, deterministic generation, lazy loading, and caching. It integrates seamlessly with the build system and exposes runtime configuration hooks for theme and difficulty adaptation. Validation and fallback strategies ensure reliability, while performance optimizations minimize latency and resource usage.
+The asset management system employs a robust, catalog-driven approach for icons and audio, combining static catalogs, deterministic generation, lazy loading, and caching. It integrates seamlessly with the build system through a custom Vite plugin that provides secure development server functionality and automated asset distribution. The enhanced architecture includes comprehensive security measures, automatic asset bundling, and runtime configuration hooks for theme and difficulty adaptation. Validation and fallback strategies ensure reliability, while performance optimizations minimize latency and resource usage.
 
-[No sources needed since this section summarizes without analyzing specific files]
+**Updated** Enhanced with comprehensive icon asset handling system featuring custom Vite plugin, security middleware, and automated asset distribution.
 
 ## Appendices
 
 ### Appendix A: Icon Pack Generator Workflow
 - Run the generator with optional seed for reproducibility
 - Review generated outputs before promotion
-- Merge attributions into the project’s attribution records
+- Merge attributions into the project's attribution records
 
 **Section sources**
 - [icon-pack-generator.md:1-43](file://docs/icon-pack-generator.md#L1-L43)
@@ -405,3 +476,16 @@ The asset management system employs a robust, catalog-driven approach for icons 
 **Section sources**
 - [generate-audio-indexes.mjs:1-58](file://tools/generate-audio-indexes.mjs#L1-L58)
 - [audio-formats.json:1-4](file://config/audio-formats.json#L1-L4)
+
+### Appendix C: Icon Asset Synchronization
+**Updated** The sync script maintains consistency between source code and catalog files:
+- Extracts icon packs from `src/icons.ts` for validation
+- Generates `icon/icon-pack-catalog.json` from source definitions
+- Creates comprehensive documentation in `docs/emoji-inventory.md`
+- Maintains imported OpenMoji token inventory
+
+**Section sources**
+- [sync-icon-artifacts.mjs:126-142](file://tools/sync-icon-artifacts.mjs#L126-L142)
+- [icons.ts:1-726](file://src/icons.ts#L1-L726)
+- [icon-pack-catalog.json:1-474](file://icon/icon-pack-catalog.json#L1-L474)
+- [emoji-inventory.md:1-166](file://docs/emoji-inventory.md#L1-L166)

@@ -15,8 +15,20 @@
 - [tests/index-win-flow.integration.test.ts](file://tests/index-win-flow.integration.test.ts)
 - [e2e/mobile-layout.spec.ts](file://e2e/mobile-layout.spec.ts)
 - [e2e/debug-layout.spec.ts](file://e2e/debug-layout.spec.ts)
+- [_shot.mjs](file://_shot.mjs)
+- [_probe.mjs](file://_probe.mjs)
+- [_probe2.mjs](file://_probe2.mjs)
+- [_experiment.mjs](file://_experiment.mjs)
 - [.github/copilot-instructions.md](file://.github/copilot-instructions.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added comprehensive documentation for new Playwright-based visual verification scripts
+- Updated E2E testing section to include automated screenshot workflows
+- Enhanced debugging capabilities documentation with specialized probe tools
+- Added new automated visual verification patterns for game board states and tile animations
+- Expanded coverage requirements to include visual regression testing considerations
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -24,20 +36,22 @@
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
-10. [Appendices](#appendices)
+6. [Enhanced Visual Verification Infrastructure](#enhanced-visual-verification-infrastructure)
+7. [Dependency Analysis](#dependency-analysis)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
+11. [Appendices](#appendices)
 
 ## Introduction
-This document describes the multi-layered testing strategy for MEMORYBLOX, covering unit tests, integration tests, and end-to-end (E2E) tests. It explains Vitest configuration, test organization patterns, coverage requirements, Playwright setup for browser automation, test helpers, and quality gates. It also documents mocking strategies, assertion patterns, continuous integration workflows, and practical guidance for writing effective tests, debugging failures, and maintaining test suites. The testing philosophy emphasizes 90%+ coverage thresholds, edge case testing, and regression prevention.
+This document describes the multi-layered testing strategy for MEMORYBLOX, covering unit tests, integration tests, and end-to-end (E2E) tests. It explains Vitest configuration, test organization patterns, coverage requirements, Playwright setup for browser automation, test helpers, and quality gates. The framework now includes enhanced visual verification capabilities through specialized Playwright scripts that enable automated visual regression testing, debugging workflows, and comprehensive screenshot capture for game board states and tile animations. It also documents mocking strategies, assertion patterns, continuous integration workflows, and practical guidance for writing effective tests, debugging failures, and maintaining test suites. The testing philosophy emphasizes 90%+ coverage thresholds, edge case testing, and regression prevention through both functional and visual verification.
 
 ## Project Structure
-The testing system is organized into three layers:
+The testing system is organized into three layers with enhanced visual verification capabilities:
 - Unit tests: Fast, isolated tests using Vitest with jsdom environment. Located under tests/.
 - Integration tests: Module-level flows using jsdom and realistic DOM fixtures. Located under tests/.
 - End-to-end tests: Browser automation using Playwright against a live preview server. Located under e2e/.
+- Visual verification scripts: Specialized Playwright tools for automated visual testing and debugging. Located in project root as *_probe.mjs and *_shot.mjs scripts.
 
 ```mermaid
 graph TB
@@ -56,6 +70,12 @@ subgraph "E2E Layer"
 E2E1["e2e/mobile-layout.spec.ts"]
 E2E2["e2e/debug-layout.spec.ts"]
 end
+subgraph "Visual Verification Layer"
+VIS1["_shot.mjs - Screenshot Workflow"]
+VIS2["_probe.mjs - Tile Geometry Probe"]
+VIS3["_probe2.mjs - Background Position Probe"]
+VIS4["_experiment.mjs - Style Variant Testing"]
+end
 subgraph "Tooling"
 VIT["vitest.config.ts"]
 PW["playwright.config.ts"]
@@ -69,6 +89,10 @@ IT1 --> TH
 IT2 --> TH
 E2E1 --> PW
 E2E2 --> PW
+VIS1 --> PW
+VIS2 --> PW
+VIS3 --> PW
+VIS4 --> PW
 VIT --> UT1
 VIT --> UT2
 VIT --> UT3
@@ -92,6 +116,10 @@ PKG --> PW
 - [tests/index-win-flow.integration.test.ts:1-271](file://tests/index-win-flow.integration.test.ts#L1-L271)
 - [e2e/mobile-layout.spec.ts:1-534](file://e2e/mobile-layout.spec.ts#L1-L534)
 - [e2e/debug-layout.spec.ts:1-60](file://e2e/debug-layout.spec.ts#L1-L60)
+- [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+- [_probe.mjs:1-29](file://_probe.mjs#L1-L29)
+- [_probe2.mjs:1-19](file://_probe2.mjs#L1-L19)
+- [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)
 
 **Section sources**
 - [vitest.config.ts:1-31](file://vitest.config.ts#L1-L31)
@@ -105,12 +133,17 @@ PKG --> PW
 - Test helpers provide deterministic mocks for DOM, timers, and random sequences to stabilize tests.
 - Scripts in package.json orchestrate validation, unit tests, coverage, watch mode, and E2E runs.
 - Quality gates integrate linting, type checking, artifact generation, and test execution into sanity and full quality checks.
+- **Enhanced**: Visual verification scripts provide automated screenshot workflows for game board states and tile animations.
+- **Enhanced**: Specialized probe tools enable debugging of tile geometry, CSS variables, and visual rendering issues.
 
 Key capabilities:
 - Deterministic randomness via Math.random() spies with predefined sequences.
 - DOM fixture creation for controllers and UI components.
 - Fake timers for timing-sensitive tests.
 - Comprehensive coverage reporting and per-file thresholds.
+- **Enhanced**: Automated visual regression testing through screenshot comparison workflows.
+- **Enhanced**: Real-time debugging of CSS transforms, perspective, and tile positioning.
+- **Enhanced**: Style variant testing for different visual presentations and camera angles.
 
 **Section sources**
 - [vitest.config.ts:16-29](file://vitest.config.ts#L16-L29)
@@ -118,9 +151,12 @@ Key capabilities:
 - [tests/test-helpers.ts:68-87](file://tests/test-helpers.ts#L68-L87)
 - [package.json:1-1](file://package.json#L1-L1)
 - [docs/testing-strategy.md:59-82](file://docs/testing-strategy.md#L59-L82)
+- [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+- [_probe.mjs:1-29](file://_probe.mjs#L1-L29)
+- [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)
 
 ## Architecture Overview
-The testing architecture spans three layers with increasing fidelity and scope:
+The testing architecture spans three layers with increasing fidelity and scope, now enhanced with visual verification capabilities:
 
 ```mermaid
 graph TB
@@ -138,11 +174,19 @@ E1["Playwright"]
 E2["Mobile Chromium devices"]
 E3["vite preview server"]
 end
+subgraph "Visual Verification"
+V1["Automated Screenshot Workflows"]
+V2["Real-time Debugging Probes"]
+V3["Style Variant Testing"]
+end
 U1 --> U2
 U2 --> U3
 I1 --> I2
 E1 --> E2
 E1 --> E3
+V1 --> E1
+V2 --> E1
+V3 --> E1
 ```
 
 **Diagram sources**
@@ -150,6 +194,9 @@ E1 --> E3
 - [playwright.config.ts:45-49](file://playwright.config.ts#L45-L49)
 - [tests/win-flow.integration.test.ts:11-76](file://tests/win-flow.integration.test.ts#L11-L76)
 - [tests/index-win-flow.integration.test.ts:110-179](file://tests/index-win-flow.integration.test.ts#L110-L179)
+- [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+- [_probe.mjs:1-29](file://_probe.mjs#L1-L29)
+- [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)
 
 ## Detailed Component Analysis
 
@@ -342,12 +389,93 @@ Scripts orchestration:
 - [.github/copilot-instructions.md:55-76](file://.github/copilot-instructions.md#L55-L76)
 - [package.json:1-1](file://package.json#L1-L1)
 
+## Enhanced Visual Verification Infrastructure
+
+### Automated Screenshot Workflows
+The `_shot.mjs` script provides a comprehensive automated workflow for capturing game board states and tile animations:
+
+**Features:**
+- **Multi-state Capture**: Captures rest state, flipped tiles state, and board zoomed view
+- **Timing Control**: Precise delays between game actions to capture animation frames
+- **Resolution Scaling**: High-DPI screenshots for crisp visual documentation
+- **State Progression**: Sequential capture of game evolution from start to mid-game
+
+**Workflow Process:**
+1. Launch browser and navigate to localhost:8080
+2. Start Easy difficulty game automatically
+3. Wait for board initialization
+4. Capture "rest" state screenshot
+5. Flip first two tiles to show animation
+6. Capture "flipped" state screenshot  
+7. Extract tight board crop for focused documentation
+
+**Section sources**
+- [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+
+### Real-time Debugging Probes
+Specialized probe scripts enable deep debugging of game rendering and CSS properties:
+
+**Probe Script Capabilities:**
+- **Tile Geometry Analysis**: Inspects transform matrices, perspective properties, and depth calculations
+- **CSS Variable Inspection**: Extracts custom properties like `--tile-depth` and `--tile-camera-tilt`
+- **Background Position Tracking**: Monitors tile sprite positioning and scaling
+- **Style Property Extraction**: Captures transform styles, backface visibility, and computed dimensions
+
+**Debugging Applications:**
+- **Layout Issues**: Diagnose perspective transformations and viewport clipping
+- **Animation Problems**: Verify CSS transition timing and transform sequences
+- **Sprite Rendering**: Confirm tile background positioning and scaling
+- **Responsive Design**: Validate visual behavior across different screen sizes
+
+**Section sources**
+- [_probe.mjs:1-29](file://_probe.mjs#L1-L29)
+- [_probe2.mjs:1-19](file://_probe2.mjs#L1-L19)
+
+### Style Variant Testing
+The `_experiment.mjs` script enables comprehensive testing of visual variants and rendering modes:
+
+**Testing Capabilities:**
+- **Camera Angle Variants**: Tests different perspective and tilt configurations
+- **Isometric Rendering**: Validates alternative projection systems
+- **Shadow Effects**: Tests depth-based shadow rendering variations
+- **Performance Comparison**: Captures visual differences between optimization strategies
+
+**Implementation Approach:**
+- Dynamically injects CSS variants during runtime
+- Waits for render completion before capturing screenshots
+- Removes temporary styles to avoid affecting subsequent tests
+- Generates comparative visual documentation
+
+**Section sources**
+- [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)
+
+### Visual Regression Testing Integration
+The visual verification scripts complement traditional functional testing by providing:
+
+**Comprehensive Coverage:**
+- **Game State Validation**: Ensures visual consistency across different game states
+- **Animation Frame Capture**: Documents expected animation behavior and timing
+- **Responsive Design Testing**: Validates visual behavior across different screen sizes
+- **Rendering Pipeline Verification**: Confirms correct application of CSS transforms and effects
+
+**Integration Benefits:**
+- **Early Bug Detection**: Visual issues are caught before they reach users
+- **Regression Prevention**: Visual baselines prevent accidental UI regressions
+- **Documentation Generation**: Automated screenshots serve as living documentation
+- **Developer Experience**: Quick visual feedback during development and debugging
+
+**Section sources**
+- [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+- [_probe.mjs:1-29](file://_probe.mjs#L1-L29)
+- [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)
+
 ## Dependency Analysis
 The testing stack depends on:
 - Vitest for unit and integration tests with jsdom.
 - Istanbul for coverage reporting.
 - Playwright for E2E tests with mobile device profiles.
 - vite preview for serving the app during E2E tests.
+- **Enhanced**: Visual verification scripts leverage Playwright for automated screenshot workflows.
 
 ```mermaid
 graph LR
@@ -359,6 +487,11 @@ VIT --> TH["tests/test-helpers.ts"]
 VIT --> UT["Unit tests"]
 VIT --> IT["Integration tests"]
 PW --> E2E["E2E specs"]
+PW --> VIS["Visual verification scripts"]
+VIS --> SHOT["_shot.mjs"]
+VIS --> PROBE["_probe.mjs"]
+VIS --> PROBE2["_probe2.mjs"]
+VIS --> EXP["_experiment.mjs"]
 ```
 
 **Diagram sources**
@@ -366,6 +499,10 @@ PW --> E2E["E2E specs"]
 - [vitest.config.ts:16-29](file://vitest.config.ts#L16-L29)
 - [playwright.config.ts:45-49](file://playwright.config.ts#L45-L49)
 - [tests/test-helpers.ts:1-87](file://tests/test-helpers.ts#L1-L87)
+- [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+- [_probe.mjs:1-29](file://_probe.mjs#L1-L29)
+- [_probe2.mjs:1-19](file://_probe2.mjs#L1-L19)
+- [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)
 
 **Section sources**
 - [package.json:1-1](file://package.json#L1-L1)
@@ -377,6 +514,9 @@ PW --> E2E["E2E specs"]
 - Prefer deterministic mocks for random-heavy logic (e.g., particle systems).
 - Keep E2E tests focused and parallelized; avoid excessive retries in CI.
 - Exclude non-essential paths from coverage to reduce overhead.
+- **Enhanced**: Visual verification scripts should be run selectively during development and pre-release phases to avoid CI bottlenecks.
+- **Enhanced**: Optimize screenshot capture by targeting specific game states rather than full game sessions.
+- **Enhanced**: Use appropriate viewport sizes and device scale factors to balance quality and performance.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -392,6 +532,11 @@ Common issues and resolutions:
 - E2E viewport and layout:
   - Wait for data attributes indicating app readiness before assertions.
   - Validate bounding boxes and scrollbars to catch regressions.
+- **Enhanced**: Visual verification issues:
+  - Ensure vite preview server is running before executing scripts
+  - Verify game initialization before capturing screenshots
+  - Check browser compatibility for CSS transform features
+  - Validate screenshot paths and permissions for automated capture
 
 **Section sources**
 - [tests/runtime-config.test.ts:214-222](file://tests/runtime-config.test.ts#L214-L222)
@@ -399,9 +544,10 @@ Common issues and resolutions:
 - [tests/test-helpers.ts:68-87](file://tests/test-helpers.ts#L68-L87)
 - [tests/index-win-flow.integration.test.ts:112-119](file://tests/index-win-flow.integration.test.ts#L112-L119)
 - [e2e/mobile-layout.spec.ts:36-45](file://e2e/mobile-layout.spec.ts#L36-L45)
+- [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
 
 ## Conclusion
-The testing framework employs a robust multi-layered strategy: unit tests for isolated logic, integration tests for controller and bootstrap flows, and E2E tests for mobile-specific UI and navigation. Vitest and Playwright configurations emphasize reliability, determinism, and comprehensive coverage. Quality gates ensure that validation, testing, and coverage checks are consistently executed, maintaining high standards for correctness and regression prevention.
+The testing framework employs a robust multi-layered strategy: unit tests for isolated logic, integration tests for controller and bootstrap flows, and E2E tests for mobile-specific UI and navigation. The enhanced visual verification infrastructure adds automated screenshot workflows, real-time debugging probes, and comprehensive style variant testing capabilities. Vitest and Playwright configurations emphasize reliability, determinism, and comprehensive coverage, while the new visual verification tools provide powerful debugging and regression prevention capabilities. Quality gates ensure that validation, testing, and coverage checks are consistently executed, maintaining high standards for correctness and regression prevention across both functional and visual aspects of the application.
 
 ## Appendices
 
@@ -417,6 +563,11 @@ The testing framework employs a robust multi-layered strategy: unit tests for is
 - E2E tests:
   - Mobile layout: [e2e/mobile-layout.spec.ts:94-175](file://e2e/mobile-layout.spec.ts#L94-L175), [e2e/mobile-layout.spec.ts:179-279](file://e2e/mobile-layout.spec.ts#L179-L279)
   - Debug layout: [e2e/debug-layout.spec.ts:3-59](file://e2e/debug-layout.spec.ts#L3-L59)
+- **Enhanced**: Visual verification scripts:
+  - Screenshot workflow: [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+  - Tile geometry probe: [_probe.mjs:1-29](file://_probe.mjs#L1-L29)
+  - Background position probe: [_probe2.mjs:1-19](file://_probe2.mjs#L1-L19)
+  - Style variant testing: [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)
 
 ### Mocking Strategies Reference
 - Fetch responses: [tests/test-helpers.ts:3-8](file://tests/test-helpers.ts#L3-L8)
@@ -428,3 +579,8 @@ The testing framework employs a robust multi-layered strategy: unit tests for is
 - DOM visibility and viewport bounds: [e2e/mobile-layout.spec.ts:48-71](file://e2e/mobile-layout.spec.ts#L48-L71)
 - Timer-driven flows: [tests/game.test.ts:266-304](file://tests/game.test.ts#L266-L304)
 - Leaderboard ranking and penalties: [tests/leaderboard.test.ts:649-800](file://tests/leaderboard.test.ts#L649-L800)
+
+### Visual Verification Reference
+- **Enhanced**: Automated screenshot capture: [_shot.mjs:1-29](file://_shot.mjs#L1-L29)
+- **Enhanced**: Real-time debugging: [_probe.mjs:1-29](file://_probe.mjs#L1-L29), [_probe2.mjs:1-19](file://_probe2.mjs#L1-L19)
+- **Enhanced**: Style variant testing: [_experiment.mjs:1-23](file://_experiment.mjs#L1-L23)

@@ -67,29 +67,31 @@ missed the winfx override):
 
 No work required for Step 2.
 
-### Step 3 — Lighter assets
+### Step 3 — Lighter assets — DONE
 
-- **Plasma texture:** either
-  - (a) replace `textures/plasma.png` (~444KB) with a pure-CSS gradient stack
-    (conic / repeating-radial gradients) and drop the bitmap entirely — also
-    removes the `#plasmaWarning` failure path in `src/index.ts` (only do the
-    index.ts edit if the PNG is removed); or
-  - (b) convert to WebP/AVIF (~90% smaller) and keep the probe.
-  - Recommend (b) first (lower risk, keeps the fallback machinery), with (a) as
-    a follow-up if a gradient looks acceptable.
-- **Menu backgrounds:** convert the nine `icon/menu-*.png` files (~10MB total)
-  to WebP/AVIF. Update the references in `src/menu-texture.ts` /
-  wherever `--menu-pack-texture-image` is sourced. Verify each pack's menu still
-  renders.
+Converted all textures from PNG to WebP using sharp-cli (quality 82–85):
 
-### Step 4 — Lighting polish (`styles.css`)
+- **Plasma texture:** `textures/plasma.png` (444KB) → `textures/plasma.webp` (39KB) — 91% reduction.
+  Updated references in `styles.css`, `styles.winfx.css`, and the probe URL in
+  `src/index.ts` (`checkPlasmaTextureAvailability`). The fallback/warning path
+  remains intact, just pointed at the new `.webp` file.
+- **Menu backgrounds:** nine `textures/menu-*.png` files (~10.3MB total) →
+  nine `textures/menu-*.webp` files (~770KB total) — 93% reduction.
+  Updated `src/menu-texture.ts` (all `imagePath` values + added `.webp` to
+  `SUPPORTED_MENU_TEXTURE_EXTENSIONS`). Test assertions updated.
+- Old PNG files removed (WebP has universal modern-browser support).
 
-- Add a soft `radial-gradient` specular highlight overlay on `.tile-front`
-  (top-left light source) layered above the plasma.
-- Enhance the hover state: scale the existing `box-shadow` / add a
-  `drop-shadow`-style contact shadow that grows slightly on
-  `.tile:hover` (respecting the existing reduced-motion hover override that sets
-  `transform: none`).
+### Step 4 — Lighting polish (`styles.css`) — DONE
+
+- Added a soft `radial-gradient` specular highlight on `.game-block .tile-front`
+  (top-left 22%/18% light source, layered as a background above the base color).
+  On plasma-surface tiles the existing `styles.winfx.css` glow overlay naturally
+  overrides this.
+- Enhanced the hover state: `.game-block.tile:hover` now lifts 2px (up from 1px),
+  slightly scales (1.008), and expands the contact shadow from 10px→16px blur
+  with increased offset. A `box-shadow` transition (180ms ease) smooths entry.
+- `prefers-reduced-motion: reduce` block resets both transform and shadow to
+  their at-rest values with no transition.
 
 ## Verification
 

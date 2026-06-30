@@ -249,16 +249,16 @@ describe("index win flow integration", () => {
     // Simulate a pack-specific texture having been applied
     menuFrameEl!.style.setProperty(
       "--menu-pack-texture-image",
-      'url("./textures/menu-space-astronomy.png")',
+      'url("./textures/menu-space-astronomy.webp")',
     );
-    menuFrameEl!.dataset.menuTextureRequestedImagePath = "textures/menu-space-astronomy.png";
+    menuFrameEl!.dataset.menuTextureRequestedImagePath = "textures/menu-space-astronomy.webp";
 
     // Four clicks should not trigger the effect
     for (let i = 0; i < 4; i++) {
       menuTitleEl!.click();
     }
     expect(menuFrameEl!.style.getPropertyValue("--menu-pack-texture-image")).toBe(
-      'url("./textures/menu-space-astronomy.png")',
+      'url("./textures/menu-space-astronomy.webp")',
     );
 
     // Fifth click triggers the Easter egg and resets to the default texture

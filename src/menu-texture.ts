@@ -5,6 +5,7 @@ export const SUPPORTED_MENU_TEXTURE_EXTENSIONS = [
   ".png",
   ".jpg",
   ".jpeg",
+  ".webp",
 ] as const;
 
 export interface MenuTextureDefinition {
@@ -14,7 +15,7 @@ export interface MenuTextureDefinition {
 }
 
 export const DEFAULT_MENU_TEXTURE: Readonly<MenuTextureDefinition> = {
-  imagePath: "textures/menu-default.png",
+  imagePath: "textures/menu-default.webp",
   size: "cover",
   position: "center",
 };
@@ -29,42 +30,42 @@ export const isSupportedMenuTexturePath = (imagePath: string): boolean => {
 
 export const MENU_TEXTURES: Readonly<Record<EmojiPackId, MenuTextureDefinition>> = {
   "space-astronomy": {
-    imagePath: "textures/menu-space-astronomy.png",
+    imagePath: "textures/menu-space-astronomy.webp",
     size: "cover",
     position: "center",
   },
   "plants-nature": {
-    imagePath: "textures/menu-plants-nature.png",
+    imagePath: "textures/menu-plants-nature.webp",
     size: "cover",
     position: "center",
   },
   "food-drinks": {
-    imagePath: "textures/menu-food-drinks.png",
+    imagePath: "textures/menu-food-drinks.webp",
     size: "cover",
     position: "center",
   },
   technology: {
-    imagePath: "textures/menu-technology.png",
+    imagePath: "textures/menu-technology.webp",
     size: "cover",
     position: "center",
   },
   "world-flags": {
-    imagePath: "textures/menu-world-flags.png",
+    imagePath: "textures/menu-world-flags.webp",
     size: "cover",
     position: "center",
   },
   "medieval-fantasy": {
-    imagePath: "textures/menu-medieval-fantasy.png",
+    imagePath: "textures/menu-medieval-fantasy.webp",
     size: "cover",
     position: "center",
   },
   "music-performance": {
-    imagePath: "textures/menu-music-performance.png",
+    imagePath: "textures/menu-music-performance.webp",
     size: "cover",
     position: "center",
   },
   "religious-symbols": {
-    imagePath: "textures/menu-religious-symbols.png",
+    imagePath: "textures/menu-religious-symbols.webp",
     size: "cover",
     position: "center",
   },

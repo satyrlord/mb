@@ -336,7 +336,7 @@ const setPlasmaWarningVisible = (isVisible: boolean): void => {
 };
 
 const checkPlasmaTextureAvailability = async (): Promise<void> => {
-  const plasmaUrl = new URL("./textures/plasma.png", window.location.href).toString();
+  const plasmaUrl = new URL("./textures/plasma.webp", window.location.href).toString();
 
   try {
     const response = await window.fetch(plasmaUrl, { cache: "no-cache" });

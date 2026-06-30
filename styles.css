@@ -1284,14 +1284,48 @@ body {
   border-radius: 0;
 }
 
+/*
+ * Specular highlight: a soft radial-gradient from the top-left simulates
+ * a directional light source. Applied as a background layer on the
+ * tile-front within a game-block. On plasma-surface tiles the winfx
+ * overlay system provides its own glow, so this is a clean fallback
+ * highlight for non-plasma faces.
+ */
 .game-block .tile-front {
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.34),
     inset -1px -1px 0 rgba(0, 0, 0, 0.16);
+  background:
+    radial-gradient(
+      ellipse 80% 70% at 22% 18%,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.06) 40%,
+      transparent 72%
+    ),
+    var(--color-tile-front-bg);
 }
 
 .tile:not(.revealed):not(.matched):not(:disabled):hover {
-  transform: rotateX(var(--tile-camera-tilt)) rotateY(var(--tile-rest-angle)) translateY(-1px) scale(1.005);
+  transform: rotateX(var(--tile-camera-tilt)) rotateY(var(--tile-rest-angle)) translateY(-2px) scale(1.008);
+}
+
+/* Enhanced hover contact shadow: the block lifts slightly and the shadow
+ * expands/softens to reinforce depth. Grows from the base .game-block shadow. */
+.game-block.tile:not(.revealed):not(.matched):not(:disabled):hover {
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.36),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.14),
+    /* right + bottom depth faces */
+    var(--tile-depth, 6px) 0 0 var(--tile-side-right),
+    0 var(--tile-depth, 6px) 0 var(--tile-side-bottom),
+    /* far edge shading */
+    calc(var(--tile-depth, 6px) + 2px) 0 0 rgba(0, 0, 0, 0.18),
+    0 calc(var(--tile-depth, 6px) + 2px) 0 rgba(0, 0, 0, 0.16),
+    /* expanded contact shadow on hover */
+    calc(var(--tile-depth, 6px) + 4px) calc(var(--tile-depth, 6px) + 4px) 16px rgba(0, 0, 0, 0.5);
+  transition:
+    transform var(--tile-flip-duration-ms, 560ms) cubic-bezier(0.2, 0.7, 0.25, 1),
+    box-shadow 180ms ease;
 }
 
 .tile.blocked {
@@ -1338,7 +1372,7 @@ body {
 /* Restore plasma texture when composable class is applied to tile front */
 .tile-front.plasma-surface {
   background-color: #808080;
-  background-image: url("./textures/plasma.png");
+  background-image: url("./textures/plasma.webp");
   background-size: 500%;
   background-position: 20% 20%;
   background-blend-mode: multiply;
@@ -1365,7 +1399,7 @@ body {
       rgb(255 255 255 / calc(1 - var(--tile-back-opacity, var(--tile-global-opacity, 0.5)))),
       rgb(255 255 255 / calc(1 - var(--tile-back-opacity, var(--tile-global-opacity, 0.5))))
     ),
-    url("./textures/plasma.png");
+    url("./textures/plasma.webp");
   background-size: 500%;
   background-position: 20% 20%;
   background-blend-mode: normal, multiply;
@@ -1485,6 +1519,18 @@ body {
 
   .tile:not(.revealed):not(.matched):not(:disabled):hover {
     transform: none;
+  }
+
+  .game-block.tile:not(.revealed):not(.matched):not(:disabled):hover {
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.32),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.16),
+      var(--tile-depth, 6px) 0 0 var(--tile-side-right),
+      0 var(--tile-depth, 6px) 0 var(--tile-side-bottom),
+      calc(var(--tile-depth, 6px) + 2px) 0 0 rgba(0, 0, 0, 0.22),
+      0 calc(var(--tile-depth, 6px) + 2px) 0 rgba(0, 0, 0, 0.2),
+      calc(var(--tile-depth, 6px) + 2px) calc(var(--tile-depth, 6px) + 2px) 10px rgba(0, 0, 0, 0.4);
+    transition: none;
   }
 
   .tile.matched {

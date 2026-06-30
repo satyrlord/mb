@@ -11,6 +11,7 @@ import {
   soundManagerTesting,
   selectTileFlipFiles,
 } from "../src/sound-manager.js";
+import { audioFileDiscoveryTesting, discoverAudioFilesInDirectory } from "../src/audio-file-discovery.js";
 
 class MockAudioBufferSourceNode {
   public buffer: AudioBuffer | null = null;
@@ -180,10 +181,10 @@ describe("SoundManager", () => {
     const originalFetch = global.fetch;
 
     global.fetch = vi.fn(async () => createJsonResponse(["a.wav", "b.mp3"])) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromJson("./sound")).resolves.toEqual(["a.wav", "b.mp3"]);
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromJson("./sound")).resolves.toEqual(["a.wav", "b.mp3"]);
 
     global.fetch = vi.fn(async () => createJsonResponse({ files: ["c.ogg", 99, "d.m4a"] })) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromJson("./sound")).resolves.toEqual(["c.ogg", "d.m4a"]);
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromJson("./sound")).resolves.toEqual(["c.ogg", "d.m4a"]);
 
     global.fetch = originalFetch;
   });
@@ -192,10 +193,10 @@ describe("SoundManager", () => {
     const originalFetch = global.fetch;
 
     global.fetch = vi.fn(async () => createJsonResponse({ bad: true })) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromJson("./sound")).resolves.toBeNull();
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromJson("./sound")).resolves.toBeNull();
 
     global.fetch = vi.fn(async () => createNotFoundResponse()) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromJson("./sound")).resolves.toBeNull();
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromJson("./sound")).resolves.toBeNull();
 
     global.fetch = originalFetch;
   });
@@ -204,10 +205,10 @@ describe("SoundManager", () => {
     const originalFetch = global.fetch;
 
     global.fetch = vi.fn(async () => createJsonResponse({ files: ["x.wav", "y.mp3"] })) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromAssetIndexEndpoint("./sound")).resolves.toEqual(["x.wav", "y.mp3"]);
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromAssetIndexEndpoint("./sound")).resolves.toEqual(["x.wav", "y.mp3"]);
 
     global.fetch = vi.fn(async () => createNotFoundResponse()) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromAssetIndexEndpoint("./sound")).resolves.toBeNull();
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromAssetIndexEndpoint("./sound")).resolves.toBeNull();
 
     global.fetch = originalFetch;
   });
@@ -216,13 +217,13 @@ describe("SoundManager", () => {
     const originalFetch = global.fetch;
 
     global.fetch = vi.fn(async () => createTextResponse("application/json", "[]")) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromDirectoryHtml("./sound")).resolves.toBeNull();
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromDirectoryHtml("./sound")).resolves.toBeNull();
 
     global.fetch = vi.fn(async () => createTextResponse(
       "text/html",
       `<a href='flip01.wav'>flip</a><a href='notes.txt'>notes</a>`,
     )) as typeof fetch;
-    await expect(soundManagerTesting.tryLoadFileListFromDirectoryHtml("./sound")).resolves.toEqual(["flip01.wav"]);
+    await expect(audioFileDiscoveryTesting.tryLoadFileListFromDirectoryHtml("./sound")).resolves.toEqual(["flip01.wav"]);
 
     global.fetch = originalFetch;
   });
@@ -244,7 +245,7 @@ describe("SoundManager", () => {
       return createNotFoundResponse();
     }) as typeof fetch;
 
-    const files = await soundManagerTesting.discoverAudioFilesInDirectory("./sound");
+    const files = await discoverAudioFilesInDirectory("./sound");
     expect(files).toEqual(["flip01.wav", "newgame1.wav"]);
 
     global.fetch = originalFetch;

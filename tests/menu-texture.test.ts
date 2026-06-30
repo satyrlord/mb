@@ -80,7 +80,8 @@ describe("MENU_TEXTURES", () => {
       expect(isSupportedMenuTexturePath(`textures/example${extension}`)).toBe(true);
     }
 
-    expect(isSupportedMenuTexturePath("textures/example.webp")).toBe(false);
+    expect(isSupportedMenuTexturePath("textures/example.webp")).toBe(true);
+    expect(isSupportedMenuTexturePath("textures/example.avif")).toBe(false);
   });
 });
 
@@ -96,12 +97,12 @@ describe("applyMenuTexture", () => {
     );
 
     expect(MockImage.created).toHaveLength(1);
-    expect(MockImage.created[0]?.src).toBe("./textures/menu-plants-nature.png");
+    expect(MockImage.created[0]?.src).toBe("./textures/menu-plants-nature.webp");
 
     MockImage.created[0]?.resolveLoad();
 
     expect(menuElement.style.getPropertyValue("--menu-pack-texture-image")).toBe(
-      'url("./textures/menu-plants-nature.png")',
+      'url("./textures/menu-plants-nature.webp")',
     );
     expect(menuElement.style.getPropertyValue("--menu-pack-texture-size")).toBe("cover");
     expect(menuElement.style.getPropertyValue("--menu-pack-texture-position")).toBe("center");
