@@ -134,7 +134,6 @@ const timeValueElement = requireElement<HTMLElement>("#timeValue");
 const attemptsValueElement = requireElement<HTMLElement>("#attemptsValue");
 const statusMessageElement = requireElement<HTMLElement>("#statusMessage");
 const plasmaWarningElement = requireElement<HTMLElement>("#plasmaWarning");
-const audioUnlockNoticeElement = requireElement<HTMLElement>("#audioUnlockNotice");
 const topbarMenuLabel = requireElement<HTMLElement>("#topbarMenuLabel");
 const topbarActionsElement = requireElement<HTMLElement>(".topbar-actions");
 const menuBottomRepo = requireElement<HTMLElement>("#menuBottomRepo");
@@ -146,10 +145,6 @@ const debugWinButton = requireElement<HTMLButtonElement>("#debugWinButton");
 const debugTilesButton = requireElement<HTMLButtonElement>("#debugTilesButton");
 const debugSvgImportsButton = requireElement<HTMLButtonElement>("#debugSvgImportsButton");
 const debugFlipTilesButton = requireElement<HTMLButtonElement>("#debugFlipTilesButton");
-const muteMusicButton = requireElement<HTMLButtonElement>("#muteMusicButton");
-const muteMusicIconOn = requireElement<HTMLElement>("#muteMusicIconOn");
-const muteMusicIconOff = requireElement<HTMLElement>("#muteMusicIconOff");
-
 const muteSoundButton = requireElement<HTMLButtonElement>("#muteSoundButton");
 const muteSoundIconOn = requireElement<HTMLElement>("#muteSoundIconOn");
 const muteSoundIconOff = requireElement<HTMLElement>("#muteSoundIconOff");
@@ -246,12 +241,6 @@ const winFxController = new WinFxController({
 const soundManager = new SoundManager();
 const audioUiController = new AudioUiController({
   elements: {
-    audioUnlockNotice: audioUnlockNoticeElement,
-    menuFrame,
-    muteMusicButton,
-    muteMusicIconOn,
-    muteMusicIconOff,
-
     muteSoundButton,
     muteSoundIconOn,
     muteSoundIconOff,
@@ -393,7 +382,6 @@ interface FrameLayoutConfig {
   menuButtonHidden: boolean;
   menuBottomRepoHidden: boolean;
   statusMessageHidden: boolean;
-  audioUnlockNoticeHidden: boolean;
   orientationToggleHidden: boolean;
   leaderboardBackHidden: boolean;
 }
@@ -407,7 +395,6 @@ const configureFrame = (cfg: FrameLayoutConfig): void => {
   menuButton.hidden = cfg.menuButtonHidden;
   menuBottomRepo.hidden = cfg.menuBottomRepoHidden;
   statusMessageElement.hidden = cfg.statusMessageHidden;
-  audioUnlockNoticeElement.hidden = cfg.audioUnlockNoticeHidden;
   orientationToggleButton.hidden = cfg.orientationToggleHidden;
   leaderboardBackButton.hidden = cfg.leaderboardBackHidden;
 };
@@ -421,7 +408,6 @@ const showLeaderboardFrame = (): void => {
     menuButtonHidden: false,
     menuBottomRepoHidden: false,
     statusMessageHidden: true,
-    audioUnlockNoticeHidden: true,
     orientationToggleHidden: true,
     leaderboardBackHidden: false,
   });
@@ -524,15 +510,12 @@ const showMenuFrame = (): void => {
     menuButtonHidden: true,
     menuBottomRepoHidden: false,
     statusMessageHidden: true,
-    audioUnlockNoticeHidden: false,
     orientationToggleHidden: false,
     leaderboardBackHidden: true,
   });
   uiView.setStatus("Select difficulty.");
   setDifficultySelection("");
   session = { mode: "menu" };
-  void soundManager.playBackgroundMusic();
-  audioUiController.updateAudioUnlockNotice();
 };
 
 const showGameFrame = (): void => {
@@ -543,7 +526,6 @@ const showGameFrame = (): void => {
     menuButtonHidden: false,
     menuBottomRepoHidden: true,
     statusMessageHidden: false,
-    audioUnlockNoticeHidden: true,
     orientationToggleHidden: true,
     leaderboardBackHidden: true,
   });
@@ -557,7 +539,6 @@ const showDebugTilesFrame = (): void => {
     menuButtonHidden: false,
     menuBottomRepoHidden: true,
     statusMessageHidden: false,
-    audioUnlockNoticeHidden: true,
     orientationToggleHidden: true,
     leaderboardBackHidden: true,
   });
@@ -572,7 +553,6 @@ const showSettingsFrame = (): void => {
     menuButtonHidden: false,
     menuBottomRepoHidden: false,
     statusMessageHidden: true,
-    audioUnlockNoticeHidden: true,
     orientationToggleHidden: true,
     leaderboardBackHidden: true,
   });
@@ -638,7 +618,6 @@ const startGameForDifficulty = (difficulty: DifficultyConfig): void => {
   setDifficultySelection(difficulty.id);
   uiView.setStatus(getDifficultyStatusMessage(difficulty));
   render();
-  void soundManager.playBackgroundMusic();
   void soundManager.playNewGame();
 };
 
@@ -979,7 +958,6 @@ const debugController = new DebugController({
   setDifficultySelection,
   setStatus: (message: string) => uiView.setStatus(message),
   render,
-  playBackgroundMusic: () => soundManager.playBackgroundMusic(),
   playNewGame: () => soundManager.playNewGame(),
   getScaleByAnimationSpeed: scaleByAnimationSpeed,
   getGameplayTiming,
@@ -1105,7 +1083,6 @@ const bootstrap = async (): Promise<void> => {
   settingsController.initialize();
   debugController.bindEventListeners();
   audioUiController.initializeMuteButtonStates();
-  audioUiController.initializeMenuMusicAutoplayRecovery();
   await initializeDropShadow();
   updateOrientationToggleButton();
   applyHdMode();

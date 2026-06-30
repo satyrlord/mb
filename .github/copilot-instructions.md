@@ -116,7 +116,7 @@ npm run build
 - `src/sound-engine.ts`: Web Audio API core engine (dual-layer)
 - `src/sound-manager.ts`: high-level game sound controller
 - `src/audio-loader.ts`: audio asset loading and caching
-- `src/audio-ui-controller.ts`: mute button state, music autoplay recovery, unlock notice
+- `src/audio-ui-controller.ts`: mute button state for sound effects
 - `src/win-fx.ts`: win celebration particle effects
 - `src/win-sequence-controller.ts`: win animation sequence orchestration
 - `src/orientation-controller.ts`: orientation mode state, toggle, and layout helpers
@@ -154,7 +154,7 @@ npm run build
 - Site target: `https://satyrlord.github.io/mb/`
 - Workflow builds with `npm ci`, validates, compiles, then publishes
   `index.html`, `styles.css`, `styles.winfx.css`, `dist/`, `config/`,
-  `textures/`, `icon/`, `sound/`, and `music/` assets.
+  `textures/`, `icon/`, and `sound/` assets.
 
 ## Anti-patterns to Avoid
 

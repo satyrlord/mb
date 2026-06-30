@@ -2,7 +2,6 @@ import { AudioLoader } from "./audio-loader";
 import { SoundEngine } from "./sound-engine";
 import { shuffle } from "./utils";
 
-const MUSIC_MUTE_STORAGE_KEY = "memoryblox-music-muted";
 const SOUND_MUTE_STORAGE_KEY = "memoryblox-sound-muted";
 
 const AUDIO_FILE_PATTERN = /\.(mp3|wav|ogg|m4a)$/iu;
@@ -241,8 +240,6 @@ export class SoundManager {
 
   private readonly audioLoader: AudioLoader;
 
-  private readonly musicPicker = new RandomRoundRobinPicker<string>();
-
   private readonly fxPicker = new RandomRoundRobinPicker<string>();
 
   private readonly tileFlipPicker = new RandomRoundRobinPicker<string>();
@@ -259,8 +256,6 @@ export class SoundManager {
 
   private pendingNewGameFx: Promise<void> | null = null;
 
-  private musicTrackCount = 0;
-
   public constructor() {
     this.soundEngine = new SoundEngine();
     this.audioLoader = new AudioLoader(this.soundEngine.getAudioContext());
@@ -271,12 +266,8 @@ export class SoundManager {
       return;
     }
 
-    const [musicFiles, soundFiles] = await Promise.all([
-      discoverAudioFilesInDirectory("./music"),
-      discoverAudioFilesInDirectory("./sound"),
-    ]);
+    const soundFiles = await discoverAudioFilesInDirectory("./sound");
 
-    const musicUrls = musicFiles.map((file) => buildAbsoluteAssetUrl("./music", file));
     const soundUrls = soundFiles.map((file) => buildAbsoluteAssetUrl("./sound", file));
     const generalFxUrls = selectGeneralFxFiles(soundFiles)
       .map((fileName) => buildAbsoluteAssetUrl("./sound", fileName));
@@ -291,7 +282,6 @@ export class SoundManager {
     const winUrls = selectWinFiles(soundFiles)
       .map((fileName) => buildAbsoluteAssetUrl("./sound", fileName));
 
-    this.musicPicker.setItems(musicUrls);
     this.fxPicker.setItems(generalFxUrls);
     this.tileFlipPicker.setItems(tileFlipUrls);
     this.matchPicker.setItems(matchUrls);
@@ -299,19 +289,11 @@ export class SoundManager {
     this.newGamePicker.setItems(newGameUrls);
     this.winPicker.setItems(winUrls);
 
-    this.soundEngine.setMusicMuted(true);
-    writeStoredMute(MUSIC_MUTE_STORAGE_KEY, true);
     this.soundEngine.setSoundFXMuted(readStoredMute(SOUND_MUTE_STORAGE_KEY, false));
 
-    await this.audioLoader.preload([...musicUrls, ...soundUrls]);
-
-    this.musicTrackCount = musicUrls.length;
+    await this.audioLoader.preload([...soundUrls]);
 
     this.initialized = true;
-  }
-
-  public hasMusicTracks(): boolean {
-    return this.musicTrackCount > 0;
   }
 
   public isAudioContextRunning(): boolean {
@@ -326,55 +308,13 @@ export class SoundManager {
     return context.state === "running";
   }
 
-  public getMusicMuted(): boolean {
-    return this.soundEngine.getMusicMuted();
-  }
-
   public getSoundMuted(): boolean {
     return this.soundEngine.getSoundFXMuted();
-  }
-
-  public isMusicPlaying(): boolean {
-    return this.soundEngine.isMusicPlaying();
-  }
-
-  public setMusicMuted(muted: boolean): void {
-    this.soundEngine.setMusicMuted(muted);
-    writeStoredMute(MUSIC_MUTE_STORAGE_KEY, muted);
   }
 
   public setSoundMuted(muted: boolean): void {
     this.soundEngine.setSoundFXMuted(muted);
     writeStoredMute(SOUND_MUTE_STORAGE_KEY, muted);
-  }
-
-  public async playBackgroundMusic(): Promise<void> {
-    if (!this.initialized) {
-      return;
-    }
-
-    if (this.soundEngine.getMusicMuted()) {
-      return;
-    }
-
-    await this.ensureAudioContextRunning();
-
-    if (this.soundEngine.isMusicPlaying()) {
-      return;
-    }
-
-    const trackUrl = this.musicPicker.next();
-
-    if (trackUrl === null) {
-      return;
-    }
-
-    const buffer = await this.audioLoader.load(trackUrl);
-    this.soundEngine.playMusic(buffer, true);
-  }
-
-  public stopBackgroundMusic(): void {
-    this.soundEngine.stopMusic(false);
   }
 
   public async playTileFlip(): Promise<void> {
@@ -436,7 +376,7 @@ export class SoundManager {
     }
 
     const buffer = await this.audioLoader.load(flipUrl);
-    await this.soundEngine.playSoundFX(buffer, { interruptMusic: false });
+    await this.soundEngine.playSoundFX(buffer);
   }
 
   private async playMatchFx(): Promise<void> {
@@ -453,7 +393,7 @@ export class SoundManager {
     }
 
     const buffer = await this.audioLoader.load(matchUrl);
-    await this.soundEngine.playSoundFX(buffer, { interruptMusic: false });
+    await this.soundEngine.playSoundFX(buffer);
   }
 
   private async playMismatchFx(): Promise<void> {
@@ -470,7 +410,7 @@ export class SoundManager {
     }
 
     const buffer = await this.audioLoader.load(mismatchUrl);
-    await this.soundEngine.playSoundFX(buffer, { interruptMusic: false });
+    await this.soundEngine.playSoundFX(buffer);
   }
 
   private async playNewGameFx(): Promise<void> {
@@ -487,10 +427,7 @@ export class SoundManager {
     }
 
     const buffer = await this.audioLoader.load(newGameUrl);
-    await this.soundEngine.playSoundFX(buffer, {
-      interruptMusic: false,
-      musicDuckGainMultiplier: 0.3,
-    });
+    await this.soundEngine.playSoundFX(buffer);
   }
 
   private async playWinFx(onStarted?: (durationMs: number) => void): Promise<number | null> {
@@ -509,10 +446,7 @@ export class SoundManager {
     const buffer = await this.audioLoader.load(winUrl);
     const durationMs = Math.max(1, Math.round(buffer.duration * 1000));
     onStarted?.(durationMs);
-    void this.soundEngine.playSoundFX(buffer, {
-      interruptMusic: false,
-      musicDuckGainMultiplier: 0.3,
-    });
+    void this.soundEngine.playSoundFX(buffer);
     return durationMs;
   }
 

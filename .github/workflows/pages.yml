@@ -41,14 +41,13 @@ jobs:
 
       - name: Prepare static site
         run: |
-          mkdir -p site/assets site/config site/textures site/icon site/sound site/music
+          mkdir -p site/assets site/config site/textures site/icon site/sound
           cp dist/index.html site/index.html
           cp -r dist/assets/. site/assets/
           cp -r config/. site/config/
           cp -r textures/. site/textures/
           cp -r icon/. site/icon/
           cp -r sound/. site/sound/
-          cp -r music/. site/music/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

@@ -89,7 +89,6 @@ const createMockDeps = (
     setDifficultySelection: vi.fn(),
     setStatus: vi.fn(),
     render: vi.fn(),
-    playBackgroundMusic: vi.fn(async () => {}),
     playNewGame: vi.fn(async () => {}),
     getScaleByAnimationSpeed: vi.fn((ms: number) => ms),
     getGameplayTiming: () => ({

@@ -1,36 +1,25 @@
 # Sound Engine Implementation Plan
 
-## Status Update (2026-03-06)
+## Status Update (2026-06-30)
 
-- This plan is now largely implemented in production code (`sound-engine`,
-   `sound-manager`, `audio-loader`) and covered by active tests.
-- Today's work focused on edge-path hardening and branch-coverage completion,
-   including ducking/mute guards, fallback paths, and non-overlap playback
-   invariants.
-- Audio-specific UI responsibilities now live in `audio-ui-controller.ts`
-  instead of being inlined in `src/index.ts`.
-- Win-triggered audio handoff is now coordinated by `win-sequence-controller.ts`,
-  which controls the board fade and delegates the celebration start to
-  `SoundManager` + `WinFxController`.
+- Background music layer has been removed. The engine is now SFX-only.
+- This document has been updated to reflect the current SFX-only architecture.
+- `SoundEngine`, `SoundManager`, and `AudioLoader` remain for sound effects.
+- Audio-specific UI responsibilities live in `audio-ui-controller.ts`.
+- Win-triggered audio handoff is coordinated by `win-sequence-controller.ts`.
 - Keep this document as architecture context; treat current source and tests
    as the authoritative implementation behavior.
 
 ## Overview
 
-Implement a cross-platform browser-based sound engine for MEMORYBLOX with mutually
-exclusive sound/music layers and smooth fade transitions.
+Implement a cross-platform browser-based sound effects engine for MEMORYBLOX
+using the Web Audio API.
 
 ## Core Requirements
 
-- **Single audio track architecture**: No audio overlap allowed
-- **Two layers**:
-  - Background music layer (continuous looping)
-  - Sound FX layer (one-shot effects)
-- **Crossfade behavior**: When FX plays, music fades out (2s), then FX plays, then
-  music fades back in (2s) from where it left off
+- **Sound FX layer**: One-shot effects (tile flip, match, mismatch, new game, win)
 - **Browser-native API**: Use Web Audio API (no OS-specific code)
-- **Mute controls**: Independent mute toggles for music and sound FX
-  (already in UI)
+- **Mute control**: Mute toggle for sound effects in the UI
 
 ## Architecture
 
@@ -38,66 +27,50 @@ exclusive sound/music layers and smooth fade transitions.
 
 ```text
 src/
-  sound-engine.ts    # Main sound engine class
+  sound-engine.ts    # Core sound effects engine
   sound-manager.ts   # High-level game sound controller
   audio-loader.ts    # Asset loading and caching
-   audio-ui-controller.ts  # Mute button UI state and autoplay recovery
-   win-sequence-controller.ts  # Win audio/visual handoff orchestration
+  audio-ui-controller.ts  # Mute button UI state
+  win-sequence-controller.ts  # Win audio/visual handoff orchestration
 ```
 
 ### Key Classes
 
 #### `SoundEngine`
 
-Core audio playback engine with crossfade logic.
+Core sound effects playback engine.
 
 **Responsibilities:**
 
 - Manage Web Audio API context
-- Handle two-layer architecture (music + FX)
-- Implement fade-in/fade-out logic
-- Coordinate layer transitions
+- Handle sound FX playback
 - Respect mute state from localStorage
 
 **Public API:**
 
 ```typescript
 class SoundEngine {
-  constructor(options: SoundEngineOptions);
-  
-  // Music layer
-  playMusic(audioBuffer: AudioBuffer, loop: boolean): void;
-  stopMusic(fadeOut: boolean): void;
-  pauseMusic(fadeOut: boolean): void;
-  resumeMusic(fadeIn: boolean): void;
-  
+  constructor(fxVolume?: number);
+
   // FX layer
   playSoundFX(audioBuffer: AudioBuffer): Promise<void>;
-  
+
   // Controls
-  setMusicMuted(muted: boolean): void;
   setSoundFXMuted(muted: boolean): void;
-  getMusicMuted(): boolean;
   getSoundFXMuted(): boolean;
-  
+
   // State
-  isMusicPlaying(): boolean;
   isSoundPlaying(): boolean;
+  getAudioContext(): AudioContext;
 }
 ```
 
 **Internal State:**
 
 - `audioContext: AudioContext` - Web Audio API context
-- `musicSource: AudioBufferSourceNode | null` - Current music source
 - `fxSource: AudioBufferSourceNode | null` - Current FX source
-- `musicGainNode: GainNode` - Music volume control
 - `fxGainNode: GainNode` - FX volume control
-- `musicMuted: boolean` - Music mute state
 - `soundFXMuted: boolean` - Sound FX mute state
-- `musicPauseTime: number` - Track position when music paused
-- `musicBuffer: AudioBuffer | null` - Currently loaded music
-- `musicLoop: boolean` - Whether music should loop
 
 #### `AudioLoader`
 
@@ -115,7 +88,7 @@ Asset loading and caching utility.
 ```typescript
 class AudioLoader {
   constructor(context: AudioContext);
-  
+
   load(url: string): Promise<AudioBuffer>;
   preload(urls: string[]): Promise<void>;
   clearCache(): void;
@@ -124,7 +97,7 @@ class AudioLoader {
 
 #### `SoundManager`
 
-High-level controller that maps game events to audio playback.
+High-level controller that maps game events to sound effect playback.
 
 **Responsibilities:**
 
@@ -139,70 +112,27 @@ High-level controller that maps game events to audio playback.
 ```typescript
 class SoundManager {
   constructor();
-  
+
   async initialize(): Promise<void>;
-  
-  // Music
-  playBackgroundMusic(): void;
-  stopBackgroundMusic(): void;
-  
+
   // Game events
   playTileFlip(): void;
   playTileMatch(): void;
   playTileMismatch(): void;
   playWin(): void;
   playNewGame(): void;
-  
+
   // Mute controls (syncs with localStorage)
-  setMusicMuted(muted: boolean): void;
   setSoundMuted(muted: boolean): void;
+  getSoundMuted(): boolean;
 }
 ```
 
-## Implementation Tasks
+- After FX completes: resume music from saved position → fade in
+- Handle looping correctly on resume
+- Ensure no overlap between FX end and music resume
 
-### Phase 1: Foundation (Core Engine)
-
-1. **Create `src/audio-loader.ts`**
-   - Implement AudioLoader class
-   - Add fetch + decode logic
-   - Implement simple Map-based cache
-   - Add error handling for failed loads
-
-2. **Create `src/sound-engine.ts`**
-   - Set up AudioContext initialization
-   - Create music and FX gain nodes
-   - Implement basic play/stop for music layer
-   - Implement basic play for FX layer (no crossfade yet)
-
-3. **Add unit tests for audio-loader**
-   - Test caching behavior
-   - Test error handling
-   - Mock AudioContext/fetch for testing
-
-4. **Add unit tests for sound-engine basics**
-   - Test AudioContext creation
-   - Test gain node setup
-   - Test mute state management
-
-### Phase 2: Crossfade Logic
-
-1. **Implement fade-in/fade-out utilities**
-   - Create helper function for linear gain ramping
-   - Add fade duration configuration (default 2s)
-   - Handle edge cases (already fading, interrupted fades)
-
-2. **Implement music pause on FX playback**
-   - When FX plays: fade out music → pause music → play FX
-   - Track music playback position during pause
-   - Return Promise that resolves when FX completes
-
-3. **Implement music resume after FX**
-   - After FX completes: resume music from saved position → fade in
-   - Handle looping correctly on resume
-   - Ensure no overlap between FX end and music resume
-
-4. **Add crossfade tests**
+1. **Add crossfade tests**
    - Test fade timing accuracy
    - Test pause/resume position correctness
    - Test interrupted playback scenarios

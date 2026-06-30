@@ -49,7 +49,6 @@ const writeIndexFile = (directoryName) => {
 };
 
 const results = [
-  writeIndexFile("music"),
   writeIndexFile("sound"),
 ];
 

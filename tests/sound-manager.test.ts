@@ -253,7 +253,6 @@ describe("SoundManager", () => {
   it("public playback methods safely no-op before initialize", async () => {
     const soundManager = new SoundManager();
 
-    await expect(soundManager.playBackgroundMusic()).resolves.toBeUndefined();
     await expect(soundManager.playTileFlip()).resolves.toBeUndefined();
     await expect(soundManager.playTileMatch()).resolves.toBeUndefined();
     await expect(soundManager.playTileMismatch()).resolves.toBeUndefined();
@@ -265,7 +264,7 @@ describe("SoundManager", () => {
     const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
 
-      if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
+      if (url.endsWith("./sound/index.json")) {
         return createJsonResponse([]);
       }
 
@@ -286,7 +285,7 @@ describe("SoundManager", () => {
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
 
-      if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
+      if (url.endsWith("./sound/index.json")) {
         return createJsonResponse([]);
       }
 
@@ -301,44 +300,6 @@ describe("SoundManager", () => {
     await expect(soundManager.playTileMismatch()).resolves.toBeUndefined();
     await expect(soundManager.playNewGame()).resolves.toBeUndefined();
     await expect(soundManager.playWin()).resolves.toBeNull();
-  });
-
-  it("ensureAudioContextRunning handles running/no-resume/failed-resume scenarios", async () => {
-    class ResumeAudioContext extends MockAudioContext {
-      public state: AudioContextState = "suspended";
-
-      public async resume(): Promise<void> {
-        this.state = "running";
-      }
-    }
-
-    global.AudioContext = vi.fn(() => new ResumeAudioContext()) as unknown as typeof AudioContext;
-    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = input.toString();
-      if (url.endsWith("./music/index.json")) {
-        return createJsonResponse(["01.mp3"]);
-      }
-      if (url.endsWith("./sound/index.json")) {
-        return createJsonResponse([]);
-      }
-      if (url.includes("./music/")) {
-        return createAudioResponse();
-      }
-      return createNotFoundResponse();
-    }) as typeof fetch;
-
-    const soundManager = new SoundManager();
-    await soundManager.initialize();
-    soundManager.setMusicMuted(false);
-    await expect(soundManager.playBackgroundMusic()).resolves.toBeUndefined();
-
-    const runningContext = (soundManager as unknown as { soundEngine: { getAudioContext: () => AudioContext & { state?: AudioContextState } } })
-      .soundEngine
-      .getAudioContext();
-    if (runningContext.state !== undefined) {
-      runningContext.state = "running";
-    }
-    await expect(soundManager.playBackgroundMusic()).resolves.toBeUndefined();
   });
 
   it("selects only flip* files for tile flip pool", () => {
@@ -682,88 +643,20 @@ describe("SoundManager", () => {
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
 
-      if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
-        return createJsonResponse([]);
-      }
-
-      return createNotFoundResponse();
-    }) as typeof fetch;
-
-    const soundManager = new SoundManager();
-    await soundManager.initialize();
-
-    soundManager.setMusicMuted(true);
-    soundManager.setSoundMuted(true);
-
-    expect(soundManager.getMusicMuted()).toBe(true);
-    expect(soundManager.getSoundMuted()).toBe(true);
-    expect(localStorage.getItem("memoryblox-music-muted")).toBe("true");
-    expect(localStorage.getItem("memoryblox-sound-muted")).toBe("true");
-  });
-
-  it("forces music muted on refresh regardless of stored preference", async () => {
-    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = input.toString();
-
-      if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
-        return createJsonResponse([]);
-      }
-
-      return createNotFoundResponse();
-    }) as typeof fetch;
-
-    localStorage.setItem("memoryblox-music-muted", "false");
-
-    const soundManager = new SoundManager();
-    await soundManager.initialize();
-
-    expect(soundManager.getMusicMuted()).toBe(true);
-    expect(soundManager.getSoundMuted()).toBe(false);
-    expect(localStorage.getItem("memoryblox-music-muted")).toBe("true");
-  });
-
-  it("hasMusicTracks returns false before init and true after init with music files", async () => {
-    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = input.toString();
-
-      if (url.endsWith("./music/index.json")) {
-        return createJsonResponse(["theme.mp3"]);
-      }
-
       if (url.endsWith("./sound/index.json")) {
         return createJsonResponse([]);
       }
 
-      if (url.includes("./music/")) {
-        return createAudioResponse();
-      }
-
       return createNotFoundResponse();
     }) as typeof fetch;
 
     const soundManager = new SoundManager();
-    expect(soundManager.hasMusicTracks()).toBe(false);
-
     await soundManager.initialize();
-    expect(soundManager.hasMusicTracks()).toBe(true);
-  });
 
-  it("isMusicPlaying returns false when no music has been started", async () => {
-    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = input.toString();
+    soundManager.setSoundMuted(true);
 
-      if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
-        return createJsonResponse([]);
-      }
-
-      return createNotFoundResponse();
-    }) as typeof fetch;
-
-    const soundManager = new SoundManager();
-    expect(soundManager.isMusicPlaying()).toBe(false);
-
-    await soundManager.initialize();
-    expect(soundManager.isMusicPlaying()).toBe(false);
+    expect(soundManager.getSoundMuted()).toBe(true);
+    expect(localStorage.getItem("memoryblox-sound-muted")).toBe("true");
   });
 
   it("playNewGame plays sound on second call after first completes", async () => {
@@ -785,12 +678,8 @@ describe("SoundManager", () => {
       global.fetch = vi.fn(async (input: RequestInfo | URL) => {
         const url = input.toString();
 
-        if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
+        if (url.endsWith("./sound/index.json")) {
           return createNotFoundResponse();
-        }
-
-        if (url.includes("/__asset-index?dir=.%2Fmusic")) {
-          return createJsonResponse({ files: ["01.mp3"] });
         }
 
         if (url.includes("/__asset-index?dir=.%2Fsound")) {
@@ -799,7 +688,7 @@ describe("SoundManager", () => {
           });
         }
 
-        if (url.includes("./music/") || url.includes("./sound/")) {
+        if (url.includes("./sound/")) {
           return createAudioResponse();
         }
 
@@ -838,12 +727,8 @@ describe("SoundManager", () => {
       global.fetch = vi.fn(async (input: RequestInfo | URL) => {
         const url = input.toString();
 
-        if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
+        if (url.endsWith("./sound/index.json")) {
           return createNotFoundResponse();
-        }
-
-        if (url.includes("/__asset-index?dir=.%2Fmusic")) {
-          return createJsonResponse({ files: ["01.mp3"] });
         }
 
         if (url.includes("/__asset-index?dir=.%2Fsound")) {
@@ -852,7 +737,7 @@ describe("SoundManager", () => {
           });
         }
 
-        if (url.includes("./music/") || url.includes("./sound/")) {
+        if (url.includes("./sound/")) {
           return createAudioResponse();
         }
 
@@ -879,21 +764,4 @@ describe("SoundManager", () => {
     }
   });
 
-  it("stopBackgroundMusic does not throw before or after initialize", async () => {
-    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = input.toString();
-
-      if (url.endsWith("./music/index.json") || url.endsWith("./sound/index.json")) {
-        return createJsonResponse([]);
-      }
-
-      return createNotFoundResponse();
-    }) as typeof fetch;
-
-    const soundManager = new SoundManager();
-    expect(() => soundManager.stopBackgroundMusic()).not.toThrow();
-
-    await soundManager.initialize();
-    expect(() => soundManager.stopBackgroundMusic()).not.toThrow();
-  });
 });

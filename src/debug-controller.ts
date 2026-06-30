@@ -45,7 +45,6 @@ export interface DebugControllerDeps {
   setDifficultySelection: (id: string) => void;
   setStatus: (message: string) => void;
   render: () => void;
-  playBackgroundMusic: () => Promise<void>;
   playNewGame: () => Promise<void>;
   getScaleByAnimationSpeed: (durationMs: number) => number;
   getGameplayTiming: () => DebugGameplayTiming;
@@ -141,7 +140,6 @@ export class DebugController {
       "Debug Tiles: match the pair to test tile visuals.",
     );
     this.deps.render();
-    void this.deps.playBackgroundMusic();
     void this.deps.playNewGame();
   }
 
@@ -185,7 +183,6 @@ export class DebugController {
       "Debug SVG Imports: Hard board with SVG icons only.",
     );
     this.deps.render();
-    void this.deps.playBackgroundMusic();
     void this.deps.playNewGame();
   }
 
