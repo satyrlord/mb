@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/main/schema/markdownlint-cli2-config.json",
+  "config": {
+    "MD013": {
+      "line_length": 200
+    }
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    ".qoder/**",
+    "tmp/**",
+    ".git/**",
+    "node_modules/**",
+    "**/HTML-REPORT.md",
+    "playwright-report/**"
+  ]
+}
