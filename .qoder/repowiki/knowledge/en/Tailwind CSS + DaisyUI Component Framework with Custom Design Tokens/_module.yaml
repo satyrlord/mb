@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: frontend_style
+title: Tailwind CSS + DaisyUI Component Framework with Custom Design Tokens
+scope: []
+source_files:
+    - styles.css
+    - styles.winfx.css
+    - docs/style-guide.md
+    - config/ui.cfg
+    - index.html
+    - vite.config.ts
+depends_on: []
+related_to: []

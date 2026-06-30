@@ -1,0 +1,14 @@
+schema_version: 1
+module_path: error_handling
+title: Error Handling — Standard Error Throwing with Contextual Wrapping
+scope: []
+source_files:
+    - src/audio-loader.ts
+    - src/game.ts
+    - src/index.ts
+    - src/leaderboard-ui.ts
+    - src/cfg.ts
+    - src/icons.ts
+    - src/debug-controller.ts
+depends_on: []
+related_to: []

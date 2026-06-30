@@ -1,0 +1,4 @@
+- Display view classes (e.g., `BoardView`, `UiView`) are strictly passive and never accept event handlers in their constructors; all event wiring is performed in the bootstrap layer or dedicated controllers.
+- Asynchronous sequences and timers (e.g., mismatch resolution, auto-demo) use `AbortController` signals to ensure cancellable operations and prevent state corruption during rapid user input.
+- Runtime configuration is loaded from `.cfg` files using a centralized `loadCfgFile` utility, with defaults defined in `src/runtime-config.ts` to ensure type safety and fallback reliability.
+- Tile back-face icons are lazily rendered only when a tile is revealed or matched, and cached via a `WeakSet` to avoid redundant DOM updates and image fetches during subsequent renders.

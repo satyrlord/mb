@@ -1,0 +1,19 @@
+schema_version: 1
+module_path: configuration_system
+title: Custom .cfg File-Based Runtime Configuration System
+scope: []
+source_files:
+    - src/cfg.ts
+    - src/runtime-config.ts
+    - src/shadow-config.ts
+    - src/leaderboard.ts
+    - config/ui.cfg
+    - config/shadow.cfg
+    - config/win-fx.cfg
+    - config/leaderboard.cfg
+    - config/audio-formats.json
+    - config/icon-pack-generator.json
+    - tools/validate-config.sh
+    - docs/runtime-config.md
+depends_on: []
+related_to: []

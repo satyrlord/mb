@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: dependency_management
+title: npm-based Dependency Management with Dependabot Automation
+scope: []
+source_files:
+    - package.json
+    - package-lock.json
+    - .github/dependabot.yml
+    - tsconfig.json
+    - vite.config.ts
+    - vitest.config.ts
+    - eslint.config.mjs
+    - playwright.config.ts
+depends_on: []
+related_to: []

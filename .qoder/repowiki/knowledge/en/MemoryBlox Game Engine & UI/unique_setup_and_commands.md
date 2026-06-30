@@ -1,0 +1,3 @@
+- **Artifact Generation**: Run `npm run artifacts` to generate audio indexes and sync icon packs before building.
+- **Development**: Use `npm run dev` to start the Vite server and the local leaderboard API concurrently.
+- **Quality Gate**: Execute `npm run quality:full` to run validation, static analysis, unit tests, and E2E tests in sequence.

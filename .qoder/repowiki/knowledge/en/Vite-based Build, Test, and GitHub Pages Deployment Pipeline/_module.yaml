@@ -1,0 +1,14 @@
+schema_version: 1
+module_path: build_system
+title: Vite-based Build, Test, and GitHub Pages Deployment Pipeline
+scope: []
+source_files:
+    - package.json
+    - vite.config.ts
+    - vitest.config.ts
+    - playwright.config.ts
+    - .github/workflows/pages.yml
+    - tsconfig.json
+    - tools/validate-config.sh
+depends_on: []
+related_to: []

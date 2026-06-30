@@ -31,39 +31,41 @@ Scope: CSS + asset changes only. No game-logic changes. The DOM structure
 
 ## Step-by-step
 
-### Step 1 — Real 3D block faces (`styles.css`)
+### Step 1 — Head-on block extrusion (`styles.css`) — DONE
 
-- Define a depth token, e.g. `--tile-depth: 8px`, on `.tile`.
-- Give `.tile-right` and `.tile-top` real geometry inside the `preserve-3d`
-  context instead of `display: none`:
-  - `.tile-top`: positioned along the top edge, rotated `rotateX(90deg)` and
-    pushed out by `translateZ`/`translateY` so it reads as the block's top
-    surface; shaded with `--color-tile-side-bottom` / a darker gradient.
-  - `.tile-right`: positioned along the right edge, rotated `rotateY(90deg)`,
-    shaded with `--color-tile-side-left`.
-- Tilt the camera so the side faces are actually visible: set
-  `--tile-camera-tilt` to a small positive angle (e.g. `4deg`) — it is currently
-  `0deg`, which is why only the skew hack shows. Verify the flip end state
-  (`.tile.revealed`, `.tile.matched`) still reads correctly with the tilt
-  applied (those rules already include `rotateX(var(--tile-camera-tilt))`).
-- Remove the `.game-block::before` / `::after` skew hack (the 4px pseudo-element
-  strips) once the real faces look right. Keep `.game-block` for the
-  border/inset-shadow skin.
-- Re-test the flip: when a tile flips, the side faces should rotate with it
-  (they are children of the `preserve-3d` button) — confirm no z-fighting or
-  faces poking through during the 560ms flip.
+Decision (confirmed with user): true perspective-3D does not read well for a
+head-on memory grid — the right faces stay edge-on/invisible even at a 12° tilt,
+and tilting the whole grid looks odd. Implemented a **head-on layered-extrusion**
+instead (variant C from review screenshots):
 
-### Step 2 — Per-tile plasma variation (`styles.css`)
+- Added depth tokens on `.tile`: `--tile-depth: 6px`, `--tile-side-right`,
+  `--tile-side-bottom`. Kept `--tile-camera-tilt: 0deg` (no grid skew).
+- Rebuilt the `.game-block` box-shadow stack to draw a solid block: two solid
+  offset shadows form the right + bottom depth faces, a darker pair shades the
+  far edge, and a soft offset shadow grounds the block with a contact shadow.
+- Removed the old `.game-block::before` / `::after` 4px skew hack.
+- The built-but-unused `.tile-right` / `.tile-top` face spans stay
+  `display: none` (the box-shadow provides depth and rotates cleanly with the
+  flip — no z-fighting). `src/board.ts` and the face-order test are untouched.
+- Verified visually (Playwright screenshots): solid raised blocks at rest, clean
+  flip to revealed state, no clipping against the board edge.
 
-- `--tile-index` is already set per button in `src/board.ts` (no JS change
-  needed).
-- On `.tile-front.plasma-surface` / `.tile-back.plasma-surface`, derive
-  `background-position` from `--tile-index` via `calc()` so each tile samples a
-  different region of the texture (e.g. offset X and Y by a function of the
-  index, wrapped with modulo-like arithmetic using `calc`).
-- Optional: wire the existing but unused `--plasma-tile-drift-duration-ms` to a
-  slow `background-position` keyframe animation on the front face for subtle
-  life. Gate it behind `prefers-reduced-motion: reduce` (no animation there).
+### Step 2 — Per-tile plasma variation — ALREADY IMPLEMENTED (no change)
+
+Investigation found this is already done in `styles.winfx.css` (the original
+analysis only read `styles.css`, which holds the static `20% 20%` fallback, and
+missed the winfx override):
+
+- `.tile-front.plasma-surface` / `.tile-back.plasma-surface` already run the
+  `plasma-tile-drift` animation, **staggered per tile** via
+  `animation-delay: calc(var(--tile-index) * -1 * --plasma-tile-index-offset-delay-ms)`
+  (`styles.winfx.css` ~line 627). So each tile already samples a different,
+  slowly drifting region of the texture — confirmed via computed-style probe
+  (tiles 0/1/2 read 20%/35%/50% background-position at the same instant).
+- Glow (`::before`) and flares (`::after`) overlays are also already present.
+- A `prefers-reduced-motion: reduce` block exists (`styles.winfx.css` ~line 556).
+
+No work required for Step 2.
 
 ### Step 3 — Lighter assets
 

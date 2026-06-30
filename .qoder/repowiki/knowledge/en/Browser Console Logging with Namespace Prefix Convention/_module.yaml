@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: logging_system
+title: Browser Console Logging with Namespace Prefix Convention
+scope: []
+source_files:
+    - src/cfg.ts
+    - src/utils.ts
+    - src/index.ts
+    - src/leaderboard.ts
+    - src/leaderboard-ui.ts
+    - src/audio-loader.ts
+    - src/icons.ts
+    - src/runtime-config.ts
+depends_on: []
+related_to: []

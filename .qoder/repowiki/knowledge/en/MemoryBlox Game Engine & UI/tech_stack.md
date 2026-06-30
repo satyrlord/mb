@@ -1,0 +1,5 @@
+- **Build & Bundle**: Vite with TypeScript strict mode.
+- **Styling**: Tailwind CSS v4 with DaisyUI components.
+- **Testing**: Vitest for unit tests and Playwright for E2E layout verification.
+- **Audio**: Web Audio API via `SoundEngine` class.
+- **Storage**: `better-sqlite3` for the optional local leaderboard server.

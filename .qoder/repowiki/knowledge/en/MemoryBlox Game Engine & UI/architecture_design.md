@@ -1,0 +1,6 @@
+- **Entry Point**: `src/index.ts` acts as the application bootstrap, wiring DOM elements to controllers and managing frame transitions (Menu, Game, Settings, Leaderboard).
+- **Core Logic**: `src/game.ts` maintains immutable-friendly state for tile matching, while `src/gameplay.ts` provides a facade for game rules.
+- **View Layer**: `src/board.ts` handles 3D tile rendering and input delegation; `src/ui.ts` manages HUD updates. Views are passive and do not contain business logic.
+- **Controllers**: Specialized controllers (`AudioUiController`, `WinSequenceController`, `DebugController`) manage subsystems like sound, win animations, and debug tools, keeping the bootstrap layer clean.
+- **Asset Management**: `src/icons.ts` generates runtime emoji decks from static pack definitions; `src/sound-engine.ts` uses the Web Audio API for low-latency SFX.
+- **Persistence**: `src/leaderboard.ts` implements a client-side score manager using `localStorage`, while `tools/leaderboard-server.mjs` provides an optional SQLite-backed API for shared scores.
