@@ -49,7 +49,7 @@ keyframes. This is the heaviest DOM churn in the app.
 
 ---
 
-## Proposal 1 — Lowest effort, biggest wins (CSS / asset only)
+## Proposal 1 — Lowest effort, biggest wins (CSS / asset only) - Already implemented
 
 No architectural change. Make the existing pseudo-3D and surfaces look
 intentional rather than approximate.

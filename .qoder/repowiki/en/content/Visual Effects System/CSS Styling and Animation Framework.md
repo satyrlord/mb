@@ -12,11 +12,14 @@
 - [win-fx.cfg](file://config/win-fx.cfg)
 - [win-fx.test.ts](file://tests/win-fx.test.ts)
 - [hd-mode-controller.ts](file://src/hd-mode-controller.ts)
-- [graphics-proposal-1-plan.md](file://docs/graphics-proposal-1-plan.md)
+- [graphics-improvement-proposals.md](file://docs/graphics-improvement-proposals.md)
 </cite>
 
 ## Update Summary
 **Changes Made**
+- Enhanced game-block tile hover effects with new radial-gradient specular highlight
+- Improved lighting polish with enhanced hover contact shadow system
+- Refined transition timing with optimized cubic-bezier easing for smoother interactions
 - Updated tile rendering system from perspective-based 3D to head-on extrusion technique
 - Added comprehensive documentation for the new CSS custom properties system for tile depth and side faces
 - Revised tile styling architecture to use layered box-shadow effects instead of pseudo-3D faces
@@ -35,7 +38,7 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document describes the CSS styling and animation framework responsible for visual effects, runtime configuration, and responsive design. The framework has undergone a major visual transformation from perspective-based 3D rendering to a head-on extrusion technique using layered box-shadow effects. It covers:
+This document describes the CSS styling and animation framework responsible for visual effects, runtime configuration, and responsive design. The framework has undergone a major visual transformation from perspective-based 3D rendering to a head-on extrusion technique using layered box-shadow effects, with enhanced hover interactions featuring sophisticated lighting effects. It covers:
 - CSS custom properties for runtime configuration
 - Animation keyframes and transition timing functions
 - The animation pipeline for particle effects, screen flashes, and UI transitions
@@ -48,15 +51,15 @@ The animation framework spans CSS and TypeScript modules:
 - Win animation effects are isolated in a dedicated stylesheet
 - Runtime configuration is loaded from config files and injected into CSS variables
 - The animation controller orchestrates timed effects and applies CSS classes
-- Tile rendering now uses a head-on extrusion technique with layered box-shadow effects
+- Tile rendering now uses a head-on extrusion technique with layered box-shadow effects and enhanced hover lighting
 
 ```mermaid
 graph TB
 subgraph "CSS Layer"
-S1["styles.css<br/>Theme tokens, layout, transitions<br/>Head-on extrusion technique"]
+S1["styles.css<br/>Theme tokens, layout, transitions<br/>Head-on extrusion technique with enhanced hover effects"]
 S2["styles.winfx.css<br/>Particle keyframes, screen effects, plasma"]
 B["board.ts<br/>Tile DOM structure and face ordering"]
-GP["graphics-proposal-1-plan.md<br/>Implementation details"]
+GP["graphics-improvement-proposals.md<br/>Implementation details"]
 end
 subgraph "Runtime Config"
 C1["config/ui.cfg<br/>UI and animation timing"]
@@ -81,7 +84,7 @@ B --> S1
 - [styles.css:1219-1281](file://styles.css#L1219-L1281)
 - [styles.winfx.css:1-865](file://styles.winfx.css#L1-L865)
 - [board.ts:36-57](file://board.ts#L36-L57)
-- [graphics-proposal-1-plan.md:34-51](file://docs/graphics-proposal-1-plan.md#L34-L51)
+- [graphics-improvement-proposals.md:34-51](file://docs/graphics-proposal-1-plan.md#L34-L51)
 - [runtime-config.ts:1-399](file://src/runtime-config.ts#L1-L399)
 - [win-fx.ts:1-830](file://src/win-fx.ts#L1-L830)
 - [index.ts:860-1059](file://src/index.ts#L860-L1059)
@@ -101,13 +104,14 @@ B --> S1
 
 ## Core Components
 - **Head-on extrusion technique**: Replaced perspective-based 3D rendering with layered box-shadow effects for tile blocks
+- **Enhanced hover lighting system**: New radial-gradient specular highlight and contact shadow expansion
 - **CSS custom property system**: Centralized runtime configuration exposed via :root variables and overridden per host element
 - **Animation keyframes**: Reusable, named animations for particles, screen effects, and board overlays
-- **Transition timing functions**: Ease-in/out, cubic-bezier, and linear curves tuned for performance and feel
+- **Transition timing functions**: Enhanced cubic-bezier easing for transform and ease for box-shadow on hover
 - **WinFxController**: JavaScript orchestration of timed effects, particle budgeting, and class-driven screen effects
 - **Runtime configuration**: Typed config loaders for UI and win effects, with clamping and validation
 
-**Updated** The tile rendering system now uses a head-on extrusion technique where depth is achieved through layered box-shadow effects rather than 3D transforms.
+**Updated** The tile rendering system now uses a head-on extrusion technique where depth is achieved through layered box-shadow effects rather than 3D transforms, with enhanced hover interactions featuring sophisticated lighting effects.
 
 Practical examples of CSS variable usage:
 - Global animation speed: set via --animation-speed-default and consumed by animations to scale durations
@@ -130,7 +134,7 @@ The animation pipeline integrates runtime configuration, CSS variables, and Java
 - On startup, index.ts loads UI and win-fx configs, computes CSS variables, and applies them to :root
 - WinFxController creates DOM nodes for particles and triggers CSS classes for screen-level effects
 - CSS keyframes and transitions render the visual effects, with durations scaled by --animation-speed
-- **Updated** Tile rendering uses head-on extrusion technique with layered box-shadow effects for depth perception
+- **Updated** Tile rendering uses head-on extrusion technique with layered box-shadow effects for depth perception and enhanced hover lighting
 
 ```mermaid
 sequenceDiagram
@@ -147,7 +151,7 @@ Boot->>FX : Configure WinFxController with runtime config
 FX->>CSS : Add/remove effect classes (e.g., win-fx-flash-active)
 CSS-->>FX : Keyframes and transitions run automatically
 Board->>CSS : Apply .game-block with head-on extrusion
-CSS-->>Board : Render layered box-shadow depth effects
+CSS-->>Board : Render layered box-shadow depth effects with enhanced hover lighting
 ```
 
 **Diagram sources**
@@ -160,6 +164,23 @@ CSS-->>Board : Render layered box-shadow depth effects
 - [board.ts:406-434](file://board.ts#L406-L434)
 
 ## Detailed Component Analysis
+
+### Enhanced Hover Lighting System for Game Blocks
+**Updated** The game-block tile hover effects have been significantly enhanced with sophisticated lighting simulation:
+
+- **Specular highlight**: A soft radial-gradient from the top-left simulates a directional light source
+- **Contact shadow expansion**: On hover, the block lifts slightly and the shadow expands/softens to reinforce depth perception
+- **Refined transition timing**: Transform uses cubic-bezier easing while box-shadow uses ease for optimal feel
+
+The enhanced hover system creates:
+- Radial gradient background layer with ellipse 80% 70% at 22% 18% for subtle highlight
+- Increased inset shadows for enhanced depth perception on hover
+- Expanded contact shadow with 4px offset and 16px blur radius
+- Optimized transition timing with 180ms duration for immediate visual feedback
+
+**Section sources**
+- [styles.css:1287-1306](file://styles.css#L1287-L1306)
+- [styles.css:1312-1329](file://styles.css#L1312-L1329)
 
 ### Head-on Extrusion Technique for Tile Rendering
 **Updated** The tile rendering system has been transformed from perspective-based 3D to a head-on extrusion technique:
@@ -293,7 +314,7 @@ Cleanup --> End(["Remove classes and clear DOM"])
 - index.ts depends on runtime-config.ts to parse ui.cfg and win-fx.cfg, then injects CSS variables and configures WinFxController
 - WinFxController depends on runtime-config types and constants to compute durations and budgets
 - styles.winfx.css depends on CSS variables set by index.ts and on runtime-config.ts defaults for keyframe durations
-- **Updated** board.ts maintains the four-face DOM structure while styles.css handles the visual rendering through head-on extrusion
+- **Updated** board.ts maintains the four-face DOM structure while styles.css handles the visual rendering through head-on extrusion with enhanced hover lighting
 - HD mode controller toggles data attributes that drive CSS fallbacks for plasma animations
 
 ```mermaid
@@ -335,6 +356,7 @@ HD["hd-mode-controller.ts"] --> CSS2
 - **Reduced motion**: Media query branch disables or minimizes intensive animations
 - **HD mode fallbacks**: When disabled, plasma animations are removed and solid backgrounds are used
 - **Updated** **Optimized tile rendering**: Head-on extrusion technique reduces GPU overhead compared to complex 3D transforms
+- **Updated** **Enhanced hover performance**: Optimized transition timing with separate easing functions for transform and box-shadow
 
 **Section sources**
 - [win-fx.ts:268-301](file://src/win-fx.ts#L268-L301)
@@ -351,6 +373,7 @@ HD["hd-mode-controller.ts"] --> CSS2
 - **Plasma animations missing**: Ensure data-hd-mode is set appropriately; verify CSS selectors for .plasma-surface and its pseudo-elements
 - **Updated** **Tile depth issues**: Verify --tile-depth, --tile-side-right, and --tile-side-bottom variables are properly set; check that .tile-right and .tile-top faces remain hidden
 - **Updated** **Extrusion artifacts**: Ensure board grid gap accommodates the 6px depth offset; verify that the layered box-shadow stack is complete
+- **Updated** **Hover lighting problems**: Verify radial-gradient syntax and color values are correct; check that transition timing matches hover state expectations
 
 **Section sources**
 - [win-fx.test.ts:99-125](file://tests/win-fx.test.ts#L99-L125)
@@ -361,4 +384,4 @@ HD["hd-mode-controller.ts"] --> CSS2
 - [styles.css:1256-1270](file://styles.css#L1256-L1270)
 
 ## Conclusion
-The CSS styling and animation framework leverages a robust system of CSS custom properties, reusable keyframes, and a typed runtime configuration to deliver a highly configurable, performant, and accessible visual experience. The recent transformation to head-on extrusion technique using layered box-shadow effects provides improved visual consistency for flat memory grids while maintaining the framework's flexibility and performance characteristics. By centralizing configuration, scaling durations via CSS variables, and providing fallbacks for reduced motion and HD mode, the system maintains consistency across themes and devices while optimizing performance.
+The CSS styling and animation framework leverages a robust system of CSS custom properties, reusable keyframes, and a typed runtime configuration to deliver a highly configurable, performant, and accessible visual experience. The recent transformation to head-on extrusion technique using layered box-shadow effects provides improved visual consistency for flat memory grids while maintaining the framework's flexibility and performance characteristics. The enhanced hover lighting system with radial-gradient specular highlights and contact shadow expansion adds sophisticated depth perception and tactile feedback. By centralizing configuration, scaling durations via CSS variables, and providing fallbacks for reduced motion and HD mode, the system maintains consistency across themes and devices while optimizing performance.

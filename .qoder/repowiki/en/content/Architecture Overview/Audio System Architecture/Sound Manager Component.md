@@ -3,6 +3,7 @@
 <cite>
 **Referenced Files in This Document**
 - [sound-manager.ts](file://src/sound-manager.ts)
+- [audio-file-discovery.ts](file://src/audio-file-discovery.ts)
 - [audio-loader.ts](file://src/audio-loader.ts)
 - [sound-engine.ts](file://src/sound-engine.ts)
 - [utils.ts](file://src/utils.ts)
@@ -13,6 +14,14 @@
 - [config/audio-formats.json](file://config/audio-formats.json)
 - [sound-manager.test.ts](file://tests/sound-manager.test.ts)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated architecture overview to reflect the new audio discovery module separation
+- Added documentation for the new audio-file-discovery.ts module and its testing exports
+- Updated initialization process to show the moved audio discovery logic
+- Enhanced dependency analysis to show the new module boundaries
+- Updated troubleshooting guide to address the new module structure
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -28,8 +37,10 @@
 ## Introduction
 The SoundManager class serves as the central coordinator for all audio operations in the application. It manages audio file discovery, categorization, preloading, and playback orchestration. The component implements sophisticated patterns for randomizing sound effects while avoiding repetition, handles browser autoplay policy compliance, and provides robust error handling and fallback mechanisms.
 
+**Updated** The SoundManager now delegates audio file discovery responsibilities to a dedicated module, improving separation of concerns and testability.
+
 ## Project Structure
-The sound system is organized around three primary components that work together to deliver seamless audio experiences:
+The sound system is organized around four primary components that work together to deliver seamless audio experiences:
 
 ```mermaid
 graph TB
@@ -38,6 +49,7 @@ SM[SoundManager]
 AE[AudioEngine]
 AL[AudioLoader]
 RR[RandomRoundRobinPicker]
+AFD[AudioFileDiscovery]
 LC[LocalStorage]
 end
 subgraph "Audio Assets"
@@ -53,8 +65,9 @@ end
 SM --> AE
 SM --> AL
 SM --> RR
-SM --> LC
-SF --> SI
+SM --> AFD
+AFD --> SF
+AFD --> SI
 SF --> AF
 AUI --> SM
 WSC --> SM
@@ -62,12 +75,14 @@ APP --> SM
 ```
 
 **Diagram sources**
-- [sound-manager.ts:238-461](file://src/sound-manager.ts#L238-L461)
-- [audio-loader.ts:7-117](file://src/audio-loader.ts#L7-L117)
-- [sound-engine.ts:8-109](file://src/sound-engine.ts#L8-L109)
+- [sound-manager.ts:112-136](file://src/sound-manager.ts#L112-L136)
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
+- [audio-loader.ts:7-18](file://src/audio-loader.ts#L7-L18)
+- [sound-engine.ts:8-29](file://src/sound-engine.ts#L8-L29)
 
 **Section sources**
-- [sound-manager.ts:1-462](file://src/sound-manager.ts#L1-L462)
+- [sound-manager.ts:1-336](file://src/sound-manager.ts#L1-L336)
+- [audio-file-discovery.ts:1-150](file://src/audio-file-discovery.ts#L1-L150)
 - [audio-loader.ts:1-118](file://src/audio-loader.ts#L1-L118)
 - [sound-engine.ts:1-110](file://src/sound-engine.ts#L1-L110)
 
@@ -76,6 +91,9 @@ The SoundManager system consists of several interconnected components that handl
 
 ### SoundManager Class
 The central orchestrator that coordinates all audio operations, manages asset discovery and categorization, and provides the public API for game events.
+
+### AudioFileDiscovery Module
+**New** Dedicated module responsible for audio file discovery from multiple sources with robust fallback strategies. Handles JSON index files, asset-index endpoints, and HTML directory listings.
 
 ### AudioLoader
 Handles audio file loading, decoding, and caching using the Web Audio API. Provides efficient resource management through intelligent caching strategies.
@@ -87,7 +105,8 @@ Manages the Web Audio API context, audio playback, and volume control. Implement
 Implements the round-robin pattern for randomizing audio playback while preventing immediate repetitions.
 
 **Section sources**
-- [sound-manager.ts:238-461](file://src/sound-manager.ts#L238-L461)
+- [sound-manager.ts:112-136](file://src/sound-manager.ts#L112-L136)
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
 - [audio-loader.ts:7-117](file://src/audio-loader.ts#L7-L117)
 - [sound-engine.ts:8-109](file://src/sound-engine.ts#L8-L109)
 
@@ -98,11 +117,17 @@ The SoundManager follows a layered architecture pattern that separates concerns 
 sequenceDiagram
 participant Game as Game Events
 participant SM as SoundManager
+participant AFD as AudioFileDiscovery
 participant RR as Round Robin Picker
 participant AL as AudioLoader
 participant SE as SoundEngine
 participant AC as AudioContext
 Game->>SM : playTileFlip()
+SM->>AFD : discoverAudioFilesInDirectory('./sound')
+AFD->>AFD : tryLoadFileListFromJson()
+AFD->>AFD : tryLoadFileListFromAssetIndexEndpoint()
+AFD->>AFD : tryLoadFileListFromDirectoryHtml()
+AFD-->>SM : Discovered audio files
 SM->>SM : waitForPendingNewGameFx()
 SM->>AC : ensureAudioContextRunning()
 SM->>RR : next()
@@ -117,20 +142,21 @@ Note over SM,AL : Caching and preloading optimization
 ```
 
 **Diagram sources**
-- [sound-manager.ts:308-439](file://src/sound-manager.ts#L308-L439)
+- [sound-manager.ts:138-171](file://src/sound-manager.ts#L138-L171)
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
 - [audio-loader.ts:30-64](file://src/audio-loader.ts#L30-L64)
 - [sound-engine.ts:47-75](file://src/sound-engine.ts#L47-L75)
 
 ## Detailed Component Analysis
 
 ### Initialization Process
-The SoundManager performs a comprehensive initialization sequence that discovers, categorizes, and prepares audio assets:
+The SoundManager performs a comprehensive initialization sequence that discovers, categorizes, and prepares audio assets through the dedicated AudioFileDiscovery module:
 
 ```mermaid
 flowchart TD
 Start([Initialize SoundManager]) --> CheckInit{Already Initialized?}
 CheckInit --> |Yes| Return([Return Early])
-CheckInit --> |No| Discover["discoverAudioFilesInDirectory('./sound')"]
+CheckInit --> |No| Discover["AudioFileDiscovery.discoverAudioFilesInDirectory('./sound')"]
 Discover --> Filter["Filter by File Patterns<br/>- flip*, match*, mismatch*<br/>- newgame*, win*"]
 Filter --> BuildURLs["Build Absolute Asset URLs"]
 BuildURLs --> SetPickers["Set Round Robin Pickers"]
@@ -138,28 +164,68 @@ SetPickers --> LoadMute["Load Mute State from localStorage"]
 LoadMute --> Preload["AudioLoader.preload()"]
 Preload --> Complete([Initialization Complete])
 subgraph "Discovery Methods"
-JSON["JSON Index File"]
+JSON["JSON Index Method"]
 Endpoint["Asset Index Endpoint"]
 HTML["HTML Directory Listing"]
+Fallback["Fallback Chain"]
 end
 Discover --> JSON
 Discover --> Endpoint
 Discover --> HTML
+Discover --> Fallback
 ```
 
 **Diagram sources**
-- [sound-manager.ts:264-297](file://src/sound-manager.ts#L264-L297)
-- [sound-manager.ts:196-226](file://src/sound-manager.ts#L196-L226)
+- [sound-manager.ts:138-171](file://src/sound-manager.ts#L138-L171)
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
 
-The initialization process employs multiple discovery strategies with fallback mechanisms:
+The initialization process employs multiple discovery strategies with fallback mechanisms through the AudioFileDiscovery module:
 1. **JSON Index Method**: Reads structured audio file listings from `./sound/index.json`
 2. **Asset Index Endpoint**: Uses server-side asset indexing for dynamic discovery
 3. **HTML Directory Listing**: Parses directory listings when other methods fail
+4. **Robust Fallback Chain**: Sequentially attempts methods until successful discovery
 
 **Section sources**
-- [sound-manager.ts:264-297](file://src/sound-manager.ts#L264-L297)
-- [sound-manager.ts:196-226](file://src/sound-manager.ts#L196-L226)
+- [sound-manager.ts:138-171](file://src/sound-manager.ts#L138-L171)
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
 - [sound/index.json:1-17](file://sound/index.json#L1-L17)
+
+### AudioFileDiscovery Module
+**New** The AudioFileDiscovery module encapsulates all audio file discovery logic with comprehensive error handling and testing support:
+
+```mermaid
+classDiagram
+class AudioFileDiscovery {
++parseDirectoryListingForAudioFiles(html : string) : string[]
++discoverAudioFilesInDirectory(directory : string) : Promise<string[]>
++buildAbsoluteAssetUrl(directory : string, fileName : string) : string
++tryLoadFileListFromJson(directory : string) : Promise<string[] | null>
++tryLoadFileListFromAssetIndexEndpoint(directory : string) : Promise<string[] | null>
++tryLoadFileListFromDirectoryHtml(directory : string) : Promise<string[] | null>
+}
+class TestingExports {
++audioFileDiscoveryTesting : {
+tryLoadFileListFromJson,
+tryLoadFileListFromAssetIndexEndpoint,
+tryLoadFileListFromDirectoryHtml
+}
+}
+AudioFileDiscovery --> TestingExports : "exports for testing"
+```
+
+**Diagram sources**
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
+- [audio-file-discovery.ts:142-149](file://src/audio-file-discovery.ts#L142-L149)
+
+The module provides:
+- **File Pattern Filtering**: Regex-based filtering for audio file extensions
+- **Deduplication**: Automatic removal of duplicate file names
+- **Network Fallback Strategies**: Three-tier discovery approach
+- **Testing Exports**: Isolated testing utilities for network methods
+
+**Section sources**
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
+- [audio-file-discovery.ts:142-149](file://src/audio-file-discovery.ts#L142-L149)
 
 ### Round-Robin Picker Pattern
 The RandomRoundRobinPicker implements a sophisticated pattern that ensures randomization while preventing immediate repetitions:
@@ -186,8 +252,8 @@ RandomRoundRobinPicker --> Utils : "shuffle()"
 ```
 
 **Diagram sources**
-- [sound-manager.ts:71-100](file://src/sound-manager.ts#L71-L100)
-- [sound-manager.ts:238-253](file://src/sound-manager.ts#L238-L253)
+- [sound-manager.ts:53-82](file://src/sound-manager.ts#L53-L82)
+- [sound-manager.ts:117-127](file://src/sound-manager.ts#L117-L127)
 - [utils.ts:13-24](file://src/utils.ts#L13-L24)
 
 The picker operates on a cycle basis:
@@ -196,7 +262,7 @@ The picker operates on a cycle basis:
 3. **Refresh Phase**: Regenerates new shuffle when cycle exhausted
 
 **Section sources**
-- [sound-manager.ts:71-100](file://src/sound-manager.ts#L71-L100)
+- [sound-manager.ts:53-82](file://src/sound-manager.ts#L53-L82)
 - [utils.ts:13-24](file://src/utils.ts#L13-L24)
 
 ### Event-Driven Audio Playback System
@@ -211,7 +277,7 @@ The SoundManager provides a comprehensive event-driven API that responds to game
 | `playNewGame()` | New game start | New Game Effects | Handles pending operations, non-critical failure |
 
 **Section sources**
-- [sound-manager.ts:308-439](file://src/sound-manager.ts#L308-L439)
+- [sound-manager.ts:182-217](file://src/sound-manager.ts#L182-L217)
 
 ### Audio Context Management and Autoplay Policy Compliance
 The SoundManager implements robust browser autoplay policy compliance through the `ensureAudioContextRunning()` method:
@@ -236,7 +302,7 @@ end
 ```
 
 **Diagram sources**
-- [sound-manager.ts:441-460](file://src/sound-manager.ts#L441-L460)
+- [sound-manager.ts:315-334](file://src/sound-manager.ts#L315-L334)
 
 The autoplay compliance strategy:
 1. **Detection**: Checks AudioContext state before playback
@@ -244,7 +310,7 @@ The autoplay compliance strategy:
 3. **Graceful Degradation**: Continues playback on subsequent user gestures if resume fails
 
 **Section sources**
-- [sound-manager.ts:441-460](file://src/sound-manager.ts#L441-L460)
+- [sound-manager.ts:315-334](file://src/sound-manager.ts#L315-L334)
 
 ### Mute Functionality with localStorage Persistence
 The SoundManager provides comprehensive mute state management with persistent storage:
@@ -267,13 +333,13 @@ LoadStorage --> Key
 ```
 
 **Diagram sources**
-- [sound-manager.ts:299-306](file://src/sound-manager.ts#L299-L306)
-- [sound-manager.ts:292](file://src/sound-manager.ts#L292)
-- [sound-manager.ts:109-121](file://src/sound-manager.ts#L109-L121)
+- [sound-manager.ts:177-180](file://src/sound-manager.ts#L177-L180)
+- [sound-manager.ts:84-104](file://src/sound-manager.ts#L84-L104)
+- [sound-manager.ts:166](file://src/sound-manager.ts#L166)
 
 **Section sources**
-- [sound-manager.ts:299-306](file://src/sound-manager.ts#L299-L306)
-- [sound-manager.ts:109-121](file://src/sound-manager.ts#L109-L121)
+- [sound-manager.ts:177-180](file://src/sound-manager.ts#L177-L180)
+- [sound-manager.ts:84-104](file://src/sound-manager.ts#L84-L104)
 
 ### Pending Operation Handling for New Game Sounds
 The SoundManager implements sophisticated pending operation management for new game sounds:
@@ -295,20 +361,22 @@ note right of PlayingNewGame : Non-critical operation<br/>Continues gameplay flo
 ```
 
 **Diagram sources**
-- [sound-manager.ts:327-343](file://src/sound-manager.ts#L327-L343)
-- [sound-manager.ts:345-351](file://src/sound-manager.ts#L345-L351)
+- [sound-manager.ts:201-217](file://src/sound-manager.ts#L201-L217)
+- [sound-manager.ts:219-225](file://src/sound-manager.ts#L219-L225)
 
 **Section sources**
-- [sound-manager.ts:327-343](file://src/sound-manager.ts#L327-L343)
-- [sound-manager.ts:345-351](file://src/sound-manager.ts#L345-L351)
+- [sound-manager.ts:201-217](file://src/sound-manager.ts#L201-L217)
+- [sound-manager.ts:219-225](file://src/sound-manager.ts#L219-L225)
 
 ### Error Handling Strategies and Fallback Mechanisms
 The SoundManager implements comprehensive error handling across multiple layers:
 
 #### Audio Discovery Failures
+**Updated** The AudioFileDiscovery module provides robust error handling:
 - **Multiple Strategy Support**: Falls back from JSON index to asset endpoint to HTML listing
 - **Graceful Degradation**: Returns empty arrays when discovery fails
 - **Logging**: Provides informative console messages for debugging
+- **Testing Exports**: Isolated testing utilities for network methods
 
 #### Playback Failures
 - **Non-Critical Operations**: New game sounds don't interrupt gameplay flow
@@ -321,27 +389,29 @@ The SoundManager implements comprehensive error handling across multiple layers:
 - **Type Safety**: Comprehensive type checking for Web Audio API features
 
 **Section sources**
-- [sound-manager.ts:196-226](file://src/sound-manager.ts#L196-L226)
-- [sound-manager.ts:337-342](file://src/sound-manager.ts#L337-L342)
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
+- [sound-manager.ts:209-216](file://src/sound-manager.ts#L209-L216)
 - [audio-loader.ts:50-63](file://src/audio-loader.ts#L50-L63)
 
 ## Dependency Analysis
-The SoundManager maintains clean separation of concerns through well-defined dependencies:
+The SoundManager maintains clean separation of concerns through well-defined dependencies with the new AudioFileDiscovery module:
 
 ```mermaid
 graph TB
 SM[SoundManager] --> SE[SoundEngine]
 SM --> AL[AudioLoader]
 SM --> RR[RandomRoundRobinPicker]
-SM --> U[Utils.shuffle]
+SM --> AFD[AudioFileDiscovery]
+AFD --> FS[File System]
+AFD --> NET[Network APIs]
 AL --> AC[AudioContext]
 SE --> AC
 SM --> LS[localStorage]
-SM --> FS[File System]
 subgraph "External Dependencies"
 AC[Web Audio API]
 LS[localStorage API]
 FS[File System API]
+NET[Network APIs]
 end
 subgraph "Internal Dependencies"
 U[Utility Functions]
@@ -350,17 +420,19 @@ end
 ```
 
 **Diagram sources**
-- [sound-manager.ts:1-3](file://src/sound-manager.ts#L1-L3)
+- [sound-manager.ts:1-8](file://src/sound-manager.ts#L1-L8)
 - [sound-engine.ts:8-29](file://src/sound-engine.ts#L8-L29)
 - [audio-loader.ts:7-18](file://src/audio-loader.ts#L7-L18)
+- [audio-file-discovery.ts:1-150](file://src/audio-file-discovery.ts#L1-L150)
 
 **Section sources**
-- [sound-manager.ts:1-3](file://src/sound-manager.ts#L1-L3)
+- [sound-manager.ts:1-8](file://src/sound-manager.ts#L1-L8)
 - [sound-engine.ts:8-29](file://src/sound-engine.ts#L8-L29)
 - [audio-loader.ts:7-18](file://src/audio-loader.ts#L7-L18)
+- [audio-file-discovery.ts:1-150](file://src/audio-file-discovery.ts#L1-L150)
 
 ## Performance Considerations
-The SoundManager implements several performance optimizations:
+The SoundManager implements several performance optimizations with the new module structure:
 
 ### Caching Strategy
 - **Audio Buffer Caching**: Prevents redundant network requests and decoding overhead
@@ -375,9 +447,16 @@ The SoundManager implements several performance optimizations:
 - **Round Robin Distribution**: Even distribution of audio files across categories
 - **Cycle Management**: Efficient reuse of audio resources without regeneration
 
+### Discovery Optimization
+**New** The AudioFileDiscovery module optimizes discovery performance:
+- **Early Termination**: Stops at first successful discovery method
+- **Result Deduplication**: Eliminates duplicate file entries
+- **Pattern Filtering**: Efficient regex-based file filtering
+
 **Section sources**
 - [audio-loader.ts:75-88](file://src/audio-loader.ts#L75-L88)
-- [sound-manager.ts:294](file://src/sound-manager.ts#L294)
+- [sound-manager.ts:168](file://src/sound-manager.ts#L168)
+- [audio-file-discovery.ts:118-126](file://src/audio-file-discovery.ts#L118-L126)
 
 ## Troubleshooting Guide
 
@@ -400,12 +479,13 @@ The SoundManager implements several performance optimizations:
 **Causes**:
 - Incorrect file naming patterns
 - Missing audio files in directory
-- Discovery method failures
+- AudioFileDiscovery module failures
 
 **Solutions**:
 1. Verify file names match patterns (flip*, match*, mismatch*, newgame*, win*)
 2. Check `./sound/index.json` contains all expected files
 3. Confirm directory listing accessibility
+4. Test discovery methods individually using audioFileDiscoveryTesting
 
 #### Performance Issues
 **Symptoms**: Slow audio loading or playback lag
@@ -413,15 +493,25 @@ The SoundManager implements several performance optimizations:
 - Large audio files
 - Network latency
 - Excessive concurrent audio requests
+- Inefficient discovery methods
 
 **Solutions**:
 1. Optimize audio file sizes and formats
 2. Use appropriate audio compression
 3. Monitor cache hit rates
+4. Verify discovery method success through console logs
+
+#### Discovery Method Failures
+**New** AudioFileDiscovery-specific troubleshooting:
+1. **JSON Index Issues**: Verify `./sound/index.json` format and accessibility
+2. **Asset Index Endpoint**: Check server-side asset indexing configuration
+3. **HTML Directory Listing**: Ensure directory browsing is enabled
+4. **Network Errors**: Test individual discovery methods using testing exports
 
 **Section sources**
-- [sound-manager.ts:441-460](file://src/sound-manager.ts#L441-L460)
+- [sound-manager.ts:315-334](file://src/sound-manager.ts#L315-L334)
 - [audio-loader.ts:95-116](file://src/audio-loader.ts#L95-L116)
+- [audio-file-discovery.ts:103-133](file://src/audio-file-discovery.ts#L103-L133)
 
 ## Conclusion
-The SoundManager component provides a robust, scalable solution for managing audio in the application. Its architecture balances flexibility with reliability through comprehensive error handling, browser compatibility, and performance optimizations. The round-robin picker pattern ensures engaging audio experiences while maintaining variety, and the event-driven design seamlessly integrates with the game's workflow. The implementation demonstrates best practices in modern web audio development, including proper resource management, autoplay policy compliance, and graceful degradation strategies.
+The SoundManager component provides a robust, scalable solution for managing audio in the application. Its architecture balances flexibility with reliability through comprehensive error handling, browser compatibility, and performance optimizations. The refactoring to separate audio discovery logic into the AudioFileDiscovery module improves separation of concerns, testability, and maintainability. The round-robin picker pattern ensures engaging audio experiences while maintaining variety, and the event-driven design seamlessly integrates with the game's workflow. The implementation demonstrates best practices in modern web audio development, including proper resource management, autoplay policy compliance, and graceful degradation strategies. The new module structure provides better isolation for testing and maintenance while preserving all existing functionality.
