@@ -1,6 +1,19 @@
 # Testing Strategy
 
-## Latest Update (2026-03-06)
+## Latest Update (2026-07-02)
+
+- Added `tests/canvas-board-view.test.ts` for the Canvas 2D board renderer
+  (Graphics Proposal 2): a fake 2D-context double records draw calls, and
+  animation frames are stepped manually through a captured
+  `requestAnimationFrame` queue with mocked `performance.now()`.
+- `CanvasBoardView` degrades to the inherited DOM rendering when
+  `getContext("2d")` returns null, which is exactly what happens under
+  jsdom — so all pre-existing board and bootstrap integration tests run
+  unchanged without canvas stubs.
+- Coverage for `src/canvas-board-view.ts`: 99.4% statements, 95.5% branches,
+  100% functions, 99.4% lines.
+
+## Previous Update (2026-03-06)
 
 - Test suite expanded to 34 test files, 621 tests passing.
 - Coverage metrics updated to reflect the full source module set.

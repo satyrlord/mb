@@ -113,7 +113,8 @@ npm run build
 - `src/debug-controller.ts`: debug menu, debug game modes, auto-match demo
 - `src/game.ts`: canonical game state and selection/match logic
 - `src/gameplay.ts`: GameplayEngine facade over game state
-- `src/board.ts`: tile markup rendering and click delegation
+- `src/board.ts`: tile markup rendering and click delegation (DOM accessibility / hit-test layer)
+- `src/canvas-board-view.ts`: Canvas 2D board renderer (procedural plasma, extrusion, flip/dissolve animation loop) over the invisible DOM layer
 - `src/ui.ts`: HUD and status message updates
 - `src/icons.ts`: runtime icon deck generation (8 themed packs)
 - `src/icon-assets.ts`: OpenMoji SVG asset definitions and lookup

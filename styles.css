@@ -1281,6 +1281,42 @@ body {
   display: none;
 }
 
+/*
+ * ── Canvas board mode (Graphics Proposal 2) ─────────────────────────────
+ * When `CanvasBoardView` drives the board, all tile pixels are painted on a
+ * sibling `.board-canvas-layer` canvas; the DOM tile buttons become an
+ * invisible accessibility / hit-test layer (aria-labels, keyboard nav,
+ * click delegation). The `:focus-visible` outline is intentionally kept —
+ * it is the only visual the DOM layer still owns in canvas mode.
+ */
+.board-canvas-layer {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 12px;
+}
+
+.board--canvas {
+  perspective: none;
+}
+
+.board--canvas .tile,
+.board--canvas .tile:not(.revealed):not(.matched):not(:disabled):hover {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  transition: none;
+}
+
+.board--canvas .tile.matched.matched-disappearing,
+.board--canvas .tile.matched.matched-disappearing .tile-back {
+  animation: none;
+}
+
+.board--canvas .tile .tile-face {
+  display: none;
+}
+
 .game-block .tile-face {
   border-radius: 0;
 }

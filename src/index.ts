@@ -1,4 +1,4 @@
-import { BoardView } from "./board";
+import { CanvasBoardView } from "./canvas-board-view";
 import {
   DEFAULT_DIFFICULTY_ID,
   getDifficultyById,
@@ -815,8 +815,8 @@ const uiView = new UiView(
   statusMessageElement,
 );
 
-const boardView = new BoardView(boardElement, handleTileSelect);
-const debugBoardView = new BoardView(debugTilesBoardElement, handleTileSelect);
+const boardView = new CanvasBoardView(boardElement, handleTileSelect);
+const debugBoardView = new CanvasBoardView(debugTilesBoardElement, handleTileSelect);
 
 const orientationToggleElements = {
   button: orientationToggleButton,

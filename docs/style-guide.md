@@ -2,10 +2,12 @@
 
 This guide defines visual and styling rules for the game UI.
 
-## Latest Update (2026-02-24)
+## Latest Update (2026-07-02)
 
-- Style rules remain unchanged by today's code-quality and test updates.
-- Documentation was synchronized with current implementation status.
+- Added Canvas Board Mode rules for the Canvas 2D board renderer
+  (Graphics Proposal 2): the DOM tile grid is now an invisible
+  accessibility layer during play, and tile visuals are painted on a
+  `.board-canvas-layer` canvas that mirrors the theme tokens.
 - Continue to apply this guide as the single source of truth for all visual
   and style changes.
 
@@ -94,6 +96,27 @@ This guide defines visual and styling rules for the game UI.
 - Do not hard-code new colors, shadows, or typography without clear need.
 - Color tokens are plain values (no `color-mix` expressions); update the
   CSS variable directly when a color needs changing.
+
+## Canvas Board Mode Rules
+
+- During play the board is rendered by `CanvasBoardView`
+  (`src/canvas-board-view.ts`) on a `.board-canvas-layer` canvas; the DOM
+  tile buttons are an invisible accessibility / hit-test layer suppressed by
+  the `board--canvas` container modifier.
+- Keep the `:focus-visible` outline on tiles in canvas mode — it is the only
+  visual the DOM layer still owns.
+- Canvas drawing must mirror the theme tokens in `styles.css`; the mirrored
+  constants in `src/canvas-board-view.ts` carry the token name in a comment
+  and both places must be updated together when a color changes.
+- Canvas animation timing must read the CSS custom properties
+  (`--tile-flip-duration-ms`, `--tile-match-disappear-duration-ms`,
+  `--animation-speed`) rather than hard-coding durations, so runtime config
+  and the Settings speed slider stay authoritative.
+- HD-off (`[data-hd-mode="off"]`) and `prefers-reduced-motion` must freeze
+  the procedural plasma to a static frame, matching the CSS HD rules.
+- The DOM/CSS tile visuals (Proposal 1 extrusion styling) must be preserved
+  in the stylesheet: they are the automatic fallback when a 2D context is
+  unavailable.
 
 ## Plasma Surface Rules
 

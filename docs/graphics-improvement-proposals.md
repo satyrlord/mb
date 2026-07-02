@@ -6,42 +6,53 @@ the authoritative implementation behavior.
 
 ## Latest Update (2026-07-02)
 
-- Current State rewritten to describe the post-Proposal-1 implementation.
-- Proposal 1 converted to a completion record, including where the
+- Proposal 2 implemented: the game board is now drawn by a Canvas 2D
+  renderer (`src/canvas-board-view.ts`) with real procedural plasma, while
+  the DOM `<button>` grid remains as an invisible accessibility / hit-test
+  layer. Proposal 2 below is now a completion record, including where the
   implementation deliberately diverged from the original plan.
-- Superseded PNG originals (`plasma.png` + nine `menu-*.png`, ~11MB) were
-  removed from `textures/`; the deployed site now ships only the WebP assets.
+- Current State rewritten to describe the post-Proposal-2 implementation.
+- Earlier today: Proposal 1 converted to a completion record and superseded
+  PNG originals (`plasma.png` + nine `menu-*.png`, ~11MB) removed from
+  `textures/`; the deployed site ships only the WebP assets.
 
 ## Current State (what actually renders)
 
-The game is **DOM/CSS-rendered**. There is no `<canvas>` or WebGL anywhere —
-every visual is an HTML element styled with CSS.
+The **game board is Canvas 2D-rendered** (`CanvasBoardView` in
+`src/canvas-board-view.ts`); menus, HUD, settings, and the win-FX particle
+system remain DOM/CSS-rendered. There is no WebGL.
 
-### Tile blocks: head-on box-shadow extrusion
+### Board: single-canvas renderer over an invisible DOM layer
 
-Each tile (`src/board.ts`, `ensureButtonCount`) is a `<button>` containing four
-`<span>` faces (`right`, `top`, `front`, `back`). The visible effect comes
-from:
+`CanvasBoardView` extends `BoardView` (`src/board.ts`) and keeps its whole
+DOM contract alive: the `<button>` grid still provides aria-labels,
+`aria-pressed`, keyboard arrow navigation, the `:focus-visible` outline, and
+click delegation — but the `board--canvas` CSS modifier suppresses every DOM
+tile visual. Pixels are painted on a sibling `.board-canvas-layer` canvas
+positioned over the board inside one `requestAnimationFrame` loop that:
 
-- A real CSS `perspective: 1800px` on `.board` (`styles.css`) plus
-  `transform-style: preserve-3d` and a `rotateY` flip per tile — a genuine
-  card-flip.
-- Block depth drawn as a **layered box-shadow extrusion** on `.game-block`
-  (`--tile-depth: 6px`): solid offset shadows form the right and bottom depth
-  faces, a darker pair shades the far edge, and a soft offset shadow grounds
-  the block. The `tile-right` / `tile-top` face spans remain `display: none`
-  by design — see the Proposal 1 completion notes for why the side faces were
-  not promoted to real 3D-positioned elements.
-- A radial-gradient specular highlight on the front face simulates a
-  top-left light source.
+- draws the head-on block extrusion (right/bottom depth faces, far-edge
+  shading, soft contact shadow) — the canvas equivalent of the Proposal 1
+  `box-shadow` stack — plus a radial specular highlight and a hover lift;
+- animates the card flip (horizontal squash with easing) and the matched
+  dissolve imperatively, reading `--tile-flip-duration-ms`,
+  `--tile-match-disappear-duration-ms`, and `--animation-speed` so runtime
+  config and the Settings speed slider still apply;
+- skips all work while the game frame is `[hidden]` and clamps frame deltas
+  so background tabs do not fast-forward animations.
 
-### Tile surfaces
+If a 2D context is unavailable (jsdom, very old browsers), the class
+degrades to the inherited DOM/CSS rendering — the pre-Proposal-2 visuals
+remain intact in CSS as the working fallback.
 
-Tiles sample a shared 40KB `textures/plasma.webp` at `background-size: 500%`
-with `background-blend-mode: multiply`. The static base position in
-`styles.css` (`20% 20%`) applies only when HD mode is off; with HD on, the
-animated plasma layers in `styles.winfx.css` drive the surface, staggered
-per tile via the `--tile-index` custom property (`animation-delay`).
+### Tile surfaces: procedural plasma
+
+Tile plasma is generated per frame: a seamless sine-field texture
+(128×128 offscreen canvas) indexed through a 256-color cycling palette, with
+each tile sampling a staggered, slowly drifting 64×64 window. With HD mode
+off (`[data-hd-mode="off"]`) or `prefers-reduced-motion`, a single static
+plasma frame is rendered instead. `textures/plasma.webp` is still used by
+the DOM fallback styles and the menu title effect.
 
 ### Icons
 
@@ -88,31 +99,46 @@ diverged from the original plan.
 
 ---
 
-## Proposal 2 — Medium effort: Canvas 2D rendering engine (same stack)
+## Proposal 2 — Canvas 2D rendering engine (implemented)
 
-Keep TypeScript / Vite / no-3D-lib, but replace the **per-tile DOM tree** with a
-single `<canvas>` 2D renderer driving the board.
+Completed; kept here as a record of what changed and where the implementation
+deliberately diverged from the original plan.
 
-- Introduce a `CanvasBoardView` implementing the same interface `BoardView`
-  exposes (`render`, `animateMatchedPair`, etc.) so `index.ts` and the
-  controllers do not change. The DOM `<button>` grid becomes a thin invisible
-  accessibility / hit-test layer; pixels are drawn on canvas.
-- Gains: real procedural plasma (animated per-frame noise instead of a static
-  bitmap), proper isometric/extruded blocks drawn with gradients, lighting,
-  particle effects on the same canvas (replacing the DOM-node firework system in
-  `win-fx.ts`), and a real animation loop driven by the existing
-  `--animation-speed` config.
-- Cost: a rendering loop, hit-testing, and re-implementing the flip / match /
-  dissolve animations imperatively. The existing `aria-label` / keyboard-nav
-  contract in `board.ts` must be preserved via the hidden DOM layer
-  (accessibility is currently good — do not regress it).
-- Note: the perf motivation is weaker than when this was first written — HD
-  mode already caps win-FX particles to 500 on low-end devices — so the case
-  for Proposal 2 now rests mainly on visual gains (animated procedural
-  surfaces, richer lighting).
+1. **`CanvasBoardView` with the `BoardView` interface** — implemented as a
+   subclass of `BoardView` rather than a sibling implementing an extracted
+   interface. Subclassing keeps the entire accessibility / hit-test layer
+   (aria attributes, keyboard nav, click delegation, lazy back-face DOM
+   rendering) inherited and byte-identical, and lets `index.ts` swap two
+   constructor calls while `debug-controller.ts` and the rest of the
+   controllers keep their `BoardView` typing unchanged.
+2. **Invisible DOM layer** — implemented via the `board--canvas` container
+   modifier in `styles.css`: tile backgrounds, borders, shadows, transforms,
+   and face spans are suppressed; the `:focus-visible` outline is kept as the
+   one visual the DOM layer still owns. The full DOM/CSS tile rendering stays
+   in the stylesheet and remains the automatic fallback when no 2D context is
+   available.
+3. **Procedural plasma** — implemented as a seamless integer-frequency sine
+   field rendered through a cycling 256-color palette into a 128×128
+   offscreen canvas; tiles sample staggered, drifting 64×64 windows.
+   Palette-cycle and drift tempos mirror `--plasma-hue-cycle-duration-ms`
+   and `--plasma-tile-drift-duration-ms`. HD-off and reduced-motion render
+   one static frame, preserving the HD-mode rules.
+4. **Extruded blocks, lighting, animation loop** — implemented. The head-on
+   extrusion look from Proposal 1 was redrawn on canvas (not converted to
+   isometric — the same "flat board, head-on depth" rationale still holds),
+   with the specular highlight, hover lift, matched green glow, flip, and
+   dissolve all drawn imperatively; timing reads the existing CSS custom
+   properties so `--animation-speed` config drives the loop as proposed.
+5. **Win-FX on the same canvas — deliberately not done.** The DOM particle
+   system in `win-fx.ts` stays: its perf motivation was already resolved by
+   the HD-off particle cap, it renders over the whole app window (not just
+   the board canvas), and migrating it would have rewritten the win-sequence
+   controller contract for no visual gain. Possible follow-up if particle
+   counts ever need to scale.
 
-**Why:** the sweet spot — dramatically better visuals while staying in plain TS
-with no new heavy dependency.
+Tests live in `tests/canvas-board-view.test.ts` (fake 2D context, manually
+stepped animation frames); the renderer degrades to DOM rendering under
+jsdom, so all pre-existing board and integration tests run unchanged.
 
 ---
 
@@ -141,7 +167,9 @@ highest visual ceiling, but by far the most disruptive.
 
 ## Recommendation
 
-Proposal 1 is done and delivered most of the perceived "3D block" improvement
-for a fraction of the effort. Reach for Proposal 2 for animated surfaces and a
-real render loop without a framework migration; reserve Proposal 3 for when
-literal 3D geometry is the goal.
+Proposals 1 and 2 are done: the board now has animated procedural surfaces
+and a real render loop with no framework migration, on top of the Proposal 1
+block styling (which survives as the no-canvas fallback). Reserve Proposal 3
+for when literal 3D geometry becomes a core product goal; the remaining
+Proposal 2 follow-up (win-FX particles on canvas) is optional and only worth
+it if particle counts ever need to exceed what the DOM system sustains.
