@@ -101,7 +101,10 @@ const detectedDeviceType = detectDeviceType(navigator.userAgent, {
   maxTouchPoints: navigator.maxTouchPoints,
   platform: navigator.platform,
 });
-let orientationMode: OrientationMode = readStoredOrientationMode(detectedDeviceType);
+let orientationMode: OrientationMode = readStoredOrientationMode(
+  detectedDeviceType,
+  window.innerHeight > window.innerWidth,
+);
 let hdMode: HdMode = readStoredHdMode(detectedDeviceType);
 
 interface ActiveGameSession {

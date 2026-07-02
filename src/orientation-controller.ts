@@ -8,6 +8,7 @@ const STORAGE_KEY = "memoryblox-orientation-mode";
 
 export const readStoredOrientationMode = (
   deviceType: "mobile" | "desktop" = "desktop",
+  viewportIsPortrait = false,
 ): OrientationMode => {
   const stored = window.localStorage.getItem(STORAGE_KEY);
 
@@ -15,7 +16,10 @@ export const readStoredOrientationMode = (
     return stored;
   }
 
-  return deviceType === "mobile" ? "portrait" : "landscape";
+  // Portrait-shaped viewports (snapped windows, tablets with desktop UAs)
+  // get the portrait default even when UA detection says desktop, so the
+  // landscape window never renders tiles below the 44px touch minimum.
+  return deviceType === "mobile" || viewportIsPortrait ? "portrait" : "landscape";
 };
 
 export const writeOrientationMode = (mode: OrientationMode): void => {

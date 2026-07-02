@@ -126,7 +126,7 @@ describe("LeaderboardUiController", () => {
       controller.render();
 
       expect(deps.elements.statusElement.textContent).toBe("No scores yet. Be the first!");
-      expect(deps.elements.tableWrapElement.hidden).toBe(false);
+      expect(deps.elements.tableWrapElement.hidden).toBe(true);
     });
 
     it("renders rows when entries exist after refresh", async () => {

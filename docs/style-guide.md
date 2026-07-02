@@ -68,6 +68,9 @@ This guide defines visual and styling rules for the game UI.
   (`62cqw` for front symbol, `clamp(1.2rem, 72cqw, 4.6rem)` for back emoji).
 - Emoji on tile backs should include a subtle dark outline/shadow for contrast
   against light or green-heavy tile backgrounds.
+- The front `?` glyph on plasma surfaces must carry the same dark
+  outline/shadow treatment, because plasma swirls include near-white regions
+  that would otherwise wash out the light glyph.
 
 ## Debug Tile Sizing Rules
 

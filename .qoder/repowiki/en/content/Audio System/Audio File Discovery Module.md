@@ -12,7 +12,16 @@
 - [generate-audio-indexes.mjs](file://tools/generate-audio-indexes.mjs)
 - [audio-loader.test.ts](file://tests/audio-loader.test.ts)
 - [audio-ui-controller.test.ts](file://tests/audio-ui-controller.test.ts)
+- [sound-engine-plan.md](file://docs/sound-engine-plan.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced documentation with comprehensive multi-strategy audio asset loading system
+- Added detailed troubleshooting guide with common issues and solutions
+- Expanded performance optimization strategies section
+- Updated architecture diagrams to reflect current implementation
+- Added comprehensive testing coverage information
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -23,13 +32,16 @@
 6. [Dependency Analysis](#dependency-analysis)
 7. [Performance Considerations](#performance-considerations)
 8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
+9. [Testing Strategy](#testing-strategy)
+10. [Conclusion](#conclusion)
 
 ## Introduction
 
 The Audio File Discovery Module is a critical component of the MEMORYBLOX project that enables dynamic discovery and loading of audio assets from the `sound/` directory. This module provides a robust, multi-strategy approach to locating audio files, regardless of the hosting environment or development setup. It seamlessly integrates with the broader audio system to deliver responsive sound effects for the classic Windows 9x memory game.
 
 The module addresses the challenge of audio asset discovery in various deployment scenarios, from development servers with directory listings to production environments where static asset indexing is required. It ensures that sound effects are automatically discovered, categorized, and made available for gameplay without manual configuration.
+
+**Updated** Enhanced with comprehensive multi-strategy discovery system and detailed error handling mechanisms.
 
 ## Project Structure
 
@@ -79,6 +91,8 @@ The core discovery mechanism employs a three-tier fallback strategy designed to 
 1. **JSON Index Strategy**: Attempts to load audio file lists from `index.json` files
 2. **Asset-Index Endpoint Strategy**: Uses a server-side endpoint for dynamic asset discovery  
 3. **HTML Directory Listing Strategy**: Parses server-generated directory listings for audio files
+
+**Updated** Enhanced with comprehensive error handling and detailed logging for debugging purposes.
 
 ### Audio Loader System
 
@@ -180,6 +194,8 @@ The discovery process incorporates several safety mechanisms:
 - **URL Normalization**: Consistent handling of directory paths and file names
 - **Error Recovery**: Graceful degradation through fallback strategies
 
+**Updated** Enhanced with comprehensive error handling and detailed logging for debugging purposes.
+
 **Section sources**
 - [audio-file-discovery.ts:1-28](file://src/audio-file-discovery.ts#L1-L28)
 - [audio-file-discovery.ts:78-93](file://src/audio-file-discovery.ts#L78-L93)
@@ -248,6 +264,8 @@ The Audio Loader provides several key features:
 - **Parallel Loading**: Efficiently loads multiple audio files concurrently
 - **Error Isolation**: Individual file failures don't impact the entire loading process
 - **Memory Management**: Provides mechanisms to clear caches when memory is constrained
+
+**Updated** Enhanced with comprehensive error handling and detailed failure reporting.
 
 **Section sources**
 - [audio-loader.ts:20-64](file://src/audio-loader.ts#L20-L64)
@@ -343,6 +361,8 @@ The Audio File Discovery Module is designed with several performance optimizatio
 - **Autoplay Policies**: Handles browser autoplay restrictions gracefully
 - **Context Management**: Manages audio context state transitions
 
+**Updated** Enhanced with comprehensive performance monitoring and optimization strategies.
+
 ## Troubleshooting Guide
 
 ### Common Issues and Solutions
@@ -362,15 +382,47 @@ The Audio File Discovery Module is designed with several performance optimizatio
 - **Audio Context State**: The module manages audio context resumption
 - **Cache Corruption**: Use `audioLoader.clearCache()` to reset cached audio data
 
+**Performance Issues**
+- **Slow Startup**: Check network connectivity and consider reducing audio file sizes
+- **Memory Usage**: Monitor cache size and clear cache when necessary
+- **Browser Compatibility**: Test across different browsers for optimal performance
+
 **Testing and Debugging**
 - Enable browser developer tools to monitor network requests
 - Check console for discovery method logs and error messages
 - Use test utilities to validate audio file discovery behavior
 
+**Updated** Comprehensive troubleshooting guide with performance optimization strategies.
+
 **Section sources**
 - [audio-file-discovery.ts:123-125](file://src/audio-file-discovery.ts#L123-L125)
 - [audio-loader.ts:50-63](file://src/audio-loader.ts#L50-L63)
 - [sound-manager.ts:315-334](file://src/sound-manager.ts#L315-L334)
+
+## Testing Strategy
+
+The audio system includes comprehensive testing infrastructure to ensure reliability and performance:
+
+### Unit Testing
+- **AudioLoader Tests**: Cover loading, caching, and error handling scenarios
+- **AudioFileDiscovery Tests**: Validate multi-strategy discovery mechanisms
+- **AudioUiController Tests**: Ensure proper UI state management and accessibility
+
+### Integration Testing
+- **End-to-End Flow Testing**: Validate complete audio pipeline from discovery to playback
+- **Cross-Browser Compatibility**: Test across Chrome, Firefox, Edge, and Safari
+- **Performance Testing**: Measure loading times and memory usage under various conditions
+
+### Test Coverage Areas
+- **Error Scenarios**: Network failures, decode errors, and invalid audio data
+- **Edge Cases**: Empty directories, missing files, and malformed responses
+- **Performance Metrics**: Cache hit ratios, loading times, and memory consumption
+
+**Updated** Enhanced testing strategy with comprehensive coverage and performance metrics.
+
+**Section sources**
+- [audio-loader.test.ts:1-228](file://tests/audio-loader.test.ts#L1-L228)
+- [audio-ui-controller.test.ts:1-171](file://tests/audio-ui-controller.test.ts#L1-L171)
 
 ## Conclusion
 
@@ -381,5 +433,8 @@ The module's design emphasizes:
 - **Performance**: Intelligent caching and parallel loading optimize resource usage
 - **Maintainability**: Clean separation of concerns facilitates testing and updates
 - **Compatibility**: Broad browser support through standardized web APIs
+- **Comprehensive Testing**: Well-tested components with extensive coverage
 
 The integration with the broader audio system creates a cohesive experience where sound effects are automatically discovered, categorized, and delivered with minimal configuration overhead. This approach enables developers to focus on game logic while ensuring high-quality audio delivery across all supported platforms and deployment scenarios.
+
+**Updated** Enhanced with comprehensive multi-strategy system, detailed troubleshooting guide, and performance optimization strategies.

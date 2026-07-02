@@ -1126,7 +1126,8 @@ body {
 }
 
 .menu-item.btn:hover {
-  background: transparent;
+  /* Faint surface tint so text-style menu entries still read as buttons. */
+  background: rgba(255, 255, 255, 0.07);
   color: var(--color-menu-item-hover);
   transform: translateY(-1px);
 }
@@ -1378,6 +1379,10 @@ body {
   background-blend-mode: multiply;
   font-family: var(--font-display);
   color: color-mix(in srgb, var(--color-tile-front-text) 90%, transparent);
+  /* Plasma swirls include near-white regions; the glyph needs a dark
+     outline to stay legible on every tile, same as the back-face emoji. */
+  -webkit-text-stroke: 0.55px rgba(0, 0, 0, 0.38);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 6px rgba(0, 0, 0, 0.3);
 }
 
 .tile-back {

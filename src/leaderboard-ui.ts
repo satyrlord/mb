@@ -107,7 +107,7 @@ export class LeaderboardUiController {
         && createLeaderboardEntryKey(entry) === recentLeaderboardEntryKey, visibleRowCount),
     );
 
-    this.elements.tableWrapElement.hidden = false;
+    this.elements.tableWrapElement.hidden = rows.length === 0;
     this.elements.listElement.replaceChildren(...rows);
   }
 

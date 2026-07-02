@@ -1,36 +1,47 @@
 # Graphics Improvement Proposals
 
-Analysis of the MEMORYBLOX rendering architecture and three tiered
-improvement proposals. Report-only context document; treat current source
-and tests as the authoritative implementation behavior.
+Analysis of the MEMORYBLOX rendering architecture and tiered improvement
+proposals. Report-only context document; treat current source and tests as
+the authoritative implementation behavior.
+
+## Latest Update (2026-07-02)
+
+- Current State rewritten to describe the post-Proposal-1 implementation.
+- Proposal 1 converted to a completion record, including where the
+  implementation deliberately diverged from the original plan.
+- Superseded PNG originals (`plasma.png` + nine `menu-*.png`, ~11MB) were
+  removed from `textures/`; the deployed site now ships only the WebP assets.
 
 ## Current State (what actually renders)
 
 The game is **DOM/CSS-rendered**. There is no `<canvas>` or WebGL anywhere —
 every visual is an HTML element styled with CSS.
 
-### The "3D blocks" are a CSS illusion
+### Tile blocks: head-on box-shadow extrusion
 
 Each tile (`src/board.ts`, `ensureButtonCount`) is a `<button>` containing four
-`<span>` faces (`right`, `top`, `front`, `back`). The 3D effect comes from:
+`<span>` faces (`right`, `top`, `front`, `back`). The visible effect comes
+from:
 
 - A real CSS `perspective: 1800px` on `.board` (`styles.css`) plus
-  `transform-style: preserve-3d` and a `rotateY` flip per tile — a genuine,
-  decent card-flip.
-- But the *block depth* is faked with two 4px `::before`/`::after`
-  pseudo-elements skewed by 4° (`.game-block::before` / `::after`). The
-  `tile-right` / `tile-top` face spans are actually **`display: none`** — so the
-  code builds four faces per tile but only renders two. That is the "2D poor
-  approximation": a flat tile with a thin skewed shadow strip masquerading as
-  block thickness.
+  `transform-style: preserve-3d` and a `rotateY` flip per tile — a genuine
+  card-flip.
+- Block depth drawn as a **layered box-shadow extrusion** on `.game-block`
+  (`--tile-depth: 6px`): solid offset shadows form the right and bottom depth
+  faces, a darker pair shades the far edge, and a soft offset shadow grounds
+  the block. The `tile-right` / `tile-top` face spans remain `display: none`
+  by design — see the Proposal 1 completion notes for why the side faces were
+  not promoted to real 3D-positioned elements.
+- A radial-gradient specular highlight on the front face simulates a
+  top-left light source.
 
 ### Tile surfaces
 
-A single shared ~444KB `textures/plasma.png` is scaled to
-`background-size: 500%` with `background-blend-mode: multiply`. Every tile
-samples the same static bitmap at the same `20% 20%` position, so all tiles look
-identical and the "plasma" never animates on tiles (the drift CSS vars exist but
-are not wired to the tile faces).
+Tiles sample a shared 40KB `textures/plasma.webp` at `background-size: 500%`
+with `background-blend-mode: multiply`. The static base position in
+`styles.css` (`20% 20%`) applies only when HD mode is off; with HD on, the
+animated plasma layers in `styles.winfx.css` drive the surface, staggered
+per tile via the `--tile-index` custom property (`animation-delay`).
 
 ### Icons
 
@@ -39,39 +50,41 @@ the strongest part of the current visuals.
 
 ### Menu backgrounds
 
-Nine large PNGs (~1–1.5MB each, ~10MB total in `icon/`) — heavy payload.
+Nine WebP images in `textures/` (~47–105KB each, ~750KB total), referenced by
+`src/menu-texture.ts`.
 
 ### Win FX
 
-A particle system built entirely from DOM nodes (`src/win-fx.ts`): 24 sparks +
-6 cores per firework burst, each a positioned `<div>` animated via CSS
-keyframes. This is the heaviest DOM churn in the app.
+A particle system built entirely from DOM nodes (`src/win-fx.ts`), tuned by
+`config/win-fx.cfg`: 30 firework bursts, a 50-piece center finale, and a
+50-piece confetti rain, budgeted under `winFx.maxParticles=5000` with HD mode
+on, or `winFx.maxParticlesLow=500` with HD off. Still the heaviest DOM churn
+in the app, but the HD-off cap already protects low-end devices.
 
 ---
 
-## Proposal 1 — Lowest effort, biggest wins (CSS / asset only) - Already implemented
+## Proposal 1 — CSS / asset polish (implemented)
 
-No architectural change. Make the existing pseudo-3D and surfaces look
-intentional rather than approximate.
+Completed; kept here as a record of what changed and where the implementation
+diverged from the original plan.
 
-1. **Render real block thickness.** The `tile-right` / `tile-top` faces already
-   exist in the DOM but are hidden. Replace the 4px skewed-pseudo-element hack
-   with actual `translateZ` / `rotateX` / `rotateY`-positioned side faces (the
-   `preserve-3d` context is already there). True beveled blocks for ~30 lines of
-   CSS and zero JS change — deleting dead code, not adding it.
-2. **Fix the plasma so tiles differ.** Vary `background-position` per tile using
-   the existing `--tile-index` custom property (already set in `board.ts` but
-   unused by the texture). One `calc()` per face makes every tile sample a
-   different region — instant visual variety for free.
-3. **Shrink/replace heavy assets.** Replace the 444KB plasma PNG with a CSS
-   gradient or a canvas-baked gradient, or at minimum convert to WebP/AVIF
-   (~90% smaller). Same for the nine menu PNGs (~10MB → ~1MB).
-4. **Add lighting polish.** A subtle `radial-gradient` specular highlight on the
-   front face and a contact `drop-shadow` that scales on hover. Cheap, high
-   perceived-quality gain.
-
-**Why first:** highest visual ROI, touches only CSS + asset files, no risk to
-game logic or tests.
+1. **Block thickness** — *implemented differently than proposed.* The plan
+   was to un-hide the `tile-right` / `tile-top` spans and position them with
+   `translateZ` / `rotateY`. The shipped implementation instead draws a
+   head-on extrusion with a layered `box-shadow` stack on `.game-block`,
+   because a true perspective tilt would skew the whole flat board and leave
+   the side faces edge-on (see the comment above `.game-block` in
+   `styles.css`). The unused face spans stay hidden.
+2. **Per-tile plasma variation** — implemented via `--tile-index`, used as a
+   staggered `animation-delay` on the animated plasma layers in
+   `styles.winfx.css` (HD mode on), rather than as a static
+   `background-position` offset.
+3. **Asset slimming** — implemented. `plasma.png` (454KB) → `plasma.webp`
+   (40KB); nine menu PNGs (~10.9MB) → WebP (~750KB). The superseded PNG
+   originals have been deleted from `textures/`, so the Pages deploy
+   (which copies `textures/` wholesale) ships only WebP.
+4. **Lighting polish** — implemented: radial-gradient specular highlight on
+   the front face plus a grounded contact shadow in the extrusion stack.
 
 ---
 
@@ -93,6 +106,10 @@ single `<canvas>` 2D renderer driving the board.
   dissolve animations imperatively. The existing `aria-label` / keyboard-nav
   contract in `board.ts` must be preserved via the hidden DOM layer
   (accessibility is currently good — do not regress it).
+- Note: the perf motivation is weaker than when this was first written — HD
+  mode already caps win-FX particles to 500 on low-end devices — so the case
+  for Proposal 2 now rests mainly on visual gains (animated procedural
+  surfaces, richer lighting).
 
 **Why:** the sweet spot — dramatically better visuals while staying in plain TS
 with no new heavy dependency.
@@ -124,7 +141,7 @@ highest visual ceiling, but by far the most disruptive.
 
 ## Recommendation
 
-Proposal 1 delivers most of the perceived "3D block" improvement for a fraction
-of the effort (partly just by un-hiding code that already exists). Reach for
-Proposal 2 for animated surfaces and a real render loop without a framework
-migration; reserve Proposal 3 for when literal 3D geometry is the goal.
+Proposal 1 is done and delivered most of the perceived "3D block" improvement
+for a fraction of the effort. Reach for Proposal 2 for animated surfaces and a
+real render loop without a framework migration; reserve Proposal 3 for when
+literal 3D geometry is the goal.
