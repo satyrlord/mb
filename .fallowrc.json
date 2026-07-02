@@ -12,6 +12,11 @@
   "duplicates": {
     "minOccurrences": 3
   },
+  "health": {
+    "maxCyclomatic": 31,
+    "maxCognitive": 28,
+    "maxCrap": 421
+  },
   "rules": {
     "unused-dependencies": "warn",
     "unused-files": "warn",

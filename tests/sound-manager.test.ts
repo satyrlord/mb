@@ -111,7 +111,7 @@ const createTextResponse = (contentType: string, text: string): Response => {
 
 describe("SoundManager", () => {
   beforeEach(() => {
-    global.AudioContext = vi.fn(() => new MockAudioContext()) as unknown as typeof AudioContext;
+    global.AudioContext = vi.fn(function() { return new MockAudioContext(); }) as unknown as typeof AudioContext;
     vi.spyOn(Math, "random").mockReturnValue(0);
 
     const storage = new Map<string, string>();
@@ -674,7 +674,7 @@ describe("SoundManager", () => {
         }
       }
 
-      global.AudioContext = vi.fn(() => new TrackingMockContext()) as unknown as typeof AudioContext;
+      global.AudioContext = vi.fn(function() { return new TrackingMockContext(); }) as unknown as typeof AudioContext;
 
       global.fetch = vi.fn(async (input: RequestInfo | URL) => {
         const url = input.toString();
@@ -723,7 +723,7 @@ describe("SoundManager", () => {
         }
       }
 
-      global.AudioContext = vi.fn(() => new FailingContext()) as unknown as typeof AudioContext;
+      global.AudioContext = vi.fn(function() { return new FailingContext(); }) as unknown as typeof AudioContext;
 
       global.fetch = vi.fn(async (input: RequestInfo | URL) => {
         const url = input.toString();

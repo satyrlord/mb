@@ -230,7 +230,9 @@ export class BoardView {
 
     const targetBoardWidthPx = BoardView.calculateBoardWidth(columns, this.boardLayout);
 
-    this.container.style.width = `min(${targetBoardWidthPx}px, 100%)`;
+    // JSDOM doesn't support min() in style.width.
+    this.container.style.maxWidth = `${targetBoardWidthPx}px`;
+    this.container.style.width = "100%";
 
     this.container.style.gridTemplateColumns = `repeat(${columns}, minmax(${this.boardLayout.minTileSizePx}px, 1fr))`;
     this.ensureButtonCount(tiles.length);

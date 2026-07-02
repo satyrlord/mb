@@ -118,7 +118,7 @@ describe("index win flow integration", () => {
     vi.stubGlobal("fetch", fetchMock);
     window.fetch = fetchMock;
 
-    vi.stubGlobal("AudioContext", vi.fn(() => new MockAudioContext()));
+    vi.stubGlobal("AudioContext", vi.fn(function() { return new MockAudioContext(); }));
 
     Object.defineProperty(window, "innerWidth", { value: 1920, configurable: true });
     Object.defineProperty(window, "innerHeight", { value: 1080, configurable: true });

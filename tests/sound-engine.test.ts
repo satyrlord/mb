@@ -94,7 +94,7 @@ describe("SoundEngine", () => {
   beforeEach(() => {
     // Mock global AudioContext
     mockAudioContext = new MockAudioContext();
-    global.AudioContext = vi.fn(() => mockAudioContext) as unknown as typeof AudioContext;
+    global.AudioContext = vi.fn(function() { return mockAudioContext; }) as unknown as typeof AudioContext;
 
     soundEngine = new SoundEngine(0.8);
   });

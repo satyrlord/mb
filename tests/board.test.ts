@@ -21,13 +21,14 @@ describe("BoardView", () => {
     const boardView = new BoardView(container, () => {});
 
     boardView.render(createTiles(6), 6);
-    expect(container.style.width).toBe("min(586px, 100%)");
+    expect(container.style.maxWidth).toBe("586px");
+    expect(container.style.width).toBe("100%");
 
     boardView.render(createTiles(8), 8);
-    expect(container.style.width).toBe("min(774px, 100%)");
+    expect(container.style.maxWidth).toBe("774px");
 
     boardView.render(createTiles(10), 10);
-    expect(container.style.width).toBe("min(962px, 100%)");
+    expect(container.style.maxWidth).toBe("962px");
   });
 
   test("render respects runtime layout config overrides", () => {
@@ -45,7 +46,8 @@ describe("BoardView", () => {
 
     boardView.render(createTiles(8), 8);
 
-    expect(container.style.width).toBe("min(924px, 100%)");
+    expect(container.style.maxWidth).toBe("924px");
+    expect(container.style.width).toBe("100%");
     expect(container.style.gridTemplateColumns).toBe("repeat(8, minmax(50px, 1fr))");
   });
 
@@ -67,7 +69,8 @@ describe("BoardView", () => {
     // Board width = 2*15 + 8*(100 + 0) - 0 = 830
     boardView.render(createTiles(8), 8);
 
-    expect(container.style.width).toBe("min(830px, 100%)");
+    expect(container.style.maxWidth).toBe("830px");
+    expect(container.style.width).toBe("100%");
     expect(container.style.gridTemplateColumns).toBe("repeat(8, minmax(1px, 1fr))");
   });
 
