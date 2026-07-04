@@ -19,11 +19,11 @@ is confirmed — or you `/goal pause` or `/goal clear`.
 
 A goal has three required parts and one built-in safeguard:
 
-| Part | What it is | Good | Bad |
+|Part|What it is|Good|Bad|
 |------|-----------|------|-----|
-| **Goal** | A clear, actionable objective in the imperative. | «Migrate all v1 API calls to v2.» | «Make the API better.» |
-| **End state** | The checklist. Observable, binary, machine-checkable. | «`rg "/api/v1" src/` returns 0 matches; `npm test` exits 0.» | «It should work.» |
-| **Constraints** | Boundaries: scope, style, safety, non-goals. | «Only edit `src/` and `tests/`. Conventional Commits.» | (none — agent will drift) |
+|**Goal**|A clear, actionable objective in the imperative.|«Migrate all v1 API calls to v2.»|«Make the API better.»|
+|**End state**|The checklist. Observable, binary, machine-checkable.|«`rg "/api/v1" src/` returns 0 matches; `npm test` exits 0.»|«It should work.»|
+|**Constraints**|Boundaries: scope, style, safety, non-goals.|«Only edit `src/` and `tests/`. Conventional Commits.»|(none — agent will drift)|
 
 The **end state** is the judge. The agent must verify each criterion
 independently before declaring done. This stops both **premature completion**
@@ -47,12 +47,12 @@ complex, multi-hour goals.
 
 ## Subcommands
 
-| Command | What it does |
+|Command|What it does|
 |---------|-------------|
-| `/goal status` | Show progress, last verification results, remaining criteria. |
-| `/goal pause` | Freeze the loop. State is preserved in session memory. |
-| `/goal resume` | Continue from the last checkpoint. |
-| `/goal clear` | Stop and reset. Use when you need to refine the goal itself. |
+|`/goal status`|Show progress, last verification results, remaining criteria.|
+|`/goal pause`|Freeze the loop. State is preserved in session memory.|
+|`/goal resume`|Continue from the last checkpoint.|
+|`/goal clear`|Stop and reset. Use when you need to refine the goal itself.|
 
 ## The Loop
 

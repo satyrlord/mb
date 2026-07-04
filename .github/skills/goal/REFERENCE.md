@@ -45,16 +45,16 @@ After each major change:
 
 ## Anti-patterns
 
-| Don't | Why | Do instead |
+|Don't|Why|Do instead|
 |-------|-----|------------|
-| «Make the code better.» | No measurable end state. | Tie to tests, coverage %, or specific refactors. |
-| End state = «agent says it's done.» | Worker grades itself. | Use commands/regex the agent can re-run. |
-| No file/scope constraint. | Agent edits package.json, CI, secrets. | Whitelist directories. |
-| Goal includes 7 unrelated tasks. | Can't verify cleanly; agent thrashes. | Split into separate goals. |
-| No stop condition. | Burns tokens forever. | «Max N iterations, then write BLOCKERS.md.» |
-| Goal launched on dirty working tree. | Hard to roll back. | Always branch + commit first. |
-| Vague constraint like «be careful.» | No-ops the agent ignores. | Concrete: «do not modify package.json.» |
-| End state has no negative checks. | Regressions slip through. | Add: «`rg "TODO\|FIXME" src/ \| wc -l` is unchanged or lower.» |
+|«Make the code better.»|No measurable end state.|Tie to tests, coverage %, or specific refactors.|
+|End state = «agent says it's done.»|Worker grades itself.|Use commands/regex the agent can re-run.|
+|No file/scope constraint.|Agent edits package.json, CI, secrets.|Whitelist directories.|
+|Goal includes 7 unrelated tasks.|Can't verify cleanly; agent thrashes.|Split into separate goals.|
+|No stop condition.|Burns tokens forever.|«Max N iterations, then write BLOCKERS.md.»|
+|Goal launched on dirty working tree.|Hard to roll back.|Always branch + commit first.|
+|Vague constraint like «be careful.»|No-ops the agent ignores.|Concrete: «do not modify package.json.»|
+|End state has no negative checks.|Regressions slip through.|Add: «`rg "TODO\|FIXME" src/ \| wc -l` is unchanged or lower.»|
 
 ## MEMORYBLOX Examples
 
