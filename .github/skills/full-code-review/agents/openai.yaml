@@ -1,0 +1,6 @@
+interface:
+  display_name: 'Full Code Review'
+  short_description: 'Review code against project contracts'
+  default_prompt: 'Use $full-code-review to review this MEMORYBLOX change set.'
+policy:
+  allow_implicit_invocation: true

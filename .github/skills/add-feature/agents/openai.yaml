@@ -1,0 +1,6 @@
+interface:
+  display_name: 'Add Feature'
+  short_description: 'Implement a requested MEMORYBLOX change'
+  default_prompt: 'Use $add-feature to implement the requested MEMORYBLOX behavior and verify it.'
+policy:
+  allow_implicit_invocation: true

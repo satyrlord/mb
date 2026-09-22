@@ -1,0 +1,6 @@
+interface:
+  display_name: 'Dead Code Audit'
+  short_description: 'Prove reachability before removal'
+  default_prompt: 'Use $dead-code-audit to audit MEMORYBLOX for proven dead surfaces.'
+policy:
+  allow_implicit_invocation: true
