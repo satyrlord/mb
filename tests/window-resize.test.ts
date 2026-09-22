@@ -121,6 +121,32 @@ describe("WindowResizeController", () => {
     expect(appShell.style.getPropertyValue("--ui-scale")).toBe("1");
   });
 
+  it("initialize clears a pending settle timer before replacing it", () => {
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    stubBounds(appWindow, 1024, 640);
+
+    controller.initialize();
+    controller.initialize();
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it("ignores settle work after resize state is cleared", () => {
+    stubBounds(appWindow, 1024, 640);
+    controller.initialize();
+
+    const privateController = controller as unknown as {
+      resizeState: unknown;
+      applyScale: (scale: number) => void;
+    };
+    privateController.resizeState = null;
+    privateController.applyScale(1);
+
+    vi.advanceTimersByTime(200);
+
+    expect(appShell.style.getPropertyValue("--ui-scale")).toBe("1");
+  });
+
   it("initialize clamps scale to viewport-bounded maximum", () => {
     Object.defineProperty(window, "innerWidth", { value: 500, configurable: true });
     Object.defineProperty(window, "innerHeight", { value: 400, configurable: true });
@@ -163,12 +189,42 @@ describe("WindowResizeController", () => {
     expect(windowAdd).toHaveBeenCalledWith("resize", expect.any(Function));
   });
 
+  it("ignores visualViewport resize before initialization", () => {
+    const listeners: Record<string, (() => void)[]> = {};
+    const fakeViewport = {
+      addEventListener: (event: string, listener: () => void) => {
+        (listeners[event] ??= []).push(listener);
+      },
+    };
+    Object.defineProperty(window, "visualViewport", {
+      value: fakeViewport,
+      configurable: true,
+    });
+
+    controller.attach();
+    listeners.resize?.[0]?.();
+
+    expect(appShell.style.getPropertyValue("--ui-scale")).toBe("");
+    Object.defineProperty(window, "visualViewport", {
+      value: undefined,
+      configurable: true,
+    });
+  });
+
   // ── Drag interaction ──────────────────────────────────────────────
 
   it("finishResizeDrag is a no-op before any drag starts", () => {
     controller.attach();
 
     expect(() => resizeHandle.dispatchEvent(pointerEvent("pointerup"))).not.toThrow();
+  });
+
+  it("updateResizeDrag is a no-op before any drag starts", () => {
+    const privateController = controller as unknown as {
+      updateResizeDrag: (event: PointerEvent) => void;
+    };
+
+    expect(() => privateController.updateResizeDrag(pointerEvent("pointermove"))).not.toThrow();
   });
 
   it("beginResizeDrag ignores non-primary button", () => {

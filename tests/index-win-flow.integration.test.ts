@@ -109,7 +109,9 @@ const flushAsyncWork = async (): Promise<void> => {
 
 describe("index win flow integration", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"],
+    });
     vi.resetModules();
     loadAppHtml();
     localStorage.clear();

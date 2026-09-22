@@ -1,0 +1,55 @@
+name: Pull Request Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Validate, unit, browser, and coverage tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      npm_config_engine_strict: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate and run unit tests
+        run: npm run quality:sanity
+      - name: Build production site
+        run: npm run build
+      - name: Validate runtime configuration
+        run: bash tools/validate-config.sh
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser regression tests
+        run: npm run test:e2e -- --workers=2
+      - name: Enforce per-file coverage policy
+        run: >-
+          npm run test:coverage --
+          --coverage.thresholds.perFile
+          --coverage.thresholds.statements=90
+          --coverage.thresholds.branches=90
+          --coverage.thresholds.functions=90
+          --coverage.thresholds.lines=90
+      - name: Verify generated artifacts are committed
+        run: git diff --exit-code

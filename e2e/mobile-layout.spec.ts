@@ -38,10 +38,12 @@ async function waitForAppReady(page: Page): Promise<void> {
   /* The resize controller marks the shell ready once it has measured the
      viewport and computed UI scale. This is the last DOM mutation in the
      bootstrap chain, so it's the most reliable readiness signal. */
-  await page.locator(`${sel.appShell}[data-resize-ready="true"]`).waitFor({
-    state: "attached",
+  const appShell = page.locator(sel.appShell);
+  await expect(appShell).toHaveAttribute("data-resize-ready", "true", {
     timeout: 15_000,
   });
+  await expect(appShell).toHaveAttribute("data-orientation", /^(landscape|portrait)$/);
+  await expect(appShell).toHaveAttribute("data-hd-mode", /^(on|off)$/);
 }
 
 /** Assert an element is within the viewport bounds (not overflowing). */

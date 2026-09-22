@@ -85,7 +85,7 @@ export class WindowResizeController {
 
     window.addEventListener("resize", () => {
       if (this.resizeState !== null) {
-        this.applyScale(this.resizeState.scale, false);
+        this.applyScale(this.resizeState.scale);
       } else {
         this.initialize();
       }
@@ -94,7 +94,7 @@ export class WindowResizeController {
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => {
         if (this.resizeState !== null) {
-          this.applyScale(this.resizeState.scale, false);
+          this.applyScale(this.resizeState.scale);
         }
       });
     }
@@ -134,7 +134,7 @@ export class WindowResizeController {
     this.appShellElement.dataset.resizeReady = "true";
 
     const restoredScale = this.readStoredScale() ?? config.windowResizeLimits.defaultScale;
-    this.applyScale(restoredScale, false);
+    this.applyScale(restoredScale);
 
     // Deferred re-clamp: on mobile browsers, viewport dimensions may
     // not have settled by the time the first rAF fires. A short delay
@@ -145,7 +145,7 @@ export class WindowResizeController {
     this.pendingSettleTimeout = window.setTimeout(() => {
       this.pendingSettleTimeout = null;
       if (this.resizeState !== null) {
-        this.applyScale(this.resizeState.scale, false);
+        this.applyScale(this.resizeState.scale);
       }
     }, 200);
   }
@@ -216,7 +216,7 @@ export class WindowResizeController {
     return clamp(scale, minScale, maxScale);
   }
 
-  private applyScale(nextScale: number, persist: boolean): void {
+  private applyScale(nextScale: number): void {
     if (this.resizeState === null) {
       return;
     }
@@ -225,10 +225,6 @@ export class WindowResizeController {
     this.resizeState.scale = boundedScale;
 
     this.appShellElement.style.setProperty("--ui-scale", boundedScale.toString());
-
-    if (persist) {
-      this.writeStoredScale(boundedScale);
-    }
   }
 
   // ── Drag gesture handling ────────────────────────────────────────────
@@ -292,6 +288,6 @@ export class WindowResizeController {
     const heightScale = equivalentWidthFromHeight / this.resizeState.baseWidthPx;
 
     const nextScale = (widthScale + heightScale) / 2;
-    this.applyScale(nextScale, false);
+    this.applyScale(nextScale);
   }
 }

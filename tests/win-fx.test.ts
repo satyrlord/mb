@@ -569,6 +569,42 @@ describe("WinFxController", () => {
     vi.runAllTimers();
   });
 
+  test("skips all callbacks from a stale generation", () => {
+    vi.useFakeTimers();
+    const { controller, layerElement, particlesElement } = createController();
+
+    controller.play();
+    const privateController = controller as unknown as { generation: number };
+    privateController.generation += 1;
+
+    vi.runAllTimers();
+
+    expect(layerElement.hidden).toBe(false);
+    expect(particlesElement.childElementCount).toBe(0);
+    controller.clear();
+  });
+
+  test("stops firework creation at the allowed particle budget", () => {
+    const { controller, particlesElement } = createController();
+    const privateController = controller as unknown as {
+      createWinFxFireworkBurst: (
+        areaX: number,
+        areaY: number,
+        areaWidth: number,
+        areaHeight: number,
+        burstDelayMs: number,
+        allowedParticles: number,
+      ) => void;
+    };
+
+    privateController.createWinFxFireworkBurst(0, 0, 300, 200, 0, 1);
+    expect(particlesElement.childElementCount).toBe(1);
+
+    particlesElement.replaceChildren();
+    privateController.createWinFxFireworkBurst(0, 0, 300, 200, 0, 25);
+    expect(particlesElement.childElementCount).toBe(25);
+  });
+
   test("covers private fallback branches for random pickers", () => {
     const { controller } = createController();
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(1);
@@ -576,6 +612,15 @@ describe("WinFxController", () => {
     const privateController = controller as unknown as {
       pickShapeClass: () => string;
       pickRandomSymbol: (options: readonly string[], fallback: string) => string;
+      createWinFxPiece: (
+        x: number,
+        y: number,
+        symbol: string,
+        spark: boolean,
+        waveDelayMs: number,
+        spreadScale: number,
+        additionalClassName?: string,
+      ) => HTMLElement;
     };
     const privateClass = WinFxController as unknown as {
       pickRandomColor: (palette: readonly string[]) => string;
@@ -585,6 +630,8 @@ describe("WinFxController", () => {
     expect(privateClass.pickRandomColor(["#123456"])).toBe("#ffffff");
     expect(privateController.pickShapeClass()).toBe("square");
     expect(privateController.pickRandomSymbol(["A"], "F")).toBe("F");
+    expect(privateController.createWinFxPiece(0, 0, "", false, 0, 1, "  extra  ")
+      .classList.contains("extra")).toBe(true);
 
     randomSpy.mockRestore();
   });

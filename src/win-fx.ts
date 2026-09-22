@@ -288,9 +288,6 @@ export class WinFxController {
 
     let centerPiecesCreated = 0;
     let fireworkPiecesCreated = 0;
-    let confettiPiecesCreated = 0;
-    let shimmerPiecesCreated = 0;
-    let emberPiecesCreated = 0;
 
     const totalRequired = requiredCenterPieces + requiredFireworkPieces
       + requiredConfettiPieces + requiredShimmerPieces + requiredEmberPieces;
@@ -310,13 +307,9 @@ export class WinFxController {
         }
         const freshAppRect = this.appWindowElement.getBoundingClientRect();
         for (let index = 0; index < confettiBudget; index += 1) {
-          if (confettiPiecesCreated >= confettiBudget) {
-            break;
-          }
           this.winFxParticlesElement.append(
             this.createWinFxRainPiece(freshAppRect.width, freshAppRect.height),
           );
-          confettiPiecesCreated += 1;
         }
       }, confettiRainDelayMs);
       this.deferredTimeoutIds.push(timeoutId);
@@ -407,9 +400,6 @@ export class WinFxController {
         }
         const freshAppRect = this.appWindowElement.getBoundingClientRect();
         for (let index = 0; index < shimmerBudget; index += 1) {
-          if (shimmerPiecesCreated >= shimmerBudget) {
-            break;
-          }
           this.winFxParticlesElement.append(
             this.createShimmerDustPiece(
               0, 0,
@@ -417,7 +407,6 @@ export class WinFxController {
               freshAppRect.height,
             ),
           );
-          shimmerPiecesCreated += 1;
         }
       }, shimmerDelayMs);
       this.deferredTimeoutIds.push(timeoutId);
@@ -433,9 +422,6 @@ export class WinFxController {
         }
         const freshAppRect = this.appWindowElement.getBoundingClientRect();
         for (let index = 0; index < emberBudget; index += 1) {
-          if (emberPiecesCreated >= emberBudget) {
-            break;
-          }
           this.winFxParticlesElement.append(
             this.createRisingEmberPiece(
               0, 0,
@@ -443,7 +429,6 @@ export class WinFxController {
               freshAppRect.height,
             ),
           );
-          emberPiecesCreated += 1;
         }
       }, emberDelayMs);
       this.deferredTimeoutIds.push(timeoutId);

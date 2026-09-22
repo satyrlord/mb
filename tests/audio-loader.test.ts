@@ -104,6 +104,15 @@ describe("AudioLoader", () => {
         "Failed to load audio from network-fail.wav",
       );
     });
+
+    it("should wrap non-Error rejections without a cause", async () => {
+      global.fetch = vi.fn().mockRejectedValue("Network error");
+
+      await expect(audioLoader.load("non-error-fail.wav")).rejects.toMatchObject({
+        message: "Failed to load audio from non-error-fail.wav: Network error",
+        cause: undefined,
+      });
+    });
   });
 
   describe("preload", () => {
