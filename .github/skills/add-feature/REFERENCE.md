@@ -1,38 +1,15 @@
 # Add Feature Reference
 
-## Durable Decision Workflow
+Use an existing document under `docs/` for a decision about architecture,
+data format, persistence, audio playback, icon imports, or shared terms.
+Create a focused document only when no document owns the decision.
 
-Code explains what exists. Documentation explains why the repo chose this
-shape instead of a nearby alternative.
+Record a decision when all three conditions apply:
 
-Write durable documentation for:
+1. The decision is hard to reverse.
+2. Its reason is not clear from the code.
+3. The team chose between real options.
 
-- architecture or layering changes
-- documented project format or version changes
-- persistence contract changes
-- import or playback behavior changes that affect future compatibility
-- resolved terminology conflicts that should stay consistent across docs
-
-Use `docs/glossary.md` only for shared language that spans multiple specs or
-workflows. Pick one preferred term, keep definitions tight, and record
-relationships or flagged ambiguities only when future readers would otherwise
-reuse the wrong term.
-
-## Decision-Record Threshold
-
-Record a decision durably only when all three are true:
-
-- hard to reverse
-- surprising without context
-- the result of a real trade-off
-
-## Where Decisions Live
-
-This project does not use standalone ADRs. Capture architectural decisions in
-the relevant canonical doc under `docs/`. Create a new focused doc when the
-decision stands alone.
-
-Use the lightest structure that still records the trade-off clearly: one
-small block stating context, decision, and why this path won. Add `Status`,
-`Considered Options`, or `Consequences` sections only when they add genuine
-value for the decision at hand.
+State the context, decision, and reason. Add options, consequences, or status
+only when they help a future change. Use `docs/glossary.md` for terms shared
+by several documents; create it only when needed.

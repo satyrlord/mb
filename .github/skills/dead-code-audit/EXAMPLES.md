@@ -20,5 +20,4 @@
 - Prompt shape: "Why did the scan mark this settings controller unused?"
 - Good behavior: trace the symbol through `src/index.ts` bootstrap wiring,
   DOM event listeners, and config file references before deleting it.
-- Good result: report the false positive and recommend the narrowest recurring
-  suppression only if the same pattern will keep appearing.
+- Good result: report the false positive and its active entry path.

@@ -17,6 +17,6 @@ This folder is the canonical home for icon-pack resources and external icon asse
 
 ## Notes
 
-Current in-game icon packs are Unicode glyph resources defined in `src/icons.ts`.
-When adding non-Unicode assets (SVG/PNG/etc), place the files under this
-folder and add corresponding attribution rows.
+The current packs in `src/icons.ts` use Unicode glyphs and OpenMoji SVG files.
+`npm run icons:sync` creates the matching catalog and inventory. Add an
+attribution row in `ATTRIBUTION.csv` for each imported SVG file.

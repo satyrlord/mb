@@ -1,21 +1,18 @@
 # MEMORYBLOX (Windows 9x remake)
 
-Browser-based recreation of the classic Windows 9x game **MEMORYBLOX**
+Browser remake of the Windows 9x game **Memory Blocks**
 using HTML, CSS, and TypeScript. Try it now at <https://satyrlord.github.io/mb/>
 
 ## Update Log
 
 ### 2026-03-06
 
-- Bootstrap responsibilities were split into focused controllers:
-  `audio-ui-controller`, `leaderboard-ui`, `orientation-controller`,
-  `player-name-prompt`, and `win-sequence-controller`.
-- Current verified test state: 34 test files, 621 tests passing.
+- The app moved audio, leaderboard, orientation, player-name, and win-sequence
+  controls from the bootstrap module into separate controllers.
 
 ### 2026-03-05
 
-- GitHub Pages deployment now includes `icon/`, `sound/`, and `music/`
-  asset directories so OpenMoji SVG icon packs and audio files are served.
+- GitHub Pages deployment includes `icon/` and `sound/` assets.
 - Fixed 160 stale `dev/mb/` path prefixes in `artifacts/generated-icon-assets.json`.
 
 ### 2026-02-24
@@ -39,16 +36,16 @@ using HTML, CSS, and TypeScript. Try it now at <https://satyrlord.github.io/mb/>
   (2-tile styling screen), SVG imports, and Flip Tiles
 - Settings page with switchable themed icon packs, tile
  multiplier, and animation speed sliders
-- Global leaderboard support with username prompt on win
+- Local high scores with a player-name prompt on win
 - Debug-assisted wins are recorded as `Debug` scores
-- Plasma texture background with fallback warning when unavailable
+- Canvas 2D board renderer with a DOM fallback when a 2D context is unavailable
 - GitHub Pages workflow for deployment to `/mb/`
 
 ## Stack
 
 - TypeScript (strict mode)
 - Browser DOM APIs (no framework)
-- `tsc` compile output to `dist/`
+- Vite production output in `dist/`
 
 ## Quick Start
 
@@ -57,7 +54,7 @@ npm install
 npm run build
 ```
 
-Open `index.html` in a browser after build.
+Run `npm run serve` to preview the built site at `http://localhost:8080`.
 
 ## Development Commands
 
@@ -72,68 +69,42 @@ npm run test
 npm run test:coverage
 ```
 
-Development server warning: `npm run dev`, `npm run dev:full`, and
-`npm run serve` are local-development commands only and must not be used as a
-production hosting setup.
+Use `npm run dev` during development. Use `npm run serve` to preview a build.
+These commands serve files for local use only.
 
-- `npm run dev`: web app + TypeScript watch + local leaderboard API.
+- `npm run dev`: Vite web app and local leaderboard API.
 - `npm run dev:full`: alias of `npm run dev`.
 - `npm run leaderboard:server`: run only the local leaderboard API.
-- `npm run serve`: local static server on port 8080 + local leaderboard API;
- serves the repo root (`.`) with cache disabled (`-c-1`) and directory
- listing disabled (`-d false`) for development only.
+- `npm run serve`: Vite preview on port 8080 and the local leaderboard API.
 
-The `http-server` commands are development-only. They expose files from
-the repository root and must never be used as a production deployment setup.
-Sensitive files under `config/` (for example `leaderboard.db`) and source
-files are reachable when serving the root in local dev.
+The Vite server serves the app. The Pages workflow copies the built entry
+and assets from `dist/` into its deployment artifact.
 
-The local static server reads `.http-serverignore`; DB artifacts
-(`config/leaderboard.db`, `.db-shm`, `.db-wal`) are blocked there to reduce
-accidental exposure during development.
+The game saves high scores in the browser's `localStorage` under
+`memoryblox.leaderboard`. Scores stay on that browser and origin. To reset
+them, clear that key in the browser's site data. The player-name prompt uses
+the same browser storage.
 
-Leaderboard persistence now uses a SQLite database at
-`config/leaderboard.db` (created automatically on first server start).
-The API server now uses a storage adapter layer under
-`tools/leaderboard/`, so DB implementations can be swapped without
-changing HTTP/game flow logic.
-The server retains up to `100` recent games in SQLite.
-
-`config/leaderboard.data.json` is retained only as a legacy migration source
-for older score data. Active leaderboard reads/writes use SQLite.
-
-Set `LEADERBOARD_DB_DRIVER=sqlite` (default) when starting the server.
-Set `LEADERBOARD_RETENTION=100` (default) to control how many ranked
-games are retained.
-
-### Shared scores across devices
-
-- Keep one shared leaderboard backend running (`npm run leaderboard:server`).
-- Keep `config/leaderboard.cfg` with `leaderboard.endpointUrl=auto`.
-- Open the game from both devices using the same host machine URL
- (for example `http://<your-pc-ip>:8080`).
-- Wins from mobile and PC now write to the same persistent score table.
-
-### Reset global scores
-
-- Stop the leaderboard server.
-- Delete `config/leaderboard.db`.
-- Start the server again (`npm run leaderboard:server`).
+The repository also contains a separate SQLite leaderboard server in
+`tools/leaderboard/`. The current game client does not send scores to it.
+`npm run dev` and `npm run serve` start that server for local work.
 
 ## Validation
 
-`npm run validate` runs the required checks in order:
+`npm run validate` generates asset indexes, then runs these checks in order:
 
 ```bash
-markdownlint .
+markdownlint-cli2
 eslint .
 tsc --noEmit
 ```
 
-Quality gate before commit/push:
+`npm run quality:sanity` adds Fallow and unit tests. Before commit or push,
+run this gate. Use `npm run quality:full` to include browser tests.
+
+To check coverage separately:
 
 ```bash
-npm run test
 npm run test:coverage
 ```
 
@@ -142,7 +113,7 @@ issues.
 
 ## Documentation
 
-- Store all project documentation in `docs/`.
+- Store project guides in `docs/` and asset-specific guidance beside the assets.
 - Keep styling rules in `docs/style-guide.md`.
 - Runtime config keys are documented in `docs/runtime-config.md`.
 - Dead/unnecessary surface review checklist is in `docs/dead-surface-audit.md`.
@@ -166,7 +137,8 @@ src/                       TypeScript source
 src/index.ts               App bootstrap and game loop wiring
 src/game.ts                Game state and matching rules
 src/gameplay.ts            GameplayEngine facade over game state
-src/board.ts               Board rendering and tile input handling
+src/board.ts               DOM tile input and accessibility layer
+src/canvas-board-view.ts   Canvas 2D board renderer
 src/ui.ts                  HUD and status messaging updates
 src/icons.ts               Dynamic icon deck generation
 src/icon-assets.ts         OpenMoji SVG asset definitions and lookup
@@ -186,7 +158,7 @@ src/win-fx.ts              Win celebration particle effects
 src/win-sequence-controller.ts  Win canvas fade + celebration orchestration
 src/flag-emoji.ts          Flag emoji CDN URL and country name helpers
 src/cfg.ts                 Shared cfg-file parsing utilities
-src/sound-engine.ts        Web Audio API core engine (dual-layer)
+src/sound-engine.ts        Web Audio API sound effect engine
 src/sound-manager.ts       High-level game sound controller
 src/audio-loader.ts        Audio asset loading and caching
 src/audio-ui-controller.ts Audio mute UI state and autoplay recovery
@@ -198,7 +170,6 @@ src/window-resize.ts       Window resize handle controller
 config/                    Global runtime configuration files
 icon/                      OpenMoji SVG assets and pack catalog
 sound/                     Sound effect WAV files
-music/                     Background music MP3 files
 index.html                 Browser entry point
 styles.css                 Game styling
 styles.winfx.css           Win animation styling (isolated)
@@ -219,7 +190,7 @@ views; wire them at the bootstrap/controller layer instead.
 ## Credits
 
 - Many thanks to the original authors: <https://github.com/IonicaBizau/memory-blocks>
-- Menu texture overlays in `textures/menu-*.svg` are original MEMORYBLOX
-  artwork by Razvan Petrescu: <https://github.com/satyrlord/mb>
+- Menu texture artwork is by Razvan Petrescu:
+  <https://github.com/satyrlord/mb>
 - Plasma/swirl visual inspiration credit: Anthony Osceola
   (<https://codepen.io/Anthony-Osceola/pen/YzMmorG>)

@@ -1,16 +1,13 @@
 ---
 name: grill-me
-description: >
-  Interview the user relentlessly about a plan or design. Use when the user
-  wants to stress-test a plan before building, or uses any 'grill' trigger
-  phrases.
-tools: vscode/memory, vscode/resolveMemoryFileUri, vscode/askQuestions, vscode/toolSearch, read/problems, read/readFile, read/skill, read/terminalSelection, read/terminalLastCommand, agent, edit/createDirectory, edit/createFile, edit/editFiles, edit/rename
+description: Resolve design decisions with the user one at a time. Use when the user asks to grill a plan or decide an unclear design before implementation.
 ---
 
 # Grilling
 
-Interview me relentlessly, using the VSCode askQuestions tool, about every aspect of this plan,
-until we reach a shared understanding.
+Inspect the relevant code and documents. Then ask the user one question at a
+time until each decision needed for the plan is resolved. Use an available
+question tool if it helps.
 
 ## Design Tree
 
@@ -23,17 +20,15 @@ For each question, provide your recommended answer before asking for mine.
 
 ## Rhythm
 
-- Ask questions **one at a time**. Asking multiple at once is bewildering
-  and breaks the tree walk.
+- Ask questions **one at a time**.
 - Summarize advantages and disadvantages for each option.
 - If a question can be answered by exploring the repo, explore the repo instead of asking.
 - When I answer with a constraint or preference, incorporate it immediately
   — don't ask the same branch again later.
-- Update docs after each answer.
+- Record each durable decision in the document that owns it.
 
 ## Completion Criterion
 
-The grill is done when every branch of the design tree has been walked and
-there are no unresolved dependencies between decisions. The shared
-understanding should be specific enough that the plan could be handed to a
-fresh agent via `handoff` without re-litigation.
+The interview is complete when each decision needed for the plan has an answer,
+dependencies between decisions are resolved, and durable decisions are in the
+owning documents.

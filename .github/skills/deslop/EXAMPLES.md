@@ -1,120 +1,43 @@
 # Deslop Examples
 
-Before/after pairs to calibrate what "slop" looks like in MEMORYBLOX code.
+Use these examples to judge a change. They are code patterns, not project
+API definitions. Check the actual contract before you apply a pattern.
 
-## Example 1 — Comment Slop
+## Comment that repeats code
 
-### 1. Before (slop)
+Before:
 
 ```ts
-// Import the game state module for tile matching
-import { GameState } from "../game";
+// Add the tile class.
+element.classList.add("tile");
+```
 
-// Define the board rendering function
-// This function renders the game board with all tiles
-export function renderBoard(state: GameState, container: HTMLElement): void {
-  // Get the tiles from the game state
-  const tiles = state.getTiles();
+After:
 
-  // Clear the container before rendering
-  // This ensures we don't have stale tiles from a previous render
-  container.innerHTML = "";
+```ts
+element.classList.add("tile");
+```
 
-  // Loop through each tile and create its DOM element
-  for (let i = 0; i < tiles.length; i++) {
-    const tile = tiles[i];
+Keep a comment when it states an invariant or a reason that code cannot show.
 
-    // Create a div element for the tile
-    const el = document.createElement("div");
+## Guard on a required value
 
-    // Add the tile CSS class
-    el.className = "tile";
+Before:
 
-    // Set the data attribute for the tile index
-    el.dataset.index = String(i);
-
-    // If the tile is revealed, show the icon
-    if (tile.revealed) {
-      el.textContent = tile.icon;
-    }
-
-    // Append the tile element to the container
-    container.appendChild(el);
-  }
+```ts
+function showTile(tile: Tile | undefined): void {
+  if (!tile) return;
+  renderTile(tile);
 }
 ```
 
-### 1. After (deslopped)
+After, only when every caller guarantees a tile:
 
 ```ts
-import { GameState } from "../game";
-
-export function renderBoard(state: GameState, container: HTMLElement): void {
-  container.innerHTML = "";
-
-  for (const [i, tile] of state.getTiles().entries()) {
-    const el = document.createElement("div");
-    el.className = "tile";
-    el.dataset.index = String(i);
-
-    if (tile.revealed) {
-      el.textContent = tile.icon;
-    }
-
-    container.appendChild(el);
-  }
+function showTile(tile: Tile): void {
+  renderTile(tile);
 }
 ```
 
-**What was removed:** restatement comments ("Define the board rendering function"),
-obvious explanations ("Loop through each tile"), and redundant
-line-by-line narration. **What was kept:** nothing — no comment in the
-"before" version carried a non-obvious invariant or decision.
-
----
-
-## Example 2 — Defensive Cruft Slop
-
-### 2. Before (slop)
-
-```ts
-function playTileFlipSound(soundManager: SoundManager | null | undefined): void {
-  try {
-    // Check if the sound manager is available
-    if (!soundManager) {
-      console.warn("playTileFlipSound: soundManager is null");
-      return;
-    }
-
-    // Check if the sound is muted before playing
-    if (soundManager.isMuted && soundManager.isMuted()) {
-      return;
-    }
-
-    // Try to play the flip sound
-    const result = soundManager.play("tile-flip");
-    if (!result) {
-      console.warn("playTileFlipSound: play() returned false");
-    }
-  } catch (error) {
-    // Silently catch any audio errors
-    console.error("playTileFlipSound error:", error);
-  }
-}
-```
-
-### 2. After (deslopped)
-
-```ts
-function playTileFlipSound(soundManager: SoundManager): void {
-  if (soundManager.isMuted()) return;
-  soundManager.play("tile-flip");
-}
-```
-
-**What was removed:** the entire try/catch that silently swallowed errors,
-null-guard cascades that paper over invariants (the caller should never pass
-null — that's a type error), and comments that restate the code.
-
-**What was kept:** the mute check — that's a real business rule, not
-defensive cruft.
+Keep the guard when an absent value is part of the real contract. Check every
+caller and test before you remove it.

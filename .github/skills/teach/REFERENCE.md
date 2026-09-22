@@ -1,29 +1,15 @@
-# Teach — Reference
+# Teach Reference
 
-Disclosed reference for the `teach` skill. These definitions shape the
-pedagogical model; consult them when designing lessons.
+Use this model when you select a lesson or practice task.
 
-## Philosophy
+- **Knowledge:** facts from trusted sources. Teach only the facts needed for
+  the skill in the lesson.
+- **Skill:** an action the learner can practice and get feedback on. Use a
+  short feedback loop and make the learner retrieve what they learned.
+- **Wisdom:** judgment built through use in real situations. Suggest a
+  relevant community only when it fits the mission and the user's preference.
 
-To learn at a deep level, the user needs three things:
-
-- **Knowledge**, captured from high-quality, high-trust resources
-- **Skills**, acquired through highly-relevant interactive lessons devised by you, based on the knowledge
-- **Wisdom**, which comes from interacting with other learners and practitioners
-
-Before the `RESOURCES.md` is well-populated, your focus should be to find high-quality resources which will help the user acquire knowledge. Never trust your parametric knowledge.
-
-Some topics may require more skills than knowledge. Learning more about theoretical physics might be more knowledge-based. For yoga, more skills-based.
-
-### Fluency vs Storage Strength
-
-You should be careful to split between two types of learning:
-
-- **Fluency strength**: in-the-moment retrieval of knowledge
-- **Storage strength**: long-term retention of knowledge
-
-Fluency can give the user an illusory sense of mastery, but storage strength is the real goal. Try to design lessons which build long-term retention by desirable difficulty:
-
-- Using retrieval practice (recall from memory)
-- Spacing (distributing practice over time)
-- Interleaving (mixing up different but related topics in practice - for skills practice only)
+Easy recall during a lesson can be temporary. Check learning after a delay.
+Use retrieval practice, spaced practice, and related tasks in varied order
+when these methods suit the topic. Record demonstrated ability, not lesson
+attendance.

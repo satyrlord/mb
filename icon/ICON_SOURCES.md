@@ -2,13 +2,12 @@
 
 Use this file to register allowed sources before importing assets.
 
-- **OpenMoji** — <https://openmoji.org/> —
-  CC BY-SA 4.0 — Allowed: Yes — Attribution required
-- **Twemoji (graphics)** — <https://twemoji.twitter.com/> —
-  CC BY 4.0 — Allowed: Yes — Attribution required
-- **Wikimedia Commons** — <https://commons.wikimedia.org/> —
-  Varies per asset — Allowed: Conditional —
-  Verify each asset license
+- **OpenMoji** — <https://openmoji.org/> — CC BY-SA 4.0. The current icon
+  library uses this source. Record attribution for each imported file.
+- **Twemoji graphics** — <https://twemoji.twitter.com/> — CC BY 4.0. Check the
+  license and attribution terms before an import.
+- **Wikimedia Commons** — <https://commons.wikimedia.org/> — Licenses differ
+  by asset. Check the license and author for each file before an import.
 
 ## Intake Checklist
 
@@ -20,8 +19,7 @@ Use this file to register allowed sources before importing assets.
 
 ## OpenMoji Folder Policy
 
-- Store all OpenMoji SVG files in `icon/openmoji/svg/`.
+- Store OpenMoji SVG files in `icon/openmoji/svg/`.
 - Do not create per-import batch folders.
-- For future imports, add files directly into `icon/openmoji/svg/`
-  and append rows in `ATTRIBUTION.csv` using paths under
-  `icon/openmoji/svg/`.
+- For future imports, add files directly to the selected `svg/` folder.
+  Add their paths and attribution to `ATTRIBUTION.csv`.

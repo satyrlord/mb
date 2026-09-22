@@ -9,7 +9,7 @@
 
 ## Example 2: Record A Durable Trade-Off
 
-- Prompt shape: "Record why we are not versioning leaderboard data files."
+- Prompt shape: "Record the decision about leaderboard data versions."
 - Good behavior: capture the decision, rationale, and consequences in the
   owning doc under `docs/` instead of scattering the answer across
   chat history.

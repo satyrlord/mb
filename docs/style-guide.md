@@ -94,8 +94,8 @@ This guide defines visual and styling rules for the game UI.
   toggle. All color tokens resolve to their dark values.
 - Use CSS variables from `styles.css` for colors, borders, and surfaces.
 - Do not hard-code new colors, shadows, or typography without clear need.
-- Color tokens are plain values (no `color-mix` expressions); update the
-  CSS variable directly when a color needs changing.
+- Keep shared colors in CSS variables. The tile glyph uses `color-mix()` to
+  adjust the text token opacity.
 
 ## Canvas Board Mode Rules
 

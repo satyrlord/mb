@@ -1,7 +1,6 @@
 #!/usr/bin/env pwsh
-# Human-in-the-loop reproduction loop.
-# Copy this file, edit the steps below, and run it.
-# The agent runs the script; the user follows prompts in their terminal.
+# Reproduction loop that needs user actions.
+# Copy this file. Replace the example steps before you run it.
 #
 # Usage:
 #   ./hitl-loop.template.ps1
@@ -27,9 +26,9 @@ function capture {
 
 # --- edit below ---------------------------------------------------------
 
-step "Open the app at http://localhost:3000 and sign in."
+step "Open MEMORYBLOX at http://localhost:8080."
 
-capture ERRORED "Click the 'Export' button. Did it throw an error? (y/n)"
+capture ERRORED "Repeat the reported action. Did the error occur? (y/n)"
 
 capture ERROR_MSG "Paste the error message (or 'none'):"
 

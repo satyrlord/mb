@@ -1,51 +1,28 @@
 ---
 name: handoff
-description: Transfer session state to a fresh agent as a minimal, lossless state-transfer document.
+description: Record the state of a task for another agent.
 argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
 
 # Handoff
 
-Produce a **state-transfer document** — the minimum payload a fresh agent
-needs to resume this session without re-litigating decisions already made.
-Save to the temporary directory of the user's OS, not the current workspace.
+Write a short Markdown document for the next agent. Save it in the operating
+system's temporary directory unless the user gives another location.
 
-## Completion Criterion
+## Required content
 
-The handoff is done when a fresh agent, given only this document and the
-repo, can state the current task, the last concrete action taken, and the
-exact next step — without asking a single clarifying question.
+1. **Current task:** state the objective and scope.
+2. **Current state:** state the last action and exact next step. Give file
+   paths and commands when they apply.
+3. **Decisions:** state each durable choice and its reason.
+4. **Open questions:** include only questions that block the next step.
+5. **Changed files:** list paths and relevant diff or commit references.
+6. **Suggested skills:** name relevant repository skills in use order.
 
-## Required Sections
+Point to existing documents instead of copying them. Do not include secrets
+or personal data. If the user names a focus for the next session, put the
+information for that focus first.
 
-1. **Current task** — one sentence. What we are building or fixing.
-2. **State snapshot** — the last concrete action taken, and the immediate
-   next step. Be specific: file paths, line numbers, command to run.
-3. **Decisions made** — what was ruled in, what was ruled out, and why. This
-   is the highest-value section; it prevents re-litigation.
-4. **Open questions** — only the ones that block the next step. Skip
-   resolved questions and future-phase unknowns.
-5. **Files touched** — paths, not contents. Reference diffs or commits when
-   available.
-6. **Suggested skills** — the repo skills the next agent should invoke, in
-   order.
-
-## What to Exclude
-
-- Content already captured in artifacts (PRDs, plans, ADRs, issues, commits,
-  diffs). Reference them by path or URL.
-- Conversation history, dead ends, or discarded approaches — unless the
-  *reason* for discarding is a durable decision.
-- Sensitive information: API keys, passwords, PII.
-
-## Format
-
-Plain Markdown. No boilerplate headers beyond the sections above. Prefer
-bullet lists over prose paragraphs.
-
-## Tailoring
-
-If the user passed arguments, treat them as a description of the next
-session's focus. Weight the state snapshot and suggested skills toward that
-focus.
+The handoff is complete when an agent can read the document and repository,
+then identify the task, last action, and next step without another question.

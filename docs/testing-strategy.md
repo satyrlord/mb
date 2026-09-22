@@ -15,8 +15,7 @@
 
 ## Previous Update (2026-03-06)
 
-- Test suite expanded to 34 test files, 621 tests passing.
-- Coverage metrics updated to reflect the full source module set.
+- The test suite gained focused controller and integration tests.
 - Quality gate now explicitly includes a VS Code Problems scan after
   `npm run test` and `npm run test:coverage`.
 - Coverage policy is enforced per reported table cell: each file/row metric
@@ -41,8 +40,8 @@ npm run test:watch      # watch mode
 
 ## Coverage
 
-Coverage is collected via `@vitest/coverage-v8`. Reports are written to
-`coverage/` in multiple formats (HTML, Clover, JSON).
+Coverage uses `@vitest/coverage-istanbul`. Run `npm run test:coverage` to
+create the report in `coverage/`.
 
 ### Excluded Paths
 
@@ -59,40 +58,24 @@ The following paths are excluded from coverage in `vitest.config.ts`:
 
 `src/index.ts` is the browser bootstrap entrypoint. It wires up
 `DOMContentLoaded`, `window` event handlers, and DOM element lookups
-against the real `index.html` shell. The Vitest + JSDOM unit-test
-environment never loads the full HTML page or triggers the complete
-page lifecycle, so this module cannot be meaningfully exercised in the
-current unit-test setup.
+against the page. The unit tests cover selected bootstrap flows. Browser
+tests cover the built site.
 
-**Current mitigation:** Keep `src/index.ts` excluded from unit-test coverage,
-but cover high-value bootstrap flows with targeted integration tests
-(`tests/index-win-flow.integration.test.ts`). Full browser E2E coverage remains
-future work.
+Keep `src/index.ts` excluded from unit-test coverage. The focused integration
+tests include `tests/index-win-flow.integration.test.ts`. The browser tests in
+`e2e/` use the built site and two mobile Chromium profiles.
 
 ## Coverage Metrics
 
-Current test coverage (all metrics at 90%+):
-
-- Statements: 97.84%
-- Branches: 96.02%
-- Functions: 99.00%
-- Lines: 97.84%
-- Test Files: 34/34 passing
-- Tests: 621 tests passing
+CI runs Istanbul coverage with a 90% threshold for each reported file and
+for each of Statements, Branches, Functions, and Lines. Run
+`npm run test:coverage` for current measurements. Do not use the historical
+figures in the update log as current results.
 
 ### Per-File Coverage
 
-All source files (`src/`) meet or exceed 90% coverage.
-
-- Recently extracted controller modules are fully or near-fully covered:
-  `audio-ui-controller.ts` (100%), `leaderboard-ui.ts` (100%),
-  `orientation-controller.ts` (100%), `player-name-prompt.ts` (100%),
-  `win-sequence-controller.ts` (98.78%).
-- Core gameplay and infrastructure modules remain at or above the project
-  threshold, including `board.ts`, `gameplay.ts`, `leaderboard.ts`,
-  `runtime-config.ts`, `sound-engine.ts`, `sound-manager.ts`,
-  `utils.ts`, and `window-resize.ts`.
-- `test-helpers.ts` remains 100% across all metrics.
+Check the coverage table after each coverage run. Fix each reported cell
+below 90% before you claim that the coverage gate passed.
 
 ## Conventions
 
@@ -109,21 +92,9 @@ All source files (`src/`) meet or exceed 90% coverage.
 - After major code review or bug fixes, add tests to cover the edge cases
   fixed and verify coverage targets remain above 90%.
 
-## Error Handling Patterns
+## Error Handling Tests
 
-The codebase distinguishes between multiple error types to provide precise
-error context:
-
-- **Network errors** (for `fetch` failures): caught in outer `try-catch` block
-  in config loading functions (`cfg.ts`, `leaderboard.ts`, `shadow-config.ts`).
-  These log "Failed to fetch" messages and return safe defaults.
-- **Parse/validation errors** (for invalid config or JSON): caught in inner
-  `try-catch` block wrapping `response.text()` and parsing logic. These log
-  "Failed to parse" messages separately from network errors to help distinguish
-  transient connection issues from structural/format problems.
-- **Storage errors** (for quota exceeded or permission denied): caught via
-  `instanceof DOMException` in leaderboard storage operations.
-
-Tests verify these error paths using mocked `fetch` failures and `localStorage`
-access patterns. See `tests/leaderboard.test.ts` and `tests/runtime-config.test.ts`
-for examples of error scenario coverage.
+- Test configuration fetch and parse errors in `tests/runtime-config.test.ts`.
+- Test high score storage errors in `tests/leaderboard.test.ts`. The browser
+  leaderboard uses `localStorage`. It does not fetch scores from an API.
+- Restore mocked `fetch`, timers, and browser storage after each test.

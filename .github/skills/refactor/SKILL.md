@@ -1,51 +1,40 @@
 ---
 name: refactor
-description: >
-  Surgical, behavior-preserving cleanup for the MEMORYBLOX repository. Use
-  when the user asks to refactor — reduce complexity or make code easier to
-  change without adding features.
+description: Reduce MEMORYBLOX code complexity without a behavior change. Use when the user asks to refactor code.
 ---
 
 # Refactor
 
-Reduce structural and local complexity without changing behavior, contracts,
-or validation coverage. Take small steps and validate after each one; do not
-mix cleanup with new feature work or widen into drive-by edits.
+Make a small structural change that keeps the current behavior and contract.
 
-Project-specific hazards — read more context before touching these
-(Chesterton's fence):
+## Procedure
 
-- Game state lifecycle: `game.ts` is the canonical state; board, UI, and
-  gameplay all derive from it. Changing state shape or selection/match logic
-  silently breaks the board rendering and win detection.
-- Web Audio lifecycle: `AudioContext` state transitions (suspended/resumed)
-  must be handled asynchronously; simplifying AudioNode creation patterns
-  can leak nodes or break the dual-layer sound engine.
-- DOM event delegation: board click handling in `board.ts` relies on event
-  delegation from a single listener; changing markup structure can break
-  tile selection without any compile error.
-- Leaderboard storage: `leaderboard.ts` persists to `leaderboard.data.json`;
-  changing the scoring schema or entry key format silently corrupts existing
-  leaderboard data.
-- Vite build: the project uses Vite with relative asset paths for
-  `/mb/` deployment; changing import paths or asset references can break
-  the production build while `npm run dev` still works.
+1. Read the affected code, callers, tests, and project documents. Record the
+   working tree state. Complete this step when the current behavior and
+   boundaries are clear.
+2. Identify the complexity to remove. State which branches, repeated rules,
+   or files the change will simplify. Complete this step when the proposed
+   change has a measurable effect and a relevant check.
+3. Make the change. Add a focused regression test when existing tests do not
+   cover a risky behavior. Complete this step when no new feature or unrelated
+   edit is in the diff.
+4. Run the relevant tests and `npm run validate`. Check the final diff for
+   orphaned code. Complete this step when the checks pass and each changed
+   line serves the refactor.
 
-Delete dead code only when you can prove it is off the active path
-(`dead-code-audit` owns the full sweep).
+Check these contracts before you change their code:
 
-Add a focused regression test before risky structural changes. If the
-cleanup changes a durable seam, follow with `add-feature`.
+- `src/game.ts` owns game state. Board and UI behavior depend on its
+  selection and match rules.
+- Web Audio uses asynchronous `AudioContext` state changes. Check node
+  cleanup and resume behavior.
+- `src/board.ts` uses one delegated click handler for tiles. Check its DOM
+  selectors when markup changes.
+- `src/leaderboard.ts` stores local scores in browser `localStorage`. A
+  separate local leaderboard server uses SQLite and can read a legacy JSON
+  file. Check both contracts before you change score or entry keys.
+- The Vite build needs relative asset paths for the `/mb/` Pages URL. Test
+  the production build when asset paths change.
 
-## Completion Criterion
-
-The refactor is done when all of the following are true:
-
-- **Behavior preserved** — all existing tests pass. No regression uncovered
-  by the change.
-- **Complexity reduced** — the refactored code is simpler, smaller, or more
-  readable than before. Not a lateral move.
-- **No new dead code** — no paths left orphaned by the change. (If you
-  suspect dead code remains, run `dead-code-audit`.)
-- **No drive-by edits** — every changed line serves the refactoring goal.
-  No scope-creep fixes or features mixed in.
+Use `dead-code-audit` when the task requires a full unused-code sweep. Update
+the owning document when the refactor changes a durable contract.

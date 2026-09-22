@@ -1,3 +1,3 @@
-# MEMORYBLOX - Project Instructions for AI Agents
+# MEMORYBLOX Agent Instructions
 
-Check [AGENTS.md](AGENTS.md) for agent instructions.
+Read [AGENTS.md](../AGENTS.md) before you edit the project.

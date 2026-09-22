@@ -1,104 +1,42 @@
 ---
 name: run-quality-gate
-description: >
-  Quality-gate execution for repository hygiene and release readiness. Use when
-  the user asks to run a quality gate, clean all Problems panel issues, fix
-  lint/test/coverage failures, or verify the branch meets strict 90%+ coverage
-  thresholds without suppression.
+description: Run the MEMORYBLOX quality gate and report its results. Use when the user asks for validation, release checks, test results, coverage, or help with a failed quality check.
 ---
 
 # Run Quality Gate
 
-Run a deterministic gate in fixed order. The leading word is **gate**:
-close each gate completely before moving on.
+Run the checks that the request needs. Read `package.json` before you run them.
+The project scripts are the source of truth for commands and their order.
 
-Do not suppress diagnostics unless the user explicitly approves suppression.
-The default action is to fix root causes in code, config, tests, or tooling.
+## Procedure
 
-## Deep Reference
+1. Record the working tree state with `git status --short`. Read the request to
+   determine the required gate. Complete this step when you know which checks
+   the user requested and which files were dirty before the gate.
+2. Run the requested script. Use `npm run quality:sanity` for the commit and push
+   gate. Use `npm run quality:full` when end-to-end tests are required. Run
+   `npm run test:coverage` when coverage is required. Complete this step when
+   each required command has an exit status and its output is saved.
+3. After the gate, inspect the VS Code Problems view if it is available. If it
+   is not available, state that limit and use command diagnostics. Complete
+   this step when each visible problem has a result or a stated reason it
+   could not be checked.
+4. Fix each issue caused by the task. After a fix, rerun the failed check and
+   all checks that the fix affects. Complete this step when required checks
+   pass or each remaining failure has exact command evidence.
+5. Report each check as passed, failed, or unavailable. State the commands,
+   changed files, and remaining failures. Do not call the gate passed while a
+   required check is open.
 
-Use [REFERENCE.md](REFERENCE.md) for gate command fallbacks, discovery checks,
-coverage policy details, final report template, and stop conditions.
+The `validate` script runs artifact generation, Markdown lint, ESLint, and
+TypeScript checks. The quality scripts also run Fallow and unit tests.
+`quality:full` adds Playwright tests. The coverage script uses Istanbul. The
+coverage policy requires at least 90% in every reported table cell for
+Statements, Branches, Functions, and Lines.
 
-## Gates
+Run Playwright in headless mode. Do not change rules or coverage exclusions to
+hide a failure. If the user asks for only selected tests, run only those tests
+and report the gate as partial.
 
-1. **Problems gate**
-   - Collect diagnostics from the VS Code Problems pipeline for the whole
-     workspace (`get_errors` without file filter).
-   - Fix all valid errors and warnings.
-   - Re-run diagnostics until either:
-     - no problems remain, or
-     - only proven false positives remain with evidence captured in the final
-       report.
-   - Completion criterion: Problems output is empty, or each remaining item is
-     explicitly listed as a verified false positive.
-
-2. **Markdown gate**
-   - Run markdown linting across repository Markdown files.
-   - Preferred command: `npx markdownlint-cli2 "**/*.md"`.
-   - Fix every valid finding by editing Markdown.
-   - Do not add ignores/rule disables without explicit user permission.
-   - Completion criterion: markdownlint exits clean with zero findings.
-
-3. **ESLint gate**
-   - Run ESLint for the workspace (`npm run lint`).
-   - Apply safe auto-fixes first, then fix remaining findings manually.
-   - Do not disable rules without explicit user permission.
-   - Completion criterion: ESLint exits clean with zero findings.
-
-4. **TypeScript gate**
-   - Run TypeScript compiler check (`npx tsc --noEmit`).
-   - Fix all type errors.
-   - Completion criterion: tsc exits clean with zero errors.
-
-5. **Unit-test gate**
-   - Run unit tests (`npm test`).
-   - Fix failing tests and production code issues where feasible.
-   - Completion criterion: all unit tests pass.
-
-6. **E2E gate**
-   - Run E2E tests (`npm run test:e2e` for Playwright).
-   - If no E2E suite exists, record that explicitly and continue.
-   - Fix failures where feasible.
-   - Completion criterion: all discovered E2E tests pass, or no E2E suite exists
-     and that absence is reported.
-
-7. **Coverage gate**
-   - Run coverage tooling (`npm run test:coverage`).
-   - Fix low-coverage gaps by adding or improving tests, not by excluding code,
-     unless the user explicitly approves exclusions.
-   - Threshold rule: each reported coverage cell must be at least 90%. Treat
-     Statements, Branches, Functions, and Lines as separate cells wherever
-     reported (global and per-file/module tables).
-   - Completion criterion: coverage report shows >=90% in every reported cell,
-     or blockers are explicitly documented with exact cells and values.
-
-## Failure handling
-
-If a gate cannot be closed in the current turn, stop at that gate and report:
-
-- exact command run,
-- exact failure output,
-- attempted fixes,
-- remaining blockers,
-- smallest next change to close the gate.
-
-Never claim the full quality gate passed when any gate remains open.
-
-## Final report format
-
-Return results in this order:
-
-1. Gate status table (Problems, Markdown, ESLint, TypeScript, Unit, E2E, Coverage).
-2. Files changed.
-3. Commands run.
-4. Remaining blockers (if any).
-
-## Completion Criterion
-
-This skill run is complete only when:
-
-- every gate has been executed in order,
-- every valid issue was fixed or documented as a verified false positive,
-- no suppression was introduced without explicit user permission,
-- and the final report lists objective evidence for each gate outcome.
+Read [REFERENCE.md](REFERENCE.md) when a command is unavailable or a result
+needs triage.

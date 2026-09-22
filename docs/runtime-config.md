@@ -21,7 +21,7 @@ This project stores global runtime-tunable values in `config/`.
 - `config/ui.cfg`: UI/window/theme/animation bounds and defaults.
 - `config/shadow.cfg`: text/filter shadow presets and active preset selection.
 - `config/win-fx.cfg`: win animation timing, density, and palette options.
-- `config/leaderboard.cfg`: global leaderboard endpoint and networking options.
+- `config/leaderboard.cfg`: local high score and scoring options.
 
 ## `config/ui.cfg`
 
@@ -133,12 +133,8 @@ shadow configuration defined in code.
 
 ## `config/leaderboard.cfg`
 
-- `leaderboard.enabled`: enable/disable global leaderboard calls (`true`/`false`).
-- `leaderboard.endpointUrl`: HTTP endpoint used for both reads and writes.
-- `leaderboard.autoEndpointPort`: port used when `leaderboard.endpointUrl=auto`.
-- `leaderboard.apiKey`: optional API key sent as `x-api-key`.
-- `leaderboard.maxEntries`: number of recent games shown in the menu.
-- `leaderboard.timeoutMs`: request timeout in milliseconds.
+- `leaderboard.enabled`: show and save local high scores (`true`/`false`).
+- `leaderboard.maxEntries`: maximum number of scores saved in browser storage.
 - `leaderboard.scorePenaltyFactor`: score retention factor applied to
   debug/auto-demo scores (`0..1`).
 - `leaderboard.attemptsPenaltyMs`: per-attempt time penalty added before score calculation.
@@ -150,6 +146,12 @@ shadow configuration defined in code.
   Win mode (`0..1`).
 - `leaderboard.debugTilesModeReductionFactor`: additional reduction for debug
   Tiles mode (`0..1`).
+- `leaderboard.portraitBonusFactor`: score multiplier for portrait mode
+  (minimum `1`).
+
+The game stores high scores in the browser's `localStorage` under
+`memoryblox.leaderboard`. Scores do not move between browsers or devices.
+The game client does not use the SQLite leaderboard server.
 
 ### Legacy JSON to SQLite migration
 
@@ -183,37 +185,14 @@ one-time migration plan (for example, after intentionally discarding all
 previous leaderboard data). Unplanned changes may cause data loss or
 duplication.
 
-### Expected endpoint behavior
+### Separate leaderboard server
 
-- `GET <endpoint>?limit=N`
-  - Returns either an array of score entries or `{ entries: [...] }`.
-- `POST <endpoint>`
-  - Accepts score JSON payload with:
-    - `playerName`
-    - `timeMs`
-    - `attempts`
-    - `difficultyId`
-    - `difficultyLabel`
-    - `emojiSetId`
-    - `emojiSetLabel`
-    - `scoreMultiplier`
-    - `scoreValue`
-    - `isAutoDemo` (optional)
-
-Scores created from debug tools are submitted with `difficultyLabel=Debug`.
-
-For local development in this repository, a bundled API server is available at
-`http://127.0.0.1:8787/leaderboard` via `npm run leaderboard:server`.
-Scores are stored in a SQLite database file at `config/leaderboard.db`.
-The leaderboard backend keeps up to `100` recent games.
-The leaderboard server uses a pluggable storage adapter (`tools/leaderboard/`).
-Select the adapter with `LEADERBOARD_DB_DRIVER` (currently `sqlite`).
-Override retention with `LEADERBOARD_RETENTION` (positive integer, default `100`).
-
-`leaderboard.endpointUrl` supports an `auto` mode. In this mode, the app resolves
-the endpoint to `http(s)://<current-host>:8787/leaderboard`, which allows mobile
-and PC clients to share one persistent leaderboard when both open the game from
-the same host machine URL.
+The repository still includes an API server at
+`http://127.0.0.1:8787/leaderboard`. Start it with
+`npm run leaderboard:server`. It stores scores in `config/leaderboard.db`.
+`LEADERBOARD_DB_DRIVER=sqlite` selects its current storage adapter.
+`LEADERBOARD_RETENTION` sets its score limit (default `100`). The browser
+game does not call this API.
 
 ## Notes
 
@@ -224,24 +203,6 @@ the same host machine URL.
 - Orientation mode does not introduce new config keys; instead,
   `orientation-controller.ts` reinterprets `ui.fixedWindowAspectRatio` and the
   base window dimensions for portrait mode.
-
-## Browser Compatibility
-
-The versions below are the **minimum where `AbortSignal.timeout` is natively
-available**. Older browsers are still supported: the `withTimeout` helper in
-`src/leaderboard.ts` detects `AbortSignal.timeout` at runtime and falls back to
-a manual `AbortController` timer when the native API is absent, so the
-leaderboard fetch works across a wider range of browsers.
-
-- **Chrome 105** — `AbortSignal.timeout` (native)
-- **Firefox 110** — `AbortSignal.timeout` (native)
-- **Safari 15.4** — `AbortSignal.timeout` (native, introduced March 2022)
-- **Edge 105** — same as Chrome (Chromium-based)
-
-Core MEMORYBLOX styles do not currently rely on CSS container queries. If you
-introduce container-query-based customizations, ensure you provide suitable
-fallbacks (for example, responsive layouts based on traditional media queries
-or feature-detection).
 
 ## Quick Examples
 
@@ -255,10 +216,10 @@ activePreset=soft
 
 ### Slower win animation pace
 
-In `config/win-fx.cfg`, increase the major delays and total duration:
+In `config/win-fx.cfg`, increase the text display time and effect delays:
 
 ```properties
-winFx.durationMs=6400
+winFx.textDisplayDurationMs=3000
 winFx.centerFinaleDelayMs=900
 winFx.confettiRainDelayMs=1300
 ```
