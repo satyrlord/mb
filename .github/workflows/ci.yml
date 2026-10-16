@@ -53,3 +53,30 @@ jobs:
           --coverage.thresholds.lines=90
       - name: Verify generated artifacts are committed
         run: git diff --exit-code
+
+  sqlite-compatibility:
+    name: SQLite / ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24', '26']
+    env:
+      CI: 'true'
+      npm_config_engine_strict: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install packaged native binaries without build scripts
+        run: npm ci --ignore-scripts
+      - name: Test SQLite upgrades, migration, and WAL persistence
+        run: npm test -- tests/sqlite-store.test.ts

@@ -2,6 +2,12 @@
 
 ## Latest Update (2026-10-16)
 
+- SQLite regression tests cover a database created with better-sqlite3
+  12.11.1, durable migration completion, atomic rollback and retry, retention,
+  deduplication, and recovery of committed WAL data after process exit.
+- The SQLite compatibility job tests packaged native binaries on Linux and
+  Windows with Node 22, 24, and 26. These file-backed integration tests use
+  temporary directories and do not access production data.
 - Icon inventory generation is deterministic: unchanged icon inputs do not
   rewrite a date in the tracked Markdown output. CI can verify generated
   artifacts on any day.

@@ -1,0 +1,17 @@
+{
+  "betterSqlite3": "12.11.1",
+  "sqliteVersion": "3.53.2",
+  "entry": {
+    "playerName": "Legacy Ștefan",
+    "timeMs": 12345,
+    "attempts": 11,
+    "difficultyId": "hard",
+    "difficultyLabel": "Hard",
+    "emojiSetId": "space-astronomy",
+    "emojiSetLabel": "Space Astronomy",
+    "scoreMultiplier": 2.5,
+    "scoreValue": 97,
+    "isAutoDemo": true,
+    "createdAt": "2026-02-20T22:00:00.000Z"
+  }
+}
