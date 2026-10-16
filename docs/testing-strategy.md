@@ -1,6 +1,12 @@
 # Testing Strategy
 
-## Latest Update (2026-07-02)
+## Latest Update (2026-10-16)
+
+- Icon inventory generation is deterministic: unchanged icon inputs do not
+  rewrite a date in the tracked Markdown output. CI can verify generated
+  artifacts on any day.
+
+## Previous Update (2026-07-02)
 
 - Added `tests/canvas-board-view.test.ts` for the Canvas 2D board renderer
   (Graphics Proposal 2): a fake 2D-context double records draw calls, and
