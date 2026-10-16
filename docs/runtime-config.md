@@ -185,6 +185,33 @@ one-time migration plan (for example, after intentionally discarding all
 previous leaderboard data). Unplanned changes may cause data loss or
 duplication.
 
+### SQLite dependency upgrades
+
+The server uses better-sqlite3 13, which requires Node 22 or later. Keep the
+stricter Node versions from `package.json` when running MEMORYBLOX. The package
+ships native binaries for common Linux, macOS, and Windows x64/arm64 targets.
+CI verifies the packaged binaries on Linux and Windows with Node 22/24/26.
+Unsupported targets require a separately verified source build and C++/Python
+build tools; do not assume a plain install compiles a fallback.
+
+The dependency is in `devDependencies`. Install development dependencies when
+running the separate leaderboard server; `npm ci --omit=dev` does not install
+its SQLite driver. The browser-only Pages build does not run this server.
+
+Upgrading the driver does not require clearing the database, deleting migration
+metadata, or reimporting JSON. Preserve the existing database path, migration
+key, and TEXT `"1"` completion value. Before deploying a driver upgrade, stop
+writers and make a clean backup, or use SQLite's backup API. Copying only a live
+main database file can omit committed data still in its WAL. Validate a backup
+copy on the target host before replacing its driver. This is an operator check;
+CI cannot establish the state or platform of an external leaderboard host.
+
+`tests/fixtures/leaderboard-v12.sqlite3` was created using better-sqlite3
+12.11.1 (SQLite 3.53.2) and synthetic scores. The upgrade regression opens a
+copy with the current driver and checks preserved fields, completion metadata,
+subsequent writes, and database integrity. No schema or migration-state change
+is part of the v13 upgrade.
+
 ### Separate leaderboard server
 
 The repository still includes an API server at
