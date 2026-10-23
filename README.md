@@ -96,7 +96,7 @@ The repository also contains a separate SQLite leaderboard server in
 ```bash
 markdownlint-cli2
 eslint .
-tsc --noEmit
+npm run typecheck
 ```
 
 `npm run quality:sanity` adds Fallow and unit tests. Before commit or push,

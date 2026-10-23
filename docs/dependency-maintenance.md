@@ -6,6 +6,13 @@ Keep `vitest` and `@vitest/coverage-istanbul` on the same exact version.
 The Istanbul provider has a version-specific Vitest peer dependency; upgrading
 only the runner can leave the dependency graph invalid.
 
+Run `npm run typecheck` for the project typecheck. This command selects
+TypeScript 7 through the `@typescript/native` npm alias. The `typescript`
+dependency remains on version 6 for the `typescript-eslint` compiler API.
+The explicit CLI path prevents `tsc` command resolution from selecting version 6.
+See [Microsoft's migration guide](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0).
+Keep the version 6 API dependency until ESLint supports the newer compiler API.
+
 The project requires Node.js `^22.23.4 || ^24.22.1 || >=26.12.1`.
 These minimum versions include the Brotli decoder fix for
 [CVE-2026-111497](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases).
