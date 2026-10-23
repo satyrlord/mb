@@ -75,7 +75,7 @@ this order:
 ```bash
 markdownlint-cli2
 eslint .
-tsc --noEmit
+npm run typecheck
 ```
 
 `npm run quality:sanity` runs Fallow after validation.
