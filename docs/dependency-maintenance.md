@@ -6,9 +6,15 @@ Keep `vitest` and `@vitest/coverage-istanbul` on the same exact version.
 The Istanbul provider has a version-specific Vitest peer dependency; upgrading
 only the runner can leave the dependency graph invalid.
 
-The jsdom 30 toolchain requires Node.js
-`^22.22.2 || ^24.15.0 || >=26.0.0`. CI and Pages use the current Node.js 22
-release. The `engines.node` field documents the supported development runtime.
+The project requires Node.js `^22.23.4 || ^24.22.1 || >=26.12.1`.
+These minimum versions include the Brotli decoder fix for
+[CVE-2026-111497](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases).
+CI and Pages use Node.js 22.23.4. The SQLite compatibility matrix also tests
+Node.js 24.22.1 and 26.12.1 on Linux and Windows.
+Keep the CI versions at or above the security minimum for each major version.
+The `engines.node` field documents the supported development runtime.
+Update local Node.js installations and any host that runs the optional
+leaderboard server separately. An npm dependency update does not replace Node.js.
 
 Update `package.json` and `package-lock.json` together. Resolve the lockfile
 with npm on a supported runtime, then verify it with `npm ci`. Review the
